@@ -1,0 +1,23 @@
+@import "tailwindcss";
+
+/* src/App.css */
+
+.layout {
+  display: flex;
+  flex-direction: column;
+  /* min-height: 100dvh; */
+}
+
+.main-content {
+  flex-grow: 1; /* Equivalent to flex-grow */
+}
+
+.footer {
+  /* You can add footer-specific styles here if needed */
+  background-color: #f3f4f6; /* Example: light gray background */
+  padding: 1rem;
+  text-align: center;
+}
+button:hover {
+  cursor: pointer;
+}
