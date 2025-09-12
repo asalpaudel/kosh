@@ -9,7 +9,7 @@ import LoanAd from '../../component/user/LoanAd';
 
 function Dashboard() {
   return (
-    <div className="min-h-screen bg-gray-100 p-4">
+    <div className="min-h-screen  bg-white p-4">
           <div className="container mx-auto py-6">
             <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-6">
               {/* Top Row - Account Summary (full width) */}

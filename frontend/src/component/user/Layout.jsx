@@ -14,12 +14,12 @@ function Layout() {
   const pageName = getPageName(location.pathname);
 
   return (
-    <div className="bg-black flex h-screen">
+    <div className="bg-black flex min-h-screen">
       <Sidebar />
       <div className="flex-1 flex flex-col overflow-hidden">
         <Header pageName={pageName} />
         <div className="flex-1 flex flex-col bg-white rounded-tl-3xl rounded-bl-3xl">
-          <main className="flex-1 p-6 overflow-y-auto">
+          <main className="flex-1 p-6 overflow-y-auto rounded-2xl rounded-bl-2xl">
             <Outlet />
           </main>
         </div>
