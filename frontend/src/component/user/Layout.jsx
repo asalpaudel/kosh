@@ -6,15 +6,17 @@ import Footer from "./Footer";
 
 function Layout() {
   return (
-    <div className="bg-black flex flex-col h-screen">
-      <Header />
-      <div className="flex flex-1 overflow-hidden">
-        <Sidebar />
-        <main className="flex-1 bg-white rounded-tl-3xl p-6 overflow-y-auto">
-          <Outlet />
-        </main>
+    <div className="bg-black flex h-screen">
+      <Sidebar />
+      <div className="flex-1 flex flex-col overflow-hidden">
+        <Header />
+        <div className="flex-1 flex flex-col bg-white rounded-tl-3xl rounded-bl-3xl">
+          <main className="flex-1 p-6 overflow-y-auto">
+            <Outlet />
+          </main>
+        </div>
+        <Footer />
       </div>
-      <Footer />
     </div>
   );
 }
