@@ -1,19 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import ReactApexChart from 'react-apexcharts';
 
-// Helper function to generate sample daily data
 const generateDailyData = (startDate, numDays) => {
   const data = [];
-  let value = 50; // Starting value
+  let value = 50; 
   for (let i = 0; i < numDays; i++) {
     const newDate = new Date(startDate);
     newDate.setDate(newDate.getDate() + i);
-    // Fluctuate the value randomly
     const fluctuation = (Math.random() - 0.5) * 5;
     value += fluctuation;
     data.push({
-      x: newDate.getTime(), // Use timestamp for x-axis
-      y: Math.round(value * 100) / 100, // Round to 2 decimal places
+      x: newDate.getTime(), 
+      y: Math.round(value * 100) / 100, 
     });
   }
   return data;
@@ -22,19 +20,16 @@ const generateDailyData = (startDate, numDays) => {
 const FinancialChart = () => {
   const [allData, setAllData] = useState([]);
   const [displaySeries, setDisplaySeries] = useState([]);
-  const [activeFilter, setActiveFilter] = useState('1Y'); // Default filter
+  const [activeFilter, setActiveFilter] = useState('1W'); 
 
-  // Generate the full dataset only once on component mount
   useEffect(() => {
     const today = new Date();
-    // Go back 2 years to have enough data for "ALL"
     const startDate = new Date(new Date().setFullYear(today.getFullYear() - 2));
     const totalDays = Math.floor((today - startDate) / (1000 * 60 * 60 * 24));
     const data = generateDailyData(startDate, totalDays);
     setAllData(data);
   }, []);
 
-  // This effect runs whenever the activeFilter or the full dataset changes
   useEffect(() => {
     if (allData.length === 0) return;
 
@@ -53,7 +48,6 @@ const FinancialChart = () => {
         break;
       case 'ALL':
       default:
-        // Use the earliest date from our dataset
         startDate = new Date(allData[0].x);
         break;
     }
@@ -96,7 +90,7 @@ const FinancialChart = () => {
       type: 'gradient',
       gradient: {
         shade: 'dark',
-        gradientToColors: ['#3AC249'], // A nice green
+        gradientToColors: ['#3AC249'], 
         shadeIntensity: 1,
         type: 'horizontal',
         opacityFrom: 1,
@@ -104,14 +98,13 @@ const FinancialChart = () => {
         stops: [0, 100],
       },
     },
-    colors: ['#000000'], // Color of the line
+    colors: ['#000000'],
   };
 
   const timeRanges = ['1W', '1M', '1Y', 'ALL'];
 
   return (
     <div className="bg-white rounded-lg p-4 shadow-md col-span-2 flex flex-col">
-      {/* Chart */}
       <div id="chart">
         <ReactApexChart
           options={chartOptions}
@@ -121,7 +114,6 @@ const FinancialChart = () => {
         />
       </div>
 
-      {/* Filter Buttons */}
       <div className="flex justify-center space-x-2 mt-4">
         {timeRanges.map(range => (
           <button
