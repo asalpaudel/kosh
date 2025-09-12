@@ -1,5 +1,5 @@
 import React from 'react';
-import { LeafIcon, SearchIcon, BellIcon, SettingsIcon } from './Icons';
+import { LeafIcon, SearchIcon, BellIcon, SettingsIcon } from '../icons';
 
 function Header() {
   return (

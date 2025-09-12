@@ -7,7 +7,7 @@ import {
   FileTextIcon,
   PlusCircleIcon,
   LogOutIcon,
-} from "..icons/Icons";
+} from "../icons";
 
 function Sidebar() {
   return (
