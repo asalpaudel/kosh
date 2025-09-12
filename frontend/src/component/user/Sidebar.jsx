@@ -1,13 +1,13 @@
-import React from 'react';
-import { 
-  LayoutDashboardIcon, 
-  UsersIcon, 
-  MailIcon, 
-  BarChartIcon, 
-  FileTextIcon, 
-  PlusCircleIcon, 
-  LogOutIcon 
-} from './Icons';
+import React from "react";
+import {
+  LayoutDashboardIcon,
+  UsersIcon,
+  MailIcon,
+  BarChartIcon,
+  FileTextIcon,
+  PlusCircleIcon,
+  LogOutIcon,
+} from "..icons/Icons";
 
 function Sidebar() {
   return (
@@ -18,7 +18,7 @@ function Sidebar() {
       <BarChartIcon className="text-orange-400 h-7 w-7 cursor-pointer transition-transform duration-200 hover:scale-110" />
       <FileTextIcon className="text-blue-400 h-7 w-7 cursor-pointer transition-transform duration-200 hover:scale-110" />
       <PlusCircleIcon className="text-green-400 h-7 w-7 cursor-pointer transition-transform duration-200 hover:scale-110" />
-      
+
       <div className="flex-1"></div>
 
       <LogOutIcon className="text-yellow-400 h-7 w-7 cursor-pointer transition-transform duration-200 hover:scale-110" />
