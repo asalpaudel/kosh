@@ -1,16 +1,20 @@
-import './App.css';
-import React from 'react';
-import Layout from './component/Layout';
+import "./App.css";
+import React from "react";
+import { BrowserRouter, Route, Routes } from "react-router";
+import Layout from "./component/user/Layout";
+import Dashboard from "./component/user/Dashboard";
 
 function App() {
   return (
-    <Layout>
-      {/* This is the main content area that gets passed as 'children' to the Layout component */}
-      <div className="bg-white rounded-3xl flex-1 w-full">
-        {/* Your page-specific content, like dashboards, forms, etc., goes here */}
-        <h1 className="p-8 text-2xl font-bold">Welcome to the Dashboard!</h1>
-      </div>
-    </Layout>
+    <>
+      <BrowserRouter>
+        <Routes>
+          <Route path="/" element={<Layout />}>
+            <Route path="/userdashboard" element={<Dashboard />}></Route>
+          </Route>
+        </Routes>
+      </BrowserRouter>
+    </>
   );
 }
 
