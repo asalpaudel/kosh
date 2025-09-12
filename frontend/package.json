@@ -11,6 +11,8 @@
   },
   "dependencies": {
     "apexcharts": "^5.3.5",
+    "jspdf": "^3.0.2",
+    "jspdf-autotable": "^5.0.2",
     "react": "^19.1.1",
     "react-apexcharts": "^1.7.0",
     "react-dom": "^19.1.1",

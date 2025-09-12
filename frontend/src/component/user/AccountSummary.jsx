@@ -5,7 +5,7 @@ function AccountSummary() {
     { name: "Savings", amount: "1,30,000.00" },
     { name: "Loan", amount: "1,30,000.00" },
     { name: "Interest", amount: "1,30,000.00" },
-    { name: "Savings", amount: "1,30,000.00" }, // As per image
+    { name: "Savings", amount: "1,30,000.00" }, 
   ];
 
   return (

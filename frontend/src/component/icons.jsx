@@ -94,3 +94,14 @@ export const LogOutIcon = ({ className }) => (
         <line x1="21" y1="12" x2="9" y2="12"></line>
     </svg>
 );
+
+export const PiggyBankIcon = ({ className }) => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+    <path d="M16 8.5a4 4 0 0 1-8 0"/>
+    <path d="M21 10h-2a2 2 0 0 0-2 2v2a2 2 0 0 0 2 2h2"/>
+    <path d="M21.5 10a8.5 8.5 0 0 0-18.01 1.43c0 3.24 2.14 5.92 5.01 6.57"/>
+    <path d="M4.5 12H10"/>
+    <path d="M2 14h6"/>
+    <path d="M12 21.5V16"/>
+  </svg>
+);

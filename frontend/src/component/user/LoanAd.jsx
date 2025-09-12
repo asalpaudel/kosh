@@ -3,28 +3,39 @@ import loanImage from '../../assets/image/loan.png';
 
 function LoanAd() {
   return (
-    <div className="bg-black text-white rounded-2xl p-6 flex flex-col justify-between h-full min-h-[450px] shadow-lg">
+    <div className="bg-black text-white rounded-2xl p-6 pt-10 pb-24 relative min-h-[750px] shadow-lg">
       
       <div className="text-center">
-        <span className="text-9xl font-extrabold block leading-none">7%</span>
+        <span className="text-8xl font-extrabold block leading-none">7%</span>
+        <p className="text-2xl font-semibold mt-2">Interest Rate</p>
       </div>
 
-      <div className="text-center my-6">
-        <h3 className="text-4xl font-bold mb-2">ONLY AT</h3>
-        <p className="text-lg font-medium tracking-wide">
-           Unlock Your Dreams. Affordable Loans Just For You!
+      <div className="text-center my-8">
+        <p className="text-lg font-medium leading-relaxed">
+          Unlock Your Dreams.
+          <br /> Affordable Loans Made Easy.
         </p>
-        {/* <p className="text-lg font-medium tracking-wide">WE FUCK WIT IT</p> */}
-
       </div>
 
-      <div className="bg-white text-gray-800 p-4 rounded-xl flex items-center justify-between gap-4">
+      <div className="absolute bottom-5 left-1/2 transform -translate-x-1/2 w-[90%] bg-white rounded-2xl shadow-lg p-5 flex items-center justify-between">
+        
         <div>
-          <h4 className="text-xl font-bold mb-1 text-blue-600">Apply For Loan</h4>
-          <p className="text-gray-500 text-sm">Easy Loans for your growth</p>
+          <h2 className="text-4xl font-bold text-gray-800 leading-tight">
+            <span className="text-teal-500">Apply</span> For
+            <br />
+            Loan
+          </h2>
+          <p className="text-gray-500 mt-2 text-base">
+            Easy Loans for you growth
+          </p>
         </div>
+
         <div className="flex-shrink-0">
-          <img src={loanImage} alt="Loan" className="w-20 h-auto"/>
+          <img 
+            src={loanImage} 
+            alt="Illustration of a hand holding a money bag for a loan application" 
+            className="w-40 h-auto"
+          />
         </div>
       </div>
     </div>
