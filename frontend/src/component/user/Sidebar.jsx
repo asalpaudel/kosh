@@ -1,4 +1,5 @@
 import React from "react";
+import { NavLink } from "react-router-dom";
 import {
   LayoutDashboardIcon,
   UsersIcon,
@@ -7,21 +8,37 @@ import {
   FileTextIcon,
   PlusCircleIcon,
   LogOutIcon,
+  Logo,
 } from "../icons";
 
 function Sidebar() {
+  const navLinkClass = ({ isActive }) =>
+    `p-1.5 rounded-lg ${isActive ? "bg-gray-700" : ""}`;
+
   return (
     <div className="w-14 bg-black flex flex-col items-center justify-between py-6">
       <div className="flex flex-col items-center space-y-6">
-        <LayoutDashboardIcon className="text-purple-400 h-7 w-7 cursor-pointer transition-transform duration-200 hover:scale-110" />
-        <UsersIcon className="text-white h-7 w-7 cursor-pointer transition-transform duration-200 hover:scale-110" />
-        <MailIcon className="text-red-400 h-7 w-7 cursor-pointer transition-transform duration-200 hover:scale-110" />
-        <BarChartIcon className="text-orange-400 h-7 w-7 cursor-pointer transition-transform duration-200 hover:scale-110" />
-        <FileTextIcon className="text-blue-400 h-7 w-7 cursor-pointer transition-transform duration-200 hover:scale-110" />
-        <PlusCircleIcon className="text-green-400 h-7 w-7 cursor-pointer transition-transform duration-200 hover:scale-110" />
+        <Logo />
+        <NavLink to="/dashboard" className={navLinkClass}>
+          <LayoutDashboardIcon className="text-purple-400 h-7 w-7 transition-transform duration-200 hover:scale-110" />
+        </NavLink>
+
+        <NavLink to="/report" className={navLinkClass}>
+          <BarChartIcon className="text-orange-400 h-7 w-7 transition-transform duration-200 hover:scale-110" />
+        </NavLink>
+
+        <NavLink to="/statement" className={navLinkClass}>
+          <FileTextIcon className="text-blue-400 h-7 w-7 transition-transform duration-200 hover:scale-110" />
+        </NavLink>
+
+        {/* <UsersIcon className="text-white h-7 w-7 cursor-pointer transition-transform duration-200 hover:scale-110" /> */}
+        {/* <MailIcon className="text-red-400 h-7 w-7 cursor-pointer transition-transform duration-200 hover:scale-110" /> */}
+        {/* <PlusCircleIcon className="text-green-400 h-7 w-7 cursor-pointer transition-transform duration-200 hover:scale-110" /> */}
       </div>
 
-      <LogOutIcon className="text-yellow-400 h-7 w-7 cursor-pointer transition-transform duration-200 hover:scale-110" />
+      <NavLink to="/" className={navLinkClass}>
+        <LogOutIcon className="text-yellow-400 h-7 w-7 transition-transform duration-200 hover:scale-110" />
+      </NavLink>
     </div>
   );
 }
