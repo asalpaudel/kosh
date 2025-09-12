@@ -1,41 +1,36 @@
-import lImage from "../Resources/Login.png";
 import { useState } from "react";
+import { NavLink } from "react-router-dom";
 
 export default function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [hidden, setHidden] = useState(true);
+  const [submitted, setSubmitted] = useState(false);
 
-  const handleLogin = () => {
-    if (email === "" || password === "") {
-      setHidden(false);
-    } else {
-      setHidden(true);
+  const handleLogin = (e) => {
+    e.preventDefault(); // Prevent form from reloading the page
+    setSubmitted(true);
+
+    if (email && password) {
       console.log("Logging in with:", { email, password });
-      // Just a placeholder — no backend
+      alert("Login successful!");
+      // Here you would typically handle actual login logic
     }
   };
 
   return (
-    <div className="flex flex-col lg:flex-row min-h-screen p-5 gap-5">
-      {/* Left Column */}
-      <div className="hidden md:flex flex-1 min-w-[280px] bg-white rounded-lg p-5 justify-center items-center">
-        <img
-          src={lImage}
-          alt="Login Visual"
-          className="max-w-full max-h-[700px] object-contain"
-        />
-      </div>
-
-      {/* Right Column */}
-      <div className="flex-1 bg-white rounded-lg p-5 flex flex-col justify-center">
+    <div className="flex p-5 min-h-screen justify-center items-center box-border bg-gray-100">
+      {/* Login Form Column */}
+      <div className="flex-1 max-w-lg bg-white rounded-lg p-8 shadow-lg flex flex-col justify-center">
         <h2 className="text-3xl font-bold mb-6 text-center">
           Hello,
           <br />
           Welcome Back
         </h2>
 
-        <form className="flex flex-col gap-5 w-full max-w-md mx-auto">
+        <form
+          className="flex flex-col gap-5 w-full max-w-md mx-auto"
+          onSubmit={handleLogin}
+        >
           {/* Email */}
           <div>
             <label htmlFor="email" className="block font-semibold mb-2">
@@ -50,7 +45,7 @@ export default function Login() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
               />
-              {!hidden && email === "" && (
+              {submitted && !email && (
                 <div className="absolute right-3 top-3 text-sm text-red-500">
                   Required
                 </div>
@@ -72,7 +67,7 @@ export default function Login() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
               />
-              {!hidden && password === "" && (
+              {submitted && !password && (
                 <div className="absolute right-3 top-3 text-sm text-red-500">
                   Required
                 </div>
@@ -82,13 +77,20 @@ export default function Login() {
 
           {/* Signin Button */}
           <button
-            type="button"
-            className="w-full bg-[#3AC249] text-white font-bold py-3 rounded-full hover:bg-[#33b040] transition-colors"
-            onClick={handleLogin}
+            type="submit"
+            className="w-full mt-4 bg-[#3AC249] text-white font-bold py-3 rounded-full hover:bg-[#33b040] transition-colors"
           >
-            Signin
+            Sign In
           </button>
         </form>
+
+        {/* Signup Link */}
+        <p className="mt-10 text-center font-semibold">
+          Don't have an account?{" "}
+          <NavLink to="/signup" className="text-[#3AC249]">
+            Sign Up
+          </NavLink>
+        </p>
       </div>
     </div>
   );
