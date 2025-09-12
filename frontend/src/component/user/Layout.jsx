@@ -1,16 +1,16 @@
-import { Outlet } from "react-router";
+import { Outlet } from "react-router-dom";
 import React from "react";
 import Header from "./Header";
 import Sidebar from "./Sidebar";
 import Footer from "./Footer";
 
-function Layout({ children }) {
+function Layout() {
   return (
-    <div className="flex flex-col h-screen bg-white">
+    <div className="bg-black flex flex-col h-screen">
       <Header />
-      <div className="flex flex-1">
+      <div className="flex flex-1 overflow-hidden">
         <Sidebar />
-        <main className="flex-1 flex flex-col p-4">
+        <main className="flex-1 bg-white rounded-tl-3xl p-6 overflow-y-auto">
           <Outlet />
         </main>
       </div>
