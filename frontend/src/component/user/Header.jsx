@@ -3,7 +3,7 @@ import { SearchIcon, BellIcon, SettingsIcon } from '../icons';
 
 function Header({ pageName }) {
   return (
-    <header className="bg-black h-14 flex items-center justify-between px-6">
+    <header className="bg-black h-14 flex items-center justify-between px-6 sticky top-0 z-10">
       <h1 className="text-white font-semibold text-2xl tracking-wide">{pageName}</h1>
 
       <div className="flex items-center space-x-5">
