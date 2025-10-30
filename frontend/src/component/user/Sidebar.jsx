@@ -32,7 +32,7 @@ function Sidebar() {
         </NavLink>
       </div>
 
-      <NavLink to="/" className={navLinkClass}>
+      <NavLink to="/Login" className={navLinkClass}>
         <LogOutIcon className="text-yellow-400 h-7 w-7 transition-transform duration-200 hover:scale-110" />
       </NavLink>
     </div>
