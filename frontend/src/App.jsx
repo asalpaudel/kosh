@@ -13,13 +13,18 @@ function App() {
     <>
       <BrowserRouter>
         <Routes>
-          <Route path="/login" element={<Login />} />
+          {/* Public Routes */}
+          <Route path="/" element={<Login />} />
           <Route path="/signup" element={<Signup />} />
-          <Route path="/" element={<Layout />}>
-            <Route index element={<Dashboard />} />
-            <Route path="dashboard" element={<Dashboard />} />
-            <Route path="report" element={<Report />} />
-            <Route path="statement" element={<Statement />} />
+
+          {/* Protected (nested) Routes */}
+          <Route path="/home" element={<Layout />}>
+            <Route index element={<Dashboard />} /> {/* /home */}
+            <Route path="dashboard" element={<Dashboard />} />{" "}
+            {/* /home/dashboard */}
+            <Route path="report" element={<Report />} /> {/* /home/report */}
+            <Route path="statement" element={<Statement />} />{" "}
+            {/* /home/statement */}
           </Route>
         </Routes>
       </BrowserRouter>

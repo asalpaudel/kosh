@@ -12,7 +12,7 @@ export default function Login() {
     e.preventDefault();
     if (email && password) {
       alert("Welcome back!");
-      nav("/");
+      nav("/home");
     } else {
       alert("Please fill in all fields.");
     }
