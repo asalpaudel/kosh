@@ -5,16 +5,36 @@ export default function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [remember, setRemember] = useState(false);
-
   const nav = useNavigate();
 
-  const handleLogin = (e) => {
+  const handleLogin = async (e) => {
     e.preventDefault();
-    if (email && password) {
-      alert("Welcome back!");
-      nav("/home");
-    } else {
+
+    if (!email || !password) {
       alert("Please fill in all fields.");
+      return;
+    }
+
+    try {
+      const res = await fetch("http://localhost:8080/api/auth/login", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ email, password }),
+      });
+
+      const data = await res.json();
+
+      if (data.success) {
+        alert(data.message);
+        nav("/dashboard"); // redirect if valid
+      } else {
+        alert(data.message);
+      }
+    } catch (err) {
+      console.error(err);
+      alert("Login failed. Please try again.");
     }
   };
 
@@ -22,7 +42,6 @@ export default function Login() {
     <div className="flex flex-col lg:flex-row min-h-screen bg-white">
       {/* Left Panel */}
       <div className="flex-1 bg-black flex items-center justify-center relative">
-        {/* Top-right Logo */}
         <div className="absolute top-4 right-4 bg-black p-2 rounded-lg border border-[#00FFB2]">
           <svg
             xmlns="http://www.w3.org/2000/svg"
@@ -40,7 +59,6 @@ export default function Login() {
           </svg>
         </div>
 
-        {/* Dollar Symbol Art */}
         <svg
           xmlns="http://www.w3.org/2000/svg"
           viewBox="0 0 100 100"
@@ -119,7 +137,6 @@ export default function Login() {
             </button>
           </form>
 
-          {/* Signup Link */}
           <p className="mt-6 text-center font-medium">
             Don’t have an account?{" "}
             <NavLink to="/signup" className="text-[#00FFB2] hover:underline">
