@@ -5,38 +5,77 @@ export default function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [remember, setRemember] = useState(false);
+  const [role, setRole] = useState("user"); // 'user', 'admin', or 'superadmin'
+  
+  // State for API error messages
+  const [errorMessage, setErrorMessage] = useState("");
+
   const nav = useNavigate();
 
+  // Async API call handler
   const handleLogin = async (e) => {
     e.preventDefault();
+    setErrorMessage(""); // Clear old errors
 
     if (!email || !password) {
-      alert("Please fill in all fields.");
+      setErrorMessage("Please fill in all fields.");
       return;
     }
 
     try {
-      const res = await fetch("http://localhost:8080/api/auth/login", {
+      // Call your Java backend
+      const response = await fetch("http://localhost:8080/api/auth/login", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({
+          email: email,
+          password: password,
+          role: role, // Send the selected role
+        }),
       });
 
-      const data = await res.json();
+      const data = await response.json();
 
+      // Redirect based on backend response
       if (data.success) {
-        alert(data.message);
-        nav("/superadmin"); // redirect if valid
+        if (data.role === "user") {
+          nav("/home");
+        } else if (data.role === "admin") {
+          nav("/admin"); // Make sure /admin routes exist in App.jsx!
+        } else if (data.role === "superadmin") {
+          nav("/superadmin");
+        }
       } else {
-        alert(data.message);
+        // Show error message from the backend
+        setErrorMessage(data.message);
       }
-    } catch (err) {
-      console.error(err);
-      alert("Login failed. Please try again.");
+    } catch (error) {
+      // Handle network errors
+      console.error("Login failed:", error);
+      setErrorMessage("Could not connect to the server. Please try again later.");
     }
   };
+
+  // Helper component for the toggle buttons
+  const RoleToggleButton = ({ value, label }) => (
+    <button
+      type="button"
+      onClick={() => {
+        setRole(value);
+        setErrorMessage(""); // Clear errors when changing role
+      }}
+      className={`flex-1 py-3 px-4 rounded-full font-semibold transition-all duration-300
+        ${role === value
+          ? "bg-[#00FFB2] text-black shadow-lg"
+          : "bg-gray-200 text-gray-600 hover:bg-gray-300"
+        }
+      `}
+    >
+      {label}
+    </button>
+  );
 
   return (
     <div className="flex flex-col lg:flex-row min-h-screen bg-white">
@@ -58,7 +97,6 @@ export default function Login() {
             />
           </svg>
         </div>
-
         <svg
           xmlns="http://www.w3.org/2000/svg"
           viewBox="0 0 100 100"
@@ -88,6 +126,13 @@ export default function Login() {
           </h2>
 
           <form onSubmit={handleLogin} className="flex flex-col gap-5">
+            {/* Role Toggle */}
+            <div className="flex w-full bg-gray-200 rounded-full p-1 space-x-1">
+              <RoleToggleButton value="user" label="User" />
+              <RoleToggleButton value="admin" label="Admin" />
+              <RoleToggleButton value="superadmin" label="Superadmin" />
+            </div>
+
             {/* Email */}
             <div>
               <label className="block font-semibold mb-2">Email</label>
@@ -128,6 +173,13 @@ export default function Login() {
               </NavLink>
             </div>
 
+            {/* Error Message Display */}
+            {errorMessage && (
+              <p className="text-center text-red-600 font-medium">
+                {errorMessage}
+              </p>
+            )}
+
             {/* Signin Button */}
             <button
               type="submit"
@@ -137,6 +189,7 @@ export default function Login() {
             </button>
           </form>
 
+          {/* Signup Link */}
           <p className="mt-6 text-center font-medium">
             Don’t have an account?{" "}
             <NavLink to="/signup" className="text-[#00FFB2] hover:underline">
