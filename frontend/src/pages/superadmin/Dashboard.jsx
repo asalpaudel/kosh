@@ -1,60 +1,111 @@
-/* src/pages/superadmin/Dashboard.jsx */
 import React from 'react';
+import NetworkDonutChart from '../../component/superadmin/NetworkDonutChart';
 
-// Example Stat Card component
-const StatCard = ({ title, value, icon }) => (
-  <div className="bg-white p-6 rounded-lg shadow-md flex items-center justify-between">
+// Small component for the "Total Networks" list
+const NetworkTotalItem = ({ label, value }) => (
+  <div className="flex justify-between items-center py-3">
+    <span className="text-gray-600 font-medium">{label}</span>
+    <span className="text-gray-900 font-bold">{value}</span>
+  </div>
+);
+
+// Small component for the "Recently Added" list
+const RecentNetworkItem = ({ name, date, type, value }) => (
+  <div className="grid grid-cols-4 items-center py-3 border-b last:border-b-0">
     <div>
-      <span className="text-sm font-medium text-gray-500">{title}</span>
-      <p className="text-2xl font-bold text-gray-900">{value}</p>
+      <p className="font-bold text-gray-900">{name}</p>
+      <p className="text-sm text-gray-500">{date}</p>
     </div>
-    <div className="text-blue-500">
-      {/* Placeholder for an icon */}
-      {icon}
-    </div>
+    <span className="text-gray-700">{type}</span>
+    <span className="text-gray-900 font-medium">{value}</span>
+    {/* Empty div for 4th column alignment */}
+    <span></span>
   </div>
 );
 
 function SuperadminDashboard() {
+  
+  // Mock data based on your screenshot
+  const recentNetworks = [
+    { name: 'Geda Sahakari', date: '13-Apr-2025', type: 'Basic', value: 450 },
+    { name: 'Barshat Gay', date: '1-Apr-2025', type: 'Premium', value: 500 },
+    { name: 'Sid kallo', date: '1-Apr-2025', type: 'Custom', value: 900 },
+    { name: 'Asal Sano', date: '1-Apr-2025', type: 'Basic', value: 1000 },
+  ];
+
   return (
-    <div className="min-h-screen bg-gray-50 p-4">
+    <div className="bg-gray-50 p-4">
       <div className="container mx-auto py-6">
-        
-        {/* Stats Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
-          <StatCard title="Total Users" value="1,250" />
-          <StatCard title="Pending Approvals" value="32" />
-          <StatCard title="Total Transactions" value="Rs. 10,50,000" />
-          <StatCard title="System Health" value="Online" />
+
+        {/* Top Section: Chart + Summaries */}
+        <div className="bg-white p-8 rounded-2xl shadow-lg mb-6">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            
+            {/* Donut Chart */}
+            <div className="lg:col-span-1 min-h-[300px]">
+              <NetworkDonutChart />
+            </div>
+            
+            {/* Totals & Active Users */}
+            <div className="lg:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-8">
+              
+              {/* Total Networks List */}
+              <div>
+                <h3 className="text-xl font-bold text-gray-900 mb-4">Total Networks</h3>
+                <div className="divide-y">
+                  <NetworkTotalItem label="Total Networks" value="Rs. 1,30,000.00" />
+                  <NetworkTotalItem label="Total Basic" value="Rs. 1,30,000.00" />
+                  <NetworkTotalItem label="Total Premium" value="Rs. 1,30,000.00" />
+                  <NetworkTotalItem label="Total Custom" value="Rs. 1,30,000.00" />
+                </div>
+              </div>
+
+              {/* Active Users Placeholder */}
+              <div>
+                <h3 className="text-xl font-bold text-gray-900 mb-4">Active Users</h3>
+                <div className="bg-gray-100 h-full min-h-[150px] rounded-lg flex items-center justify-center">
+                  <p className="text-gray-500 italic">Active users chart or list goes here</p>
+                </div>
+              </div>
+
+            </div>
+          </div>
         </div>
 
-        {/* Management Sections */}
+        {/* Bottom Section: Recent Networks + Shortcuts */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           
-          {/* User Management Placeholder */}
-          <div className="lg:col-span-2 bg-white p-6 rounded-lg shadow-md">
-            <h2 className="text-xl font-bold mb-4">User Management</h2>
-            <p className="text-gray-600">
-              A table or list of users would go here. You could include functionality
-              to search, edit, delete, or approve new user signups.
-            </p>
-            {/* Example: <UserManagementTable /> */}
+          {/* Recently Added Network */}
+          <div className="lg:col-span-2 bg-white p-6 rounded-2xl shadow-lg">
+            <h3 className="text-xl font-bold text-gray-900 mb-4">Recently Added Network</h3>
+            {/* Header */}
+            <div className="grid grid-cols-4 items-center pb-3 border-b text-sm font-semibold text-gray-500">
+              <span>Name</span>
+              <span>Type</span>
+              <span>Value</span>
+            </div>
+            {/* List */}
+            <div>
+              {recentNetworks.map((network, index) => (
+                <RecentNetworkItem key={index} {...network} />
+              ))}
+            </div>
           </div>
 
-          {/* System Logs Placeholder */}
-          <div className="lg:col-span-1 bg-white p-6 rounded-lg shadow-md">
-            <h2 className="text-xl font-bold mb-4">Activity Log</h2>
-            <ul className="space-y-3">
-              <li className="text-sm text-gray-700">
-                <span className="font-semibold">User 'john.doe'</span> logged in. (1 min ago)
-              </li>
-              <li className="text-sm text-gray-700">
-                <span className="font-semibold">New user 'jane.s'</span> pending approval. (5 mins ago)
-              </li>
-              <li className="text-sm text-gray-700">
-                <span className="font-semibold">System backup</span> completed. (1 hour ago)
-              </li>
-            </ul>
+          {/* Shortcuts */}
+          <div className="bg-white p-6 rounded-2xl shadow-lg">
+            <h3 className="text-xl font-bold text-gray-900 mb-4">Shortcuts</h3>
+            <div className="space-y-3">
+              <button className="w-full text-left font-medium text-blue-600 hover:underline">
+                Add New Network
+              </button>
+              <button className="w-full text-left font-medium text-blue-600 hover:underline">
+                Manage Users
+              </button>
+              <button className="w-full text-left font-medium text-blue-600 hover:underline">
+                System Settings
+              </button>
+            </div>
           </div>
 
         </div>

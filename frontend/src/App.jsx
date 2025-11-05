@@ -2,19 +2,19 @@ import "./App.css";
 import React from "react";
 import { BrowserRouter, Route, Routes } from "react-router-dom";
 
-// User Components
-import Layout from "./component/user/Layout"; //
-import Dashboard from "./pages/user/Dashboard"; //
-import Report from "./pages/user/Report"; //
-import Statement from "./pages/user/Statement"; //
+// User Imports
+import Layout from "./component/user/Layout.jsx";
+import Dashboard from "./pages/user/Dashboard.jsx";
+import Report from "./pages/user/Report.jsx";
+import Statement from "./pages/user/Statement.jsx";
+import Login from "./pages/Login.jsx"; 
+import Signup from "./pages/Signup.jsx";
 
-// Public Components
-import Login from "./pages/Login"; //
-import Signup from "./pages/Signup"; //
-
-// Superadmin Components
-import SuperadminLayout from "./component/superadmin/Layout"; //
-import SuperadminDashboard from "./pages/superadmin/Dashboard"; //
+// SUPERADMIN IMPORTS
+import SuperadminLayout from "./component/superadmin/Layout.jsx";
+import SuperadminDashboard from "./pages/superadmin/Dashboard.jsx";
+import Analytics from "./pages/superadmin/Analytics.jsx";
+import History from "./pages/superadmin/History.jsx"; 
 
 function App() {
   return (
@@ -25,22 +25,22 @@ function App() {
           <Route path="/" element={<Login />} />
           <Route path="/signup" element={<Signup />} />
 
-          {/* Protected (user) Routes */}
+          {/* Protected (nested) User Routes */}
           <Route path="/home" element={<Layout />}>
-            <Route index element={<Dashboard />} /> {/* /home */}
-            <Route path="dashboard" element={<Dashboard />} />{" "}
-            {/* /home/dashboard */}
-            <Route path="report" element={<Report />} /> {/* /home/report */}
-            <Route path="statement" element={<Statement />} />{" "}
-            {/* /home/statement */}
+            <Route index element={<Dashboard />} /> 
+            <Route path="dashboard" element={<Dashboard />} />
+            <Route path="report" element={<Report />} />
+            <Route path="statement" element={<Statement />} />
           </Route>
 
-          {/* NEW: Protected (superadmin) Routes */}
+          {/* Protected (nested) Superadmin Routes */}
           <Route path="/superadmin" element={<SuperadminLayout />}>
-            <Route index element={<SuperadminDashboard />} /> {/* /superadmin */}
-            <Route path="dashboard" element={<SuperadminDashboard />} />{" "}
-            {/* /superadmin/dashboard */}
-            {/* You can add more superadmin-specific routes here later */}
+            <Route index element={<SuperadminDashboard />} /> 
+            <Route path="dashboard" element={<SuperadminDashboard />} />
+            <Route path="analytics" element={<Analytics />} />
+            
+            {/* The History route linked in the Sidebar.jsx */}
+            <Route path="history" element={<History />} />
           </Route>
           
         </Routes>
