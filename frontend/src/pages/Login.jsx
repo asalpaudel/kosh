@@ -28,7 +28,7 @@ export default function Login() {
 
       if (data.success) {
         alert(data.message);
-        nav("/dashboard"); // redirect if valid
+        nav("/superadmin"); // redirect if valid
       } else {
         alert(data.message);
       }
