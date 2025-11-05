@@ -6,6 +6,7 @@ import {
   Logo,
   BarChartIcon,
   FileTextIcon,
+  UsersIcon, // <-- IMPORTED UsersIcon
 } from "../icons.jsx"; // Imports icons from the adjacent file
 
 function Sidebar() {
@@ -22,6 +23,11 @@ function Sidebar() {
         {/* Dashboard Link */}
         <NavLink to="/superadmin/dashboard" className={navLinkClass}>
           <LayoutDashboardIcon className="text-purple-400 h-7 w-7 transition-transform duration-200 hover:scale-110" />
+        </NavLink>
+
+        {/* --- ADDED NETWORKS LINK --- */}
+        <NavLink to="/superadmin/networks" className={navLinkClass}>
+          <UsersIcon className="text-green-400 h-7 w-7 transition-transform duration-200 hover:scale-110" />
         </NavLink>
         
         {/* Analytics Link */}

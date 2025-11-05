@@ -21,3 +21,17 @@
 button:hover {
   cursor: pointer;
 }
+
+/* --- ADDED FOR 'NETWORKS' PAGE --- */
+
+/* Base transition for the icon */
+.fab-icon {
+  transition: transform 0.3s ease-in-out;
+}
+
+/* On wrapper 'group' hover, rotate the icon 45 degrees */
+.group:hover .fab-icon {
+  transform: rotate(45deg);
+}
+
+/* --- END OF ADDED STYLES --- */

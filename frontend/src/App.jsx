@@ -15,6 +15,7 @@ import SuperadminLayout from "./component/superadmin/Layout.jsx";
 import SuperadminDashboard from "./pages/superadmin/Dashboard.jsx";
 import Analytics from "./pages/superadmin/Analytics.jsx";
 import History from "./pages/superadmin/History.jsx"; 
+import Networks from "./pages/superadmin/Networks.jsx"; // <-- IMPORTED NEW PAGE
 
 function App() {
   return (
@@ -38,9 +39,10 @@ function App() {
             <Route index element={<SuperadminDashboard />} /> 
             <Route path="dashboard" element={<SuperadminDashboard />} />
             <Route path="analytics" element={<Analytics />} />
-            
-            {/* The History route linked in the Sidebar.jsx */}
             <Route path="history" element={<History />} />
+
+            {/* --- ADDED NETWORKS ROUTE --- */}
+            <Route path="networks" element={<Networks />} /> 
           </Route>
           
         </Routes>
