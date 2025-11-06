@@ -6,16 +6,20 @@ export default function Login() {
   const [password, setPassword] = useState("");
   const [remember, setRemember] = useState(false);
   const [role, setRole] = useState("user"); // 'user', 'admin', or 'superadmin'
-  
-  // State for API error messages
   const [errorMessage, setErrorMessage] = useState("");
-
   const nav = useNavigate();
+
+  // Helper object to map role to a CSS transform value
+  const roleTranslate = {
+    user: "0%",
+    admin: "100%",
+    superadmin: "200%",
+  };
 
   // Async API call handler
   const handleLogin = async (e) => {
     e.preventDefault();
-    setErrorMessage(""); // Clear old errors
+    setErrorMessage(""); 
 
     if (!email || !password) {
       setErrorMessage("Please fill in all fields.");
@@ -23,7 +27,6 @@ export default function Login() {
     }
 
     try {
-      // Call your Java backend
       const response = await fetch("http://localhost:8080/api/auth/login", {
         method: "POST",
         headers: {
@@ -32,27 +35,24 @@ export default function Login() {
         body: JSON.stringify({
           email: email,
           password: password,
-          role: role, // Send the selected role
+          role: role, 
         }),
       });
 
       const data = await response.json();
 
-      // Redirect based on backend response
       if (data.success) {
         if (data.role === "user") {
           nav("/home");
         } else if (data.role === "admin") {
-          nav("/admin"); // Make sure /admin routes exist in App.jsx!
+          nav("/admin"); 
         } else if (data.role === "superadmin") {
           nav("/superadmin");
         }
       } else {
-        // Show error message from the backend
         setErrorMessage(data.message);
       }
     } catch (error) {
-      // Handle network errors
       console.error("Login failed:", error);
       setErrorMessage("Could not connect to the server. Please try again later.");
     }
@@ -64,12 +64,14 @@ export default function Login() {
       type="button"
       onClick={() => {
         setRole(value);
-        setErrorMessage(""); // Clear errors when changing role
+        setErrorMessage(""); 
       }}
-      className={`flex-1 py-3 px-4 rounded-full font-semibold transition-all duration-300
-        ${role === value
-          ? "bg-[#00FFB2] text-black shadow-lg"
-          : "bg-gray-200 text-gray-600 hover:bg-gray-300"
+      className={`flex-1 py-3 px-4 rounded-full font-semibold transition-colors duration-300
+        relative z-10  
+        ${
+          role === value
+            ? "text-black" // Active text color
+            : "text-gray-600 hover:text-black" // Inactive text color
         }
       `}
     >
@@ -127,7 +129,22 @@ export default function Login() {
 
           <form onSubmit={handleLogin} className="flex flex-col gap-5">
             {/* Role Toggle */}
-            <div className="flex w-full bg-gray-200 rounded-full p-1 space-x-1">
+            <div className="flex w-full bg-gray-200 rounded-full p-1 relative">
+              
+              {/* --- 
+                THE SLIDING PILL
+                These classes create the animation:
+                - transition-transform: Tells it to animate the 'transform' property
+                - duration-300:       Sets the speed to 300ms
+                - ease-in-out:        This is the smoothing curve you want
+              --- */}
+              <div
+                className="absolute top-1 left-1 bottom-1 w-1/3 bg-[#00FFB2] rounded-full shadow-lg 
+                           transition-transform duration-300 ease-in-out"
+                style={{ transform: `translateX(${roleTranslate[role]})` }}
+              />
+
+              {/* The buttons now sit on top of the pill */}
               <RoleToggleButton value="user" label="User" />
               <RoleToggleButton value="admin" label="Admin" />
               <RoleToggleButton value="superadmin" label="Superadmin" />
@@ -163,7 +180,7 @@ export default function Login() {
                 <input
                   type="checkbox"
                   checked={remember}
-                  onChange={(e) => setRemember(e.target.checked)}
+                  onChange={(e) => setRemember(e.g.target.checked)}
                   className="accent-[#00FFB2]"
                 />
                 Remember me
