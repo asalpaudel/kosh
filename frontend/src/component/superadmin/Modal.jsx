@@ -8,9 +8,13 @@ import { CloseIcon } from '../icons';
  * @param {function} props.onClose - Function to call when closing
  * @param {string} props.title - The title for the modal
  * @param {React.ReactNode} props.children - The content to display inside
+ * @param {'2xl' | '3xl'} [props.size='2xl'] - The max width of the modal
  */
-function Modal({ isOpen, onClose, title, children }) {
+function Modal({ isOpen, onClose, title, children, size = '2xl' }) {
   if (!isOpen) return null;
+
+  // This logic is added from your Networks.jsx
+  const sizeClass = size === '3xl' ? 'max-w-3xl' : 'max-w-2xl';
 
   return (
     <div
@@ -20,7 +24,8 @@ function Modal({ isOpen, onClose, title, children }) {
     >
       <div
         // The modal "box": white background, rounded, shadow
-        className="bg-white p-6 sm:p-8 rounded-2xl shadow-xl w-full max-w-2xl relative"
+        // The sizeClass variable is now used here
+        className={`bg-white p-6 sm:p-8 rounded-2xl shadow-xl w-full ${sizeClass} relative`}
         onClick={(e) => e.stopPropagation()} // Prevents closing modal when clicking *inside* the box
       >
         {/* Header with Title and Close Button */}

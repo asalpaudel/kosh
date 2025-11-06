@@ -5,12 +5,16 @@ import {
   PencilIcon, 
   TrashIcon, 
   PlusCircleIcon, 
-  CloseIcon,
   BuildingIcon,
   UserCircleIcon,
-  PhoneIcon,
   DocumentIcon
 } from '../../component/icons.jsx';
+
+// --- ADDED IMPORTS ---
+// We now import the components you already built
+import Modal from '../../component/superadmin/Modal.jsx';
+import AddNetworkForm from '../../component/superadmin/AddNetworkForm.jsx';
+import AddUserForm from '../../component/superadmin/AddUserForm.jsx';
 
 // --- MOCK DATA ---
 const networks = [
@@ -138,309 +142,15 @@ const users = [
 
 
 // --- 1. REUSABLE MODAL COMPONENT ---
-/**
- * A reusable modal component
- * @param {object} props
- * @param {boolean} props.isOpen - Whether the modal is open
- * @param {function} props.onClose - Function to call when closing
- * @param {string} props.title - The title for the modal
- * @param {React.ReactNode} props.children - The content to display inside
- * @param {'2xl' | '3xl'} [props.size='2xl'] - The max width of the modal
- */
-function Modal({ isOpen, onClose, title, children, size = '2xl' }) {
-  if (!isOpen) return null;
-
-  const sizeClass = size === '3xl' ? 'max-w-3xl' : 'max-w-2xl';
-
-  return (
-    <div
-      // The overlay: covers the whole screen, blurs background
-      className="fixed inset-0 z-30 flex items-center justify-center backdrop-blur-[3px] p-4"
-      onClick={onClose} // Click outside the box to close
-    >
-      <div
-        // The modal "box": white background, rounded, shadow
-        className={`bg-white p-6 sm:p-8 rounded-2xl shadow-xl w-full ${sizeClass} relative`}
-        onClick={(e) => e.stopPropagation()} // Prevents closing modal when clicking *inside* the box
-      >
-        {/* Header with Title and Close Button */}
-        <div className="flex justify-between items-center pb-4 border-b">
-          <h3 className="text-2xl font-bold">{title}</h3>
-          <button
-            onClick={onClose}
-            className="text-gray-400 hover:text-gray-600"
-            title="Close"
-          >
-            <CloseIcon className="w-6 h-6" />
-          </button>
-        </div>
-
-        {/* Modal Content */}
-        <div className="mt-6">
-          {children}
-        </div>
-      </div>
-    </div>
-  );
-}
+// [REMOVED - Now imported from ../../component/superadmin/Modal.jsx]
 
 
 // --- 2. ADD NETWORK FORM COMPONENT ---
-function AddNetworkForm({ onClose }) {
-  const [formData, setFormData] = useState({
-    name: '',
-    address: '',
-    phone: '',
-    document: null,
-  });
-
-  const handleChange = (e) => {
-    const { name, value, files } = e.target;
-    setFormData((prev) => ({
-      ...prev,
-      [name]: files ? files[0] : value,
-    }));
-  };
-
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    // Handle form submission logic (e.g., API call)
-    console.log('New Network Data:', formData);
-    alert(`Sahakari "${formData.name}" created!`);
-    onClose(); // Close the modal on submit
-  };
-
-  return (
-    <form onSubmit={handleSubmit} className="flex flex-col gap-5">
-      <div className="flex justify-center">
-        <BuildingIcon className="w-16 h-16 text-teal-500" />
-      </div>
-
-      {/* Sahakari Name */}
-      <div>
-        <label className="block font-semibold mb-2">Sahakari Name</label>
-        <input
-          type="text"
-          name="name"
-          value={formData.name}
-          onChange={handleChange}
-          placeholder="Enter the official sahakari name"
-          className="w-full px-4 py-3 border border-gray-300 rounded-full focus:outline-none focus:border-black"
-          required
-        />
-      </div>
-
-      {/* Address */}
-      <div>
-        <label className="block font-semibold mb-2">Address</label>
-        <input
-          type="text"
-          name="address"
-          value={formData.address}
-          onChange={handleChange}
-          placeholder="Enter the primary office address"
-          className="w-full px-4 py-3 border border-gray-300 rounded-full focus:outline-none focus:border-black"
-          required
-        />
-      </div>
-
-      {/* Phone Number */}
-      <div>
-        <label className="block font-semibold mb-2">Phone Number</label>
-        <input
-          type="tel"
-          name="phone"
-          value={formData.phone}
-          onChange={handleChange}
-          placeholder="Enter office contact number"
-          className="w-full px-4 py-3 border border-gray-300 rounded-full focus:outline-none focus:border-black"
-          required
-        />
-      </div>
-
-      {/* Document Upload */}
-      <div>
-        <label className="block font-semibold mb-2">
-          Upload Registration Document (PDF / Image)
-        </label>
-        <input
-          type="file"
-          name="document"
-          accept=".pdf, .png, .jpg, .jpeg"
-          onChange={handleChange}
-          className="w-full border border-gray-300 rounded-full px-4 py-2 text-gray-700 file:mr-3 file:py-2 file:px-4 file:rounded-full file:border-0 file:bg-teal-500 file:text-white file:font-semibold hover:file:bg-teal-600 transition"
-        />
-      </div>
-
-      {/* Submit Button */}
-      <button
-        type="submit"
-        className="w-full bg-teal-500 text-white font-semibold py-3 rounded-full hover:bg-teal-600 transition-colors mt-4"
-      >
-        Add Sahakari
-      </button>
-    </form>
-  );
-}
+// [REMOVED - Now imported from ../../component/superadmin/AddNetworkForm.jsx]
 
 
 // --- 3. ADD USER FORM COMPONENT ---
-const sahakariList = [
-  "Sahakari 1",
-  "Sahakari 2",
-  "Geda Sahakari",
-  "Janata Sahakari",
-];
-
-function AddUserForm({ onClose }) {
-  const [formData, setFormData] = useState({
-    name: '',
-    email: '',
-    phone: '',
-    role: 'member',
-    sahakari: '',
-    password: '',
-    document: null,
-  });
-
-  const handleChange = (e) => {
-    const { name, value, files } = e.target;
-    setFormData((prev) => ({
-      ...prev,
-      [name]: files ? files[0] : value,
-    }));
-  };
-
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    // Handle form submission logic (e.g., API call)
-    console.log('New User Data:', formData);
-    alert(`User "${formData.name}" created!`);
-    onClose(); // Close the modal on submit
-  };
-
-  return (
-    <form onSubmit={handleSubmit} className="flex flex-col gap-5">
-      <div className="flex justify-center">
-        <UserCircleIcon className="w-16 h-16 text-teal-500" />
-      </div>
-
-      {/* Full Name */}
-      <div>
-        <label className="block font-semibold mb-2">Full Name</label>
-        <input
-          type="text"
-          name="name"
-          value={formData.name}
-          onChange={handleChange}
-          placeholder="Enter user's full name"
-          className="w-full px-4 py-3 border border-gray-300 rounded-full focus:outline-none focus:border-black"
-          required
-        />
-      </div>
-
-      {/* Email */}
-      <div>
-        <label className="block font-semibold mb-2">Email</label>
-        <input
-          type="email"
-          name="email"
-          value={formData.email}
-          onChange={handleChange}
-          placeholder="Enter user's email"
-          className="w-full px-4 py-3 border border-gray-300 rounded-full focus:outline-none focus:border-black"
-          required
-        />
-      </div>
-      
-      {/* Phone Number */}
-      <div>
-        <label className="block font-semibold mb-2">Phone Number</label>
-        <input
-          type="tel"
-          name="phone"
-          value={formData.phone}
-          onChange={handleChange}
-          placeholder="98XXXXXXXX"
-          className="w-full px-4 py-3 border border-gray-300 rounded-full focus:outline-none focus:border-black"
-        />
-      </div>
-
-      {/* Role and Sahakari (in one row) */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {/* Role Dropdown */}
-        <div>
-          <label className="block font-semibold mb-2">Select Role</label>
-          <select
-            name="role"
-            value={formData.role}
-            onChange={handleChange}
-            className="w-full px-4 py-3 border border-gray-300 rounded-full focus:outline-none focus:border-black"
-          >
-            <option value="member">Member</option>
-            <option value="staff">Staff</option>
-            <option value="admin">Admin</option>
-          </select>
-        </div>
-
-        {/* Sahakari Dropdown */}
-        <div>
-          <label className="block font-semibold mb-2">Select Sahakari</label>
-          <select
-            name="sahakari"
-            value={formData.sahakari}
-            onChange={handleChange}
-            className="w-full px-4 py-3 border border-gray-300 rounded-full focus:outline-none focus:border-black"
-            required
-          >
-            <option value="">Choose Sahakari</option>
-            {sahakariList.map((item, index) => (
-              <option key={index} value={item}>
-                {item}
-              </option>
-            ))}
-          </select>
-        </div>
-      </div>
-
-      {/* Password */}
-      <div>
-        <label className="block font-semibold mb-2">Temporary Password</label>
-        <input
-          type="password"
-          name="password"
-          value={formData.password}
-          onChange={handleChange}
-          placeholder="Enter a temporary password"
-          className="w-full px-4 py-3 border border-gray-300 rounded-full focus:outline-none focus:border-black"
-          required
-        />
-      </div>
-
-      {/* Document Upload */}
-      <div>
-        <label className="block font-semibold mb-2">
-          Upload User Document (PDF / Image)
-        </label>
-        <input
-          type="file"
-          name="document"
-          accept=".pdf, .png, .jpg, .jpeg"
-          onChange={handleChange}
-          className="w-full border border-gray-300 rounded-full px-4 py-2 text-gray-700 file:mr-3 file:py-2 file:px-4 file:rounded-full file:border-0 file:bg-teal-500 file:text-white file:font-semibold hover:file:bg-teal-600 transition"
-        />
-      </div>
-
-      {/* Submit Button */}
-      <button
-        type="submit"
-        className="w-full bg-teal-500 text-white font-semibold py-3 rounded-full hover:bg-teal-600 transition-colors mt-4"
-      >
-        Add User
-      </button>
-    </form>
-  );
-}
+// [REMOVED - Now imported from ../../component/superadmin/AddUserForm.jsx]
 
 
 // --- 4. DETAIL VIEW COMPONENTS ---
@@ -772,6 +482,7 @@ function Networks() {
         isOpen={isAddNetworkModalOpen} 
         onClose={() => setIsAddNetworkModalOpen(false)} 
         title="Add New Sahakari"
+        size="2xl" 
       >
         <AddNetworkForm onClose={() => setIsAddNetworkModalOpen(false)} />
       </Modal>
@@ -781,6 +492,7 @@ function Networks() {
         isOpen={isAddUserModalOpen} 
         onClose={() => setIsAddUserModalOpen(false)} 
         title="Add New User"
+        size="2xl"
       >
         <AddUserForm onClose={() => setIsAddUserModalOpen(false)} />
       </Modal>
