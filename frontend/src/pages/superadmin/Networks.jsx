@@ -6,91 +6,241 @@ import {
   TrashIcon, 
   PlusCircleIcon, 
   CloseIcon,
-  BuildingIcon,  // <-- IMPORTED
-  UserCircleIcon // <-- IMPORTED
+  BuildingIcon,
+  UserCircleIcon,
+  PhoneIcon,    // <-- IMPORTED
+  DocumentIcon  // <-- IMPORTED
 } from '../../component/icons.jsx';
 
-// Mock data for the network list
+// --- UPDATED MOCK DATA ---
 const networks = [
-  { id: 1, registeredId: 'N-12345', name: 'Sahakari 1', address: 'Kathmandu, Nepal', createdAt: '13-Apr-2025' },
-  { id: 2, registeredId: 'N-67890', name: 'Sahakari 2', address: 'Lalitpur, Nepal', createdAt: '12-Apr-2025' },
-  { id: 3, registeredId: 'N-24680', name: 'Geda Sahakari', address: 'Bhaktapur, Nepal', createdAt: '11-Apr-2025' },
-  { id: 4, registeredId: 'N-13579', name: 'Janata Sahakari', address: 'Pokhara, Nepal', createdAt: '10-Apr-2025' },
+  { 
+    id: 1, 
+    registeredId: 'N-12345', 
+    name: 'Sahakari 1', 
+    address: 'Kathmandu, Nepal', 
+    createdAt: '13-Apr-2025',
+    phone: '01-5551234',
+    staffCount: 15,
+    userCount: 1200,
+    regDocuments: [
+      { name: 'registration_cert.pdf', url: '#' },
+      { name: 'tax_clearance.pdf', url: '#' },
+    ]
+  },
+  { 
+    id: 2, 
+    registeredId: 'N-67890', 
+    name: 'Sahakari 2', 
+    address: 'Lalitpur, Nepal', 
+    createdAt: '12-Apr-2025',
+    phone: '01-5555678',
+    staffCount: 8,
+    userCount: 850,
+    regDocuments: [
+      { name: 'registration_cert.pdf', url: '#' },
+    ]
+  },
+  { 
+    id: 3, 
+    registeredId: 'N-24680', 
+    name: 'Geda Sahakari', 
+    address: 'Bhaktapur, Nepal', 
+    createdAt: '11-Apr-2025',
+    phone: '01-6661111',
+    staffCount: 12,
+    userCount: 2500,
+    regDocuments: [
+      { name: 'registration_cert.pdf', url: '#' },
+      { name: 'tax_clearance.pdf', url: '#' },
+    ]
+  },
+  { 
+    id: 4, 
+    registeredId: 'N-13579', 
+    name: 'Janata Sahakari', 
+    address: 'Pokhara, Nepal', 
+    createdAt: '10-Apr-2025',
+    phone: '061-500200',
+    staffCount: 20,
+    userCount: 5000,
+    regDocuments: [
+      { name: 'registration_cert.pdf', url: '#' },
+    ]
+  },
 ];
 
-// Mock data for the user list
 const users = [
-  { id: 1, name: 'Asal Admin', email: 'asal@example.com', phone: '9800000001', sahakari: 'Sahakari 1', role: 'admin' },
-  { id: 2, name: 'Barshat Admin', email: 'barshat@example.com', phone: '9800000002', sahakari: 'Sahakari 2', role: 'admin' },
-  { id: 3, name: 'Ram Member', email: 'ram@example.com', phone: '9800000003', sahakari: 'Sahakari 1', role: 'member' },
-  { id: 4, name: 'Sita Staff', email: 'sita@example.com', phone: '9800000004', sahakari: 'Geda Sahakari', role: 'staff' },
-  { id: 5, name: 'Hari Member', email: 'hari@example.com', phone: '9800000005', sahakari: 'Janata Sahakari', role: 'member' },
+  { 
+    id: 1, 
+    name: 'Asal Admin', 
+    email: 'asal@example.com', 
+    phone: '9800000001', 
+    sahakari: 'Sahakari 1', 
+    role: 'admin',
+    status: 'Active',
+    documents: [
+      { name: 'citizenship.pdf', url: '#' },
+      { name: 'photo.jpg', url: '#' },
+    ]
+  },
+  { 
+    id: 2, 
+    name: 'Barshat Admin', 
+    email: 'barshat@example.com', 
+    phone: '9800000002', 
+    sahakari: 'Sahakari 2', 
+    role: 'admin',
+    status: 'Pending',
+    documents: [
+      { name: 'citizenship.pdf', url: '#' },
+    ]
+  },
+  { 
+    id: 3, 
+    name: 'Ram Member', 
+    email: 'ram@example.com', 
+    phone: '9800000003', 
+    sahakari: 'Sahakari 1', 
+    role: 'member',
+    status: 'Active',
+    documents: [
+      { name: 'citizenship.pdf', url: '#' },
+      { name: 'photo.jpg', url: '#' },
+    ]
+  },
+  { 
+    id: 4, 
+    name: 'Sita Staff', 
+    email: 'sita@example.com', 
+    phone: '9800000004', 
+    sahakari: 'Geda Sahakari', 
+    role: 'staff',
+    status: 'Suspended',
+    documents: [
+      { name: 'citizenship.pdf', url: '#' },
+    ]
+  },
+  { 
+    id: 5, 
+    name: 'Hari Member', 
+    email: 'hari@example.com', 
+    phone: '9800000005', 
+    sahakari: 'Janata Sahakari', 
+    role: 'member',
+    status: 'Active',
+    documents: [
+      { name: 'citizenship.pdf', url: '#' },
+      { name: 'photo.jpg', url: '#' },
+    ]
+  },
 ];
 
 // --- MODAL CONTENT COMPONENTS (UPDATED) ---
 
+// Component for a single detail item in the modal
+const DetailItem = ({ label, value }) => (
+  <div>
+    <span className="text-sm font-semibold text-gray-500 block">{label}</span>
+    <span className="text-lg text-gray-800">{value}</span>
+  </div>
+);
+
+// Component for a document link
+const DocumentLink = ({ doc }) => (
+  <a
+    href={doc.url}
+    target="_blank"
+    rel="noopener noreferrer"
+    className="flex items-center gap-2 text-teal-600 hover:text-teal-800 hover:underline"
+  >
+    <DocumentIcon className="w-4 h-4" />
+    <span className="text-sm font-medium">{doc.name}</span>
+  </a>
+);
+
 // A component to display Network details with better UI
 const NetworkDetails = ({ item, onClose }) => (
-  <div className="flex flex-col sm:flex-row gap-6">
+  <div className="flex flex-col sm:flex-row gap-6 sm:gap-8">
     {/* Left Side: Image Box */}
-    <div className="flex-shrink-0 w-full sm:w-40 h-40 bg-gray-100 rounded-lg flex items-center justify-center">
-      <BuildingIcon className="w-20 h-20 text-gray-400" />
+    <div className="flex-shrink-0 w-full sm:w-48 h-48 bg-gray-100 rounded-lg flex items-center justify-center">
+      <BuildingIcon className="w-24 h-24 text-gray-400" />
     </div>
     
     {/* Right Side: Details */}
-    <div className="flex-1">
-      <h3 className="text-2xl font-bold mb-4">{item.name}</h3>
-      <div className="space-y-3">
-        <div>
-          <span className="text-sm font-semibold text-gray-500 block">Registered ID</span>
-          <span className="text-lg text-gray-800">{item.registeredId}</span>
-        </div>
-        <div>
-          <span className="text-sm font-semibold text-gray-500 block">Address</span>
-          <span className="text-lg text-gray-800">{item.address}</span>
-        </div>
-        <div>
-          <span className="text-sm font-semibold text-gray-500 block">Created At</span>
-          <span className="text-lg text-gray-800">{item.createdAt}</span>
+    <div className="flex-1 space-y-5">
+      <h3 className="text-3xl font-bold mb-2">{item.name}</h3>
+
+      <div className="grid grid-cols-2 gap-x-4 gap-y-5">
+        <DetailItem label="Registered ID" value={item.registeredId} />
+        <DetailItem label="Address" value={item.address} />
+        <DetailItem label="Phone Number" value={item.phone} />
+        <DetailItem label="Created At" value={item.createdAt} />
+        <DetailItem label="Staff Count" value={item.staffCount} />
+        <DetailItem label="User Count" value={item.userCount.toLocaleString('en-IN')} />
+      </div>
+
+      {/* Documents Section */}
+      <div>
+        <span className="text-sm font-semibold text-gray-500 block mb-2">Registration Documents</span>
+        <div className="flex flex-col gap-1.5">
+          {item.regDocuments.map((doc, index) => (
+            <DocumentLink key={index} doc={doc} />
+          ))}
         </div>
       </div>
-      {/* --- Close button removed --- */}
     </div>
   </div>
 );
 
 // A component to display User details with better UI
 const UserDetails = ({ item, onClose }) => (
-  <div className="flex flex-col sm:flex-row gap-6">
+  <div className="flex flex-col sm:flex-row gap-6 sm:gap-8">
     {/* Left Side: Image Box (Avatar) */}
-    <div className="flex-shrink-0 w-full sm:w-40 h-40 bg-gray-100 rounded-full flex items-center justify-center">
-      <UserCircleIcon className="w-24 h-24 text-gray-400" />
+    <div className="flex-shrink-0 w-full sm:w-48 h-48 bg-gray-100 rounded-full flex items-center justify-center">
+      <UserCircleIcon className="w-28 h-28 text-gray-400" />
     </div>
     
     {/* Right Side: Details */}
-    <div className="flex-1">
-      <h3 className="text-2xl font-bold mb-1">{item.name}</h3>
-      <span className="text-md text-teal-600 font-semibold capitalize mb-4 block">{item.role}</span>
+    <div className="flex-1 space-y-5">
+      <div>
+        <h3 className="text-3xl font-bold">{item.name}</h3>
+        <span className="text-lg text-teal-600 font-semibold capitalize block">{item.role}</span>
+      </div>
       
-      <div className="space-y-3">
+      <div className="grid grid-cols-2 gap-x-4 gap-y-5">
+        <DetailItem label="User ID" value={item.id} />
+        
+        {/* Status with color coding */}
         <div>
-          <span className="text-sm font-semibold text-gray-500 block">Email</span>
-          <span className="text-lg text-gray-800">{item.email}</span>
+          <span className="text-sm font-semibold text-gray-500 block">Status</span>
+          <span className={`text-lg font-bold
+            ${item.status === 'Active' ? 'text-green-600' : ''}
+            ${item.status === 'Pending' ? 'text-yellow-600' : ''}
+            ${item.status === 'Suspended' ? 'text-red-600' : ''}
+          `}>
+            {item.status}
+          </span>
         </div>
-        <div>
-          <span className="text-sm font-semibold text-gray-500 block">Phone</span>
-          <span className="text-lg text-gray-800">{item.phone}</span>
-        </div>
-        <div>
-          <span className="text-sm font-semibold text-gray-500 block">Associated Sahakari</span>
-          <span className="text-lg text-gray-800">{item.sahakari}</span>
-        </div>
-        <div>
-          <span className="text-sm font-semibold text-gray-500 block">User ID</span>
-          <span className="text-lg text-gray-800">{item.id}</span>
+
+        <DetailItem label="Email" value={item.email} />
+        <DetailItem label="Phone" value={item.phone} />
+        
+        {/* Span full width */}
+        <div className="col-span-2">
+          <DetailItem label="Associated Sahakari" value={item.sahakari} />
         </div>
       </div>
-      {/* --- Close button removed --- */}
+
+      {/* Documents Section */}
+      <div>
+        <span className="text-sm font-semibold text-gray-500 block mb-2">Uploaded Documents</span>
+        <div className="flex flex-col gap-1.5">
+          {item.documents.map((doc, index) => (
+            <DocumentLink key={index} doc={doc} />
+          ))}
+        </div>
+      </div>
     </div>
   </div>
 );
@@ -320,14 +470,23 @@ function Networks() {
         >
           <div
             // The modal "box": white background, rounded, shadow
-            className="bg-white p-6 sm:p-8 rounded-2xl shadow-xl w-full max-w-2xl" // <-- UPDATED WIDTH
+            className="bg-white p-6 sm:p-8 rounded-2xl shadow-xl w-full max-w-3xl" // <-- INCREASED WIDTH
             onClick={(e) => e.stopPropagation()} // Prevents closing modal when clicking *inside* the box
           >
+            {/* Close Button */}
+            <button 
+              onClick={handleCloseModal}
+              className="absolute top-4 right-4 text-gray-400 hover:text-gray-600"
+            >
+              <CloseIcon className="w-6 h-6" />
+            </button>
+            
             {/* Conditionally render the correct details */}
-            {activeView === 'networks' 
-              ? <NetworkDetails item={selectedItem} onClose={handleCloseModal} />
-              : <UserDetails item={selectedItem} onClose={handleCloseModal} />
-            }
+            {selectedItem && (
+              activeView === 'networks' 
+                ? <NetworkDetails item={selectedItem} onClose={handleCloseModal} />
+                : <UserDetails item={selectedItem} onClose={handleCloseModal} />
+            )}
           </div>
         </div>
       )}

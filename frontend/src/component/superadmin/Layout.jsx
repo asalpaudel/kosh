@@ -21,7 +21,7 @@ function Layout() {
       <div className="flex-1 flex flex-col">
         <Header pageName={pageName} />
         <div className="flex-1 flex flex-col bg-white rounded-tl-3xl rounded-bl-3xl overflow-y-auto">
-          <main className="flex-1 p-6">
+          <main className="flex-1">
             <Outlet />
           </main>
           <Footer />

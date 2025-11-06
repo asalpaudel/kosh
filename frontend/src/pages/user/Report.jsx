@@ -11,7 +11,6 @@ function Report() {
           
           <div className="lg:col-span-3 flex flex-col gap-6">
             <div>
-              <h2 className="text-2xl font-bold mb-4">Graph Muji</h2>
               <FinancialChart />
             </div>
             
