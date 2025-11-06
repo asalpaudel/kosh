@@ -8,11 +8,11 @@ import {
   CloseIcon,
   BuildingIcon,
   UserCircleIcon,
-  PhoneIcon,    // <-- IMPORTED
-  DocumentIcon  // <-- IMPORTED
+  PhoneIcon,
+  DocumentIcon
 } from '../../component/icons.jsx';
 
-// --- UPDATED MOCK DATA ---
+// --- MOCK DATA ---
 const networks = [
   { 
     id: 1, 
@@ -136,7 +136,314 @@ const users = [
   },
 ];
 
-// --- MODAL CONTENT COMPONENTS (UPDATED) ---
+
+// --- 1. REUSABLE MODAL COMPONENT ---
+/**
+ * A reusable modal component
+ * @param {object} props
+ * @param {boolean} props.isOpen - Whether the modal is open
+ * @param {function} props.onClose - Function to call when closing
+ * @param {string} props.title - The title for the modal
+ * @param {React.ReactNode} props.children - The content to display inside
+ * @param {'2xl' | '3xl'} [props.size='2xl'] - The max width of the modal
+ */
+function Modal({ isOpen, onClose, title, children, size = '2xl' }) {
+  if (!isOpen) return null;
+
+  const sizeClass = size === '3xl' ? 'max-w-3xl' : 'max-w-2xl';
+
+  return (
+    <div
+      // The overlay: covers the whole screen, blurs background
+      className="fixed inset-0 z-30 flex items-center justify-center backdrop-blur-[3px] p-4"
+      onClick={onClose} // Click outside the box to close
+    >
+      <div
+        // The modal "box": white background, rounded, shadow
+        className={`bg-white p-6 sm:p-8 rounded-2xl shadow-xl w-full ${sizeClass} relative`}
+        onClick={(e) => e.stopPropagation()} // Prevents closing modal when clicking *inside* the box
+      >
+        {/* Header with Title and Close Button */}
+        <div className="flex justify-between items-center pb-4 border-b">
+          <h3 className="text-2xl font-bold">{title}</h3>
+          <button
+            onClick={onClose}
+            className="text-gray-400 hover:text-gray-600"
+            title="Close"
+          >
+            <CloseIcon className="w-6 h-6" />
+          </button>
+        </div>
+
+        {/* Modal Content */}
+        <div className="mt-6">
+          {children}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+
+// --- 2. ADD NETWORK FORM COMPONENT ---
+function AddNetworkForm({ onClose }) {
+  const [formData, setFormData] = useState({
+    name: '',
+    address: '',
+    phone: '',
+    document: null,
+  });
+
+  const handleChange = (e) => {
+    const { name, value, files } = e.target;
+    setFormData((prev) => ({
+      ...prev,
+      [name]: files ? files[0] : value,
+    }));
+  };
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    // Handle form submission logic (e.g., API call)
+    console.log('New Network Data:', formData);
+    alert(`Sahakari "${formData.name}" created!`);
+    onClose(); // Close the modal on submit
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="flex flex-col gap-5">
+      <div className="flex justify-center">
+        <BuildingIcon className="w-16 h-16 text-teal-500" />
+      </div>
+
+      {/* Sahakari Name */}
+      <div>
+        <label className="block font-semibold mb-2">Sahakari Name</label>
+        <input
+          type="text"
+          name="name"
+          value={formData.name}
+          onChange={handleChange}
+          placeholder="Enter the official sahakari name"
+          className="w-full px-4 py-3 border border-gray-300 rounded-full focus:outline-none focus:border-black"
+          required
+        />
+      </div>
+
+      {/* Address */}
+      <div>
+        <label className="block font-semibold mb-2">Address</label>
+        <input
+          type="text"
+          name="address"
+          value={formData.address}
+          onChange={handleChange}
+          placeholder="Enter the primary office address"
+          className="w-full px-4 py-3 border border-gray-300 rounded-full focus:outline-none focus:border-black"
+          required
+        />
+      </div>
+
+      {/* Phone Number */}
+      <div>
+        <label className="block font-semibold mb-2">Phone Number</label>
+        <input
+          type="tel"
+          name="phone"
+          value={formData.phone}
+          onChange={handleChange}
+          placeholder="Enter office contact number"
+          className="w-full px-4 py-3 border border-gray-300 rounded-full focus:outline-none focus:border-black"
+          required
+        />
+      </div>
+
+      {/* Document Upload */}
+      <div>
+        <label className="block font-semibold mb-2">
+          Upload Registration Document (PDF / Image)
+        </label>
+        <input
+          type="file"
+          name="document"
+          accept=".pdf, .png, .jpg, .jpeg"
+          onChange={handleChange}
+          className="w-full border border-gray-300 rounded-full px-4 py-2 text-gray-700 file:mr-3 file:py-2 file:px-4 file:rounded-full file:border-0 file:bg-teal-500 file:text-white file:font-semibold hover:file:bg-teal-600 transition"
+        />
+      </div>
+
+      {/* Submit Button */}
+      <button
+        type="submit"
+        className="w-full bg-teal-500 text-white font-semibold py-3 rounded-full hover:bg-teal-600 transition-colors mt-4"
+      >
+        Add Sahakari
+      </button>
+    </form>
+  );
+}
+
+
+// --- 3. ADD USER FORM COMPONENT ---
+const sahakariList = [
+  "Sahakari 1",
+  "Sahakari 2",
+  "Geda Sahakari",
+  "Janata Sahakari",
+];
+
+function AddUserForm({ onClose }) {
+  const [formData, setFormData] = useState({
+    name: '',
+    email: '',
+    phone: '',
+    role: 'member',
+    sahakari: '',
+    password: '',
+    document: null,
+  });
+
+  const handleChange = (e) => {
+    const { name, value, files } = e.target;
+    setFormData((prev) => ({
+      ...prev,
+      [name]: files ? files[0] : value,
+    }));
+  };
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    // Handle form submission logic (e.g., API call)
+    console.log('New User Data:', formData);
+    alert(`User "${formData.name}" created!`);
+    onClose(); // Close the modal on submit
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="flex flex-col gap-5">
+      <div className="flex justify-center">
+        <UserCircleIcon className="w-16 h-16 text-teal-500" />
+      </div>
+
+      {/* Full Name */}
+      <div>
+        <label className="block font-semibold mb-2">Full Name</label>
+        <input
+          type="text"
+          name="name"
+          value={formData.name}
+          onChange={handleChange}
+          placeholder="Enter user's full name"
+          className="w-full px-4 py-3 border border-gray-300 rounded-full focus:outline-none focus:border-black"
+          required
+        />
+      </div>
+
+      {/* Email */}
+      <div>
+        <label className="block font-semibold mb-2">Email</label>
+        <input
+          type="email"
+          name="email"
+          value={formData.email}
+          onChange={handleChange}
+          placeholder="Enter user's email"
+          className="w-full px-4 py-3 border border-gray-300 rounded-full focus:outline-none focus:border-black"
+          required
+        />
+      </div>
+      
+      {/* Phone Number */}
+      <div>
+        <label className="block font-semibold mb-2">Phone Number</label>
+        <input
+          type="tel"
+          name="phone"
+          value={formData.phone}
+          onChange={handleChange}
+          placeholder="98XXXXXXXX"
+          className="w-full px-4 py-3 border border-gray-300 rounded-full focus:outline-none focus:border-black"
+        />
+      </div>
+
+      {/* Role and Sahakari (in one row) */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {/* Role Dropdown */}
+        <div>
+          <label className="block font-semibold mb-2">Select Role</label>
+          <select
+            name="role"
+            value={formData.role}
+            onChange={handleChange}
+            className="w-full px-4 py-3 border border-gray-300 rounded-full focus:outline-none focus:border-black"
+          >
+            <option value="member">Member</option>
+            <option value="staff">Staff</option>
+            <option value="admin">Admin</option>
+          </select>
+        </div>
+
+        {/* Sahakari Dropdown */}
+        <div>
+          <label className="block font-semibold mb-2">Select Sahakari</label>
+          <select
+            name="sahakari"
+            value={formData.sahakari}
+            onChange={handleChange}
+            className="w-full px-4 py-3 border border-gray-300 rounded-full focus:outline-none focus:border-black"
+            required
+          >
+            <option value="">Choose Sahakari</option>
+            {sahakariList.map((item, index) => (
+              <option key={index} value={item}>
+                {item}
+              </option>
+            ))}
+          </select>
+        </div>
+      </div>
+
+      {/* Password */}
+      <div>
+        <label className="block font-semibold mb-2">Temporary Password</label>
+        <input
+          type="password"
+          name="password"
+          value={formData.password}
+          onChange={handleChange}
+          placeholder="Enter a temporary password"
+          className="w-full px-4 py-3 border border-gray-300 rounded-full focus:outline-none focus:border-black"
+          required
+        />
+      </div>
+
+      {/* Document Upload */}
+      <div>
+        <label className="block font-semibold mb-2">
+          Upload User Document (PDF / Image)
+        </label>
+        <input
+          type="file"
+          name="document"
+          accept=".pdf, .png, .jpg, .jpeg"
+          onChange={handleChange}
+          className="w-full border border-gray-300 rounded-full px-4 py-2 text-gray-700 file:mr-3 file:py-2 file:px-4 file:rounded-full file:border-0 file:bg-teal-500 file:text-white file:font-semibold hover:file:bg-teal-600 transition"
+        />
+      </div>
+
+      {/* Submit Button */}
+      <button
+        type="submit"
+        className="w-full bg-teal-500 text-white font-semibold py-3 rounded-full hover:bg-teal-600 transition-colors mt-4"
+      >
+        Add User
+      </button>
+    </form>
+  );
+}
+
+
+// --- 4. DETAIL VIEW COMPONENTS ---
 
 // Component for a single detail item in the modal
 const DetailItem = ({ label, value }) => (
@@ -159,8 +466,8 @@ const DocumentLink = ({ doc }) => (
   </a>
 );
 
-// A component to display Network details with better UI
-const NetworkDetails = ({ item, onClose }) => (
+// A component to display Network details
+const NetworkDetails = ({ item }) => (
   <div className="flex flex-col sm:flex-row gap-6 sm:gap-8">
     {/* Left Side: Image Box */}
     <div className="flex-shrink-0 w-full sm:w-48 h-48 bg-gray-100 rounded-lg flex items-center justify-center">
@@ -170,7 +477,6 @@ const NetworkDetails = ({ item, onClose }) => (
     {/* Right Side: Details */}
     <div className="flex-1 space-y-5">
       <h3 className="text-3xl font-bold mb-2">{item.name}</h3>
-
       <div className="grid grid-cols-2 gap-x-4 gap-y-5">
         <DetailItem label="Registered ID" value={item.registeredId} />
         <DetailItem label="Address" value={item.address} />
@@ -179,8 +485,6 @@ const NetworkDetails = ({ item, onClose }) => (
         <DetailItem label="Staff Count" value={item.staffCount} />
         <DetailItem label="User Count" value={item.userCount.toLocaleString('en-IN')} />
       </div>
-
-      {/* Documents Section */}
       <div>
         <span className="text-sm font-semibold text-gray-500 block mb-2">Registration Documents</span>
         <div className="flex flex-col gap-1.5">
@@ -193,8 +497,8 @@ const NetworkDetails = ({ item, onClose }) => (
   </div>
 );
 
-// A component to display User details with better UI
-const UserDetails = ({ item, onClose }) => (
+// A component to display User details
+const UserDetails = ({ item }) => (
   <div className="flex flex-col sm:flex-row gap-6 sm:gap-8">
     {/* Left Side: Image Box (Avatar) */}
     <div className="flex-shrink-0 w-full sm:w-48 h-48 bg-gray-100 rounded-full flex items-center justify-center">
@@ -207,11 +511,8 @@ const UserDetails = ({ item, onClose }) => (
         <h3 className="text-3xl font-bold">{item.name}</h3>
         <span className="text-lg text-teal-600 font-semibold capitalize block">{item.role}</span>
       </div>
-      
       <div className="grid grid-cols-2 gap-x-4 gap-y-5">
         <DetailItem label="User ID" value={item.id} />
-        
-        {/* Status with color coding */}
         <div>
           <span className="text-sm font-semibold text-gray-500 block">Status</span>
           <span className={`text-lg font-bold
@@ -222,17 +523,12 @@ const UserDetails = ({ item, onClose }) => (
             {item.status}
           </span>
         </div>
-
         <DetailItem label="Email" value={item.email} />
         <DetailItem label="Phone" value={item.phone} />
-        
-        {/* Span full width */}
         <div className="col-span-2">
           <DetailItem label="Associated Sahakari" value={item.sahakari} />
         </div>
       </div>
-
-      {/* Documents Section */}
       <div>
         <span className="text-sm font-semibold text-gray-500 block mb-2">Uploaded Documents</span>
         <div className="flex flex-col gap-1.5">
@@ -246,13 +542,17 @@ const UserDetails = ({ item, onClose }) => (
 );
 
 
+// --- 5. MAIN NETWORKS PAGE COMPONENT ---
 function Networks() {
   // State to manage which table view is active: 'networks' or 'users'
   const [activeView, setActiveView] = useState('networks');
   
-  // --- STATE FOR MODAL ---
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [selectedItem, setSelectedItem] = useState(null);
+  // State for the "View Details" modal
+  const [viewModalItem, setViewModalItem] = useState(null); 
+  // State for the "Add Network" modal
+  const [isAddNetworkModalOpen, setIsAddNetworkModalOpen] = useState(false);
+  // State for the "Add User" modal
+  const [isAddUserModalOpen, setIsAddUserModalOpen] = useState(false);
 
   // Helper function to determine button styles
   const getButtonClass = (viewName) => {
@@ -265,14 +565,12 @@ function Networks() {
   
   // Opens the modal and sets the selected item
   const handleViewClick = (item) => {
-    setSelectedItem(item);
-    setIsModalOpen(true);
+    setViewModalItem(item);
   };
 
   // Closes the modal and clears the selected item
-  const handleCloseModal = () => {
-    setIsModalOpen(false);
-    setSelectedItem(null);
+  const handleCloseViewModal = () => {
+    setViewModalItem(null);
   };
 
   return (
@@ -295,7 +593,7 @@ function Networks() {
             />
           </div>
           
-          {/* Filter Buttons - Now functional */}
+          {/* Filter Buttons */}
           <div className="flex items-center gap-3">
             <button 
               onClick={() => setActiveView('networks')}
@@ -406,13 +704,10 @@ function Networks() {
 
       </div>
 
-      {/* --- MODIFIED FLOATING ACTION BUTTON --- */}
-      {/* FAB Group Wrapper */}
-      {/* Note: Added 'group' class for hover state detection in CSS */}
+      {/* FLOATING ACTION BUTTON */}
       <div className="group fixed z-20 bottom-10 right-10 flex flex-col items-center gap-3">
         
         {/* Pop-up Options Container */}
-        {/* Hidden by default, scales in and fades in on group-hover */}
         <div 
           className="flex flex-col items-center gap-3 
                      opacity-0 scale-90 translate-y-4 
@@ -425,10 +720,9 @@ function Networks() {
           <button
             title="Add User"
             className="relative flex items-center justify-center w-14 h-14 bg-white rounded-full text-teal-500 shadow-lg hover:bg-gray-100 hover:scale-105 transition-all"
-            onClick={() => alert('Add User Clicked!')} // Placeholder action
+            onClick={() => setIsAddUserModalOpen(true)}
           >
             <UserCircleIcon className="w-7 h-7" />
-            {/* Tooltip */}
             <span className="absolute right-full mr-4 px-3 py-1.5 bg-black text-white text-xs font-semibold rounded-md whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity delay-150 pointer-events-none">
               Add User
             </span>
@@ -438,10 +732,9 @@ function Networks() {
           <button
             title="Add Sahakari"
             className="relative flex items-center justify-center w-14 h-14 bg-white rounded-full text-teal-500 shadow-lg hover:bg-gray-100 hover:scale-105 transition-all"
-            onClick={() => alert('Add Sahakari Clicked!')} // Placeholder action
+            onClick={() => setIsAddNetworkModalOpen(true)}
           >
             <BuildingIcon className="w-7 h-7" />
-            {/* Tooltip */}
             <span className="absolute right-full mr-4 px-3 py-1.5 bg-black text-white text-xs font-semibold rounded-md whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity delay-150 pointer-events-none">
               Add Sahakari
             </span>
@@ -453,43 +746,44 @@ function Networks() {
           title="Add"
           className="fab-button bg-teal-500 rounded-full p-4 text-white shadow-lg hover:bg-teal-600 transition-all"
         >
-          {/* Icon is bigger (w-10 h-10) and uses 'fab-icon' class for CSS rotation */}
           <PlusCircleIcon className="w-10 h-10 fab-icon" />
         </button>
       </div>
-      {/* --- END OF MODIFIED FAB --- */}
 
 
-      {/* --- MODAL POP-UP --- */}
-      {isModalOpen && (
-        <div 
-          // The overlay: covers the whole screen, blurs background
-          // --- UPDATED: Removed bg-black/50, replaced with bg-black/10 for a subtle blur ---
-          className="fixed inset-0 z-30 flex items-center justify-center backdrop-blur-[3px] p-4"
-          onClick={handleCloseModal} // Click outside the box to close
-        >
-          <div
-            // The modal "box": white background, rounded, shadow
-            className="bg-white p-6 sm:p-8 rounded-2xl shadow-xl w-full max-w-3xl" // <-- INCREASED WIDTH
-            onClick={(e) => e.stopPropagation()} // Prevents closing modal when clicking *inside* the box
-          >
-            {/* Close Button */}
-            <button 
-              onClick={handleCloseModal}
-              className="absolute top-4 right-4 text-gray-400 hover:text-gray-600"
-            >
-              <CloseIcon className="w-6 h-6" />
-            </button>
-            
-            {/* Conditionally render the correct details */}
-            {selectedItem && (
-              activeView === 'networks' 
-                ? <NetworkDetails item={selectedItem} onClose={handleCloseModal} />
-                : <UserDetails item={selectedItem} onClose={handleCloseModal} />
-            )}
-          </div>
-        </div>
-      )}
+      {/* MODAL DEFINITIONS */}
+
+      {/* View Details Modal */}
+      <Modal 
+        isOpen={!!viewModalItem} 
+        onClose={handleCloseViewModal} 
+        title={activeView === 'networks' ? 'Network Details' : 'User Details'}
+        size="3xl"
+      >
+        {viewModalItem && (
+          activeView === 'networks' 
+            ? <NetworkDetails item={viewModalItem} />
+            : <UserDetails item={viewModalItem} />
+        )}
+      </Modal>
+
+      {/* Add Network Modal */}
+      <Modal 
+        isOpen={isAddNetworkModalOpen} 
+        onClose={() => setIsAddNetworkModalOpen(false)} 
+        title="Add New Sahakari"
+      >
+        <AddNetworkForm onClose={() => setIsAddNetworkModalOpen(false)} />
+      </Modal>
+
+      {/* Add User Modal */}
+      <Modal 
+        isOpen={isAddUserModalOpen} 
+        onClose={() => setIsAddUserModalOpen(false)} 
+        title="Add New User"
+      >
+        <AddUserForm onClose={() => setIsAddUserModalOpen(false)} />
+      </Modal>
     </>
   );
 }
