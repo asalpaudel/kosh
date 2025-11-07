@@ -4,7 +4,7 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "concurrently \"npm run vite\" \"npm run backend\"",
+    "dev": "vite ",
     "vite": "vite",
     "backend": "cd ../backend && mvn spring-boot:run",
     "build": "vite build",
