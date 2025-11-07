@@ -28,13 +28,42 @@ function AddUserForm({ onClose }) {
     }));
   };
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    // Handle form submission logic (e.g., API call)
-    console.log('New User Data:', formData);
-    alert(`User "${formData.name}" created!`);
-    onClose(); // Close the modal on submit
+const handleSubmit = async (e) => {
+  e.preventDefault();
+
+  // Prepare the user data (excluding the document for now)
+  const userData = {
+    name: formData.name,
+    email: formData.email,
+    phone: formData.phone,
+    role: formData.role,
+    sahakari: formData.sahakari,
+    password: formData.password,
+    documentPath: formData.document ? formData.document.name : null, // optional
   };
+
+  try {
+    const response = await fetch("http://localhost:8080/api/users/add", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(userData),
+    });
+
+    if (response.ok) {
+      const data = await response.json();
+      alert(`User "${data.name}" added successfully!`);
+      onClose(); // Close the modal
+    } else {
+      alert("Error adding user. Please try again.");
+    }
+  } catch (error) {
+    console.error("Error:", error);
+    alert("Failed to connect to the backend.");
+  }
+};
+
 
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-5">
