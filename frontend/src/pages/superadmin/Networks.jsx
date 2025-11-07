@@ -196,18 +196,34 @@ function Networks() {
   const [editingNetwork, setEditingNetwork] = useState(null);
 
   // Load networks
-  const loadNetworks = async () => {
-    try {
-      setLoading(true);
-      const res = await fetch(`${API_BASE}/networks`);
-      const data = await res.json();
-      setNetworks(data);
-    } catch (e) {
-      console.error('Error fetching networks:', e);
-    } finally {
-      setLoading(false);
+// Load networks
+const loadNetworks = async () => {
+  try {
+    setLoading(true);
+    const res = await fetch(`${API_BASE}/networks`);
+
+    // Check if the response was successful (status 200-299)
+    if (!res.ok) {
+      throw new Error(`Failed to fetch: ${res.status} ${res.statusText}`);
     }
-  };
+
+    const data = await res.json();
+
+    // Make sure the data is actually an array before setting it
+    if (Array.isArray(data)) {
+      setNetworks(data);
+    } else {
+      console.error("API did not return an array:", data);
+      setNetworks([]); // Set to empty array to prevent crash
+    }
+
+  } catch (e) {
+    console.error('Error fetching networks:', e);
+    setNetworks([]); // Set to empty array on any error
+  } finally {
+    setLoading(false);
+  }
+};
 
   useEffect(() => {
     loadNetworks();
