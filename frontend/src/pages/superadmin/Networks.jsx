@@ -267,7 +267,7 @@ function Networks() {
   // Helper function to determine button styles
   const getButtonClass = (viewName) => {
     return activeView === viewName
-      ? 'bg-black text-white' // Active style
+      ? 'bg-teal-500 text-white' // Active style
       : 'bg-gray-200 text-gray-700 hover:bg-gray-300'; // Inactive style
   };
 
