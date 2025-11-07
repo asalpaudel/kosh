@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   SearchIcon, 
   EyeIcon, 
@@ -11,69 +11,14 @@ import {
 } from '../../component/icons.jsx';
 
 // --- ADDED IMPORTS ---
-// We now import the components you already built
 import Modal from '../../component/superadmin/Modal.jsx';
 import AddNetworkForm from '../../component/superadmin/AddNetworkForm.jsx';
-import AddUserForm from '../../component/superadmin/AddUserForm.jsx';
+import EditNetworkForm from '../../component/superadmin/EditNetworkForm.jsx';
 
-// --- MOCK DATA ---
-const networks = [
-  { 
-    id: 1, 
-    registeredId: 'N-12345', 
-    name: 'Sahakari 1', 
-    address: 'Kathmandu, Nepal', 
-    createdAt: '13-Apr-2025',
-    phone: '01-5551234',
-    staffCount: 15,
-    userCount: 1200,
-    regDocuments: [
-      { name: 'registration_cert.pdf', url: '#' },
-      { name: 'tax_clearance.pdf', url: '#' },
-    ]
-  },
-  { 
-    id: 2, 
-    registeredId: 'N-67890', 
-    name: 'Sahakari 2', 
-    address: 'Lalitpur, Nepal', 
-    createdAt: '12-Apr-2025',
-    phone: '01-5555678',
-    staffCount: 8,
-    userCount: 850,
-    regDocuments: [
-      { name: 'registration_cert.pdf', url: '#' },
-    ]
-  },
-  { 
-    id: 3, 
-    registeredId: 'N-24680', 
-    name: 'Geda Sahakari', 
-    address: 'Bhaktapur, Nepal', 
-    createdAt: '11-Apr-2025',
-    phone: '01-6661111',
-    staffCount: 12,
-    userCount: 2500,
-    regDocuments: [
-      { name: 'registration_cert.pdf', url: '#' },
-      { name: 'tax_clearance.pdf', url: '#' },
-    ]
-  },
-  { 
-    id: 4, 
-    registeredId: 'N-13579', 
-    name: 'Janata Sahakari', 
-    address: 'Pokhara, Nepal', 
-    createdAt: '10-Apr-2025',
-    phone: '061-500200',
-    staffCount: 20,
-    userCount: 5000,
-    regDocuments: [
-      { name: 'registration_cert.pdf', url: '#' },
-    ]
-  },
-];
+// --- API BASE ---
+const API_BASE = 'http://localhost:8080/api';
 
+// --- USERS MOCK (unchanged) ---
 const users = [
   { 
     id: 1, 
@@ -140,30 +85,15 @@ const users = [
   },
 ];
 
-
-// --- 1. REUSABLE MODAL COMPONENT ---
-// [REMOVED - Now imported from ../../component/superadmin/Modal.jsx]
-
-
-// --- 2. ADD NETWORK FORM COMPONENT ---
-// [REMOVED - Now imported from ../../component/superadmin/AddNetworkForm.jsx]
-
-
-// --- 3. ADD USER FORM COMPONENT ---
-// [REMOVED - Now imported from ../../component/superadmin/AddUserForm.jsx]
-
-
-// --- 4. DETAIL VIEW COMPONENTS ---
-
-// Component for a single detail item in the modal
+// --- DETAIL ITEM ---
 const DetailItem = ({ label, value }) => (
   <div>
     <span className="text-sm font-semibold text-gray-500 block">{label}</span>
-    <span className="text-lg text-gray-800">{value}</span>
+    <span className="text-lg text-gray-800">{value ?? '-'}</span>
   </div>
 );
 
-// Component for a document link
+// --- DOC LINK ---
 const DocumentLink = ({ doc }) => (
   <a
     href={doc.url}
@@ -176,15 +106,12 @@ const DocumentLink = ({ doc }) => (
   </a>
 );
 
-// A component to display Network details
+// --- NETWORK DETAILS (safe for optional docs) ---
 const NetworkDetails = ({ item }) => (
   <div className="flex flex-col sm:flex-row gap-6 sm:gap-8">
-    {/* Left Side: Image Box */}
     <div className="flex-shrink-0 w-full sm:w-48 h-48 bg-gray-100 rounded-lg flex items-center justify-center">
       <BuildingIcon className="w-24 h-24 text-gray-400" />
     </div>
-    
-    {/* Right Side: Details */}
     <div className="flex-1 space-y-5">
       <h3 className="text-3xl font-bold mb-2">{item.name}</h3>
       <div className="grid grid-cols-2 gap-x-4 gap-y-5">
@@ -193,29 +120,30 @@ const NetworkDetails = ({ item }) => (
         <DetailItem label="Phone Number" value={item.phone} />
         <DetailItem label="Created At" value={item.createdAt} />
         <DetailItem label="Staff Count" value={item.staffCount} />
-        <DetailItem label="User Count" value={item.userCount.toLocaleString('en-IN')} />
+        <DetailItem label="User Count" value={item.userCount?.toLocaleString?.('en-IN') ?? item.userCount} />
       </div>
-      <div>
-        <span className="text-sm font-semibold text-gray-500 block mb-2">Registration Documents</span>
-        <div className="flex flex-col gap-1.5">
-          {item.regDocuments.map((doc, index) => (
-            <DocumentLink key={index} doc={doc} />
-          ))}
+
+      {/* Only show if present (your backend currently doesn't send docs) */}
+      {!!item.regDocuments?.length && (
+        <div>
+          <span className="text-sm font-semibold text-gray-500 block mb-2">Registration Documents</span>
+          <div className="flex flex-col gap-1.5">
+            {item.regDocuments.map((doc, index) => (
+              <DocumentLink key={index} doc={doc} />
+            ))}
+          </div>
         </div>
-      </div>
+      )}
     </div>
   </div>
 );
 
-// A component to display User details
+// --- USER DETAILS ---
 const UserDetails = ({ item }) => (
   <div className="flex flex-col sm:flex-row gap-6 sm:gap-8">
-    {/* Left Side: Image Box (Avatar) */}
     <div className="flex-shrink-0 w-full sm:w-48 h-48 bg-gray-100 rounded-full flex items-center justify-center">
       <UserCircleIcon className="w-28 h-28 text-gray-400" />
     </div>
-    
-    {/* Right Side: Details */}
     <div className="flex-1 space-y-5">
       <div>
         <h3 className="text-3xl font-bold">{item.name}</h3>
@@ -251,36 +179,71 @@ const UserDetails = ({ item }) => (
   </div>
 );
 
-
-// --- 5. MAIN NETWORKS PAGE COMPONENT ---
+// --- MAIN PAGE ---
 function Networks() {
-  // State to manage which table view is active: 'networks' or 'users'
   const [activeView, setActiveView] = useState('networks');
-  
-  // State for the "View Details" modal
+
+  // Networks state from backend
+  const [networks, setNetworks] = useState([]);
+  const [loading, setLoading] = useState(false);
+
+  // View Details modal
   const [viewModalItem, setViewModalItem] = useState(null); 
-  // State for the "Add Network" modal
+
+  // Add / Edit modals
   const [isAddNetworkModalOpen, setIsAddNetworkModalOpen] = useState(false);
-  // State for the "Add User" modal
-  const [isAddUserModalOpen, setIsAddUserModalOpen] = useState(false);
+  const [isEditNetworkModalOpen, setIsEditNetworkModalOpen] = useState(false);
+  const [editingNetwork, setEditingNetwork] = useState(null);
 
-  // Helper function to determine button styles
-  const getButtonClass = (viewName) => {
-    return activeView === viewName
-      ? 'bg-black text-white' // Active style
-      : 'bg-gray-200 text-gray-700 hover:bg-gray-300'; // Inactive style
+  // Load networks
+  const loadNetworks = async () => {
+    try {
+      setLoading(true);
+      const res = await fetch(`${API_BASE}/networks`);
+      const data = await res.json();
+      setNetworks(data);
+    } catch (e) {
+      console.error('Error fetching networks:', e);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  // --- MODAL HANDLER FUNCTIONS ---
-  
-  // Opens the modal and sets the selected item
-  const handleViewClick = (item) => {
-    setViewModalItem(item);
+  useEffect(() => {
+    loadNetworks();
+  }, []);
+
+  // UI helpers
+  const getButtonClass = (viewName) =>
+    activeView === viewName
+      ? 'bg-black text-white'
+      : 'bg-gray-200 text-gray-700 hover:bg-gray-300';
+
+  // Handlers
+  const handleViewClick = (item) => setViewModalItem(item);
+  const handleCloseViewModal = () => setViewModalItem(null);
+
+  const handleAddSuccess = (saved) => {
+    setNetworks((prev) => [...prev, saved]);
   };
 
-  // Closes the modal and clears the selected item
-  const handleCloseViewModal = () => {
-    setViewModalItem(null);
+  const openEdit = (net) => {
+    setEditingNetwork(net);
+    setIsEditNetworkModalOpen(true);
+  };
+
+  const handleEditSuccess = (saved) => {
+    setNetworks((prev) => prev.map((n) => (n.id === saved.id ? saved : n)));
+  };
+
+  const deleteNetwork = async (id) => {
+    if (!window.confirm('Delete this sahakari?')) return;
+    try {
+      await fetch(`${API_BASE}/networks/${id}`, { method: 'DELETE' });
+      setNetworks((prev) => prev.filter((n) => n.id !== id));
+    } catch (e) {
+      console.error('Delete failed:', e);
+    }
   };
 
   return (
@@ -290,8 +253,7 @@ function Networks() {
 
         {/* Filter Bar */}
         <div className="flex flex-wrap items-center justify-between mb-8 gap-4">
-          
-          {/* Search Input */}
+          {/* Search Input (not wired yet) */}
           <div className="relative flex-grow sm:flex-grow-0">
             <span className="absolute inset-y-0 left-0 flex items-center pl-4">
               <SearchIcon className="h-6 w-6 text-gray-400" />
@@ -302,8 +264,8 @@ function Networks() {
               className="w-full sm:w-80 bg-gray-100 text-gray-700 border border-transparent rounded-full py-3 pl-12 pr-4 text-base focus:outline-none focus:bg-white focus:border-gray-300"
             />
           </div>
-          
-          {/* Filter Buttons */}
+
+          {/* View Toggle */}
           <div className="flex items-center gap-3">
             <button 
               onClick={() => setActiveView('networks')}
@@ -323,7 +285,7 @@ function Networks() {
         {/* CONDITIONAL TABLE: NETWORKS */}
         {activeView === 'networks' && (
           <div className="space-y-2">
-            {/* List Header - Networks */}
+            {/* Header */}
             <div className="grid grid-cols-6 gap-4 items-center bg-gray-50 p-4 rounded-lg font-semibold text-gray-600">
               <span>Registered ID</span>
               <span className="col-span-2">Name</span>
@@ -332,8 +294,17 @@ function Networks() {
               <span className="text-right">Action</span>
             </div>
 
-            {/* List Body - Networks */}
-            {networks.map((network) => (
+            {/* Loading state */}
+            {loading && (
+              <div className="p-4 text-sm text-gray-500">Loading networks…</div>
+            )}
+
+            {/* Body */}
+            {!loading && networks.length === 0 && (
+              <div className="p-4 text-sm text-gray-500">No networks found.</div>
+            )}
+
+            {!loading && networks.map((network) => (
               <div 
                 key={network.id} 
                 className="grid grid-cols-6 gap-4 items-center bg-white p-4 rounded-lg hover:bg-gray-50 transition-colors"
@@ -343,7 +314,7 @@ function Networks() {
                 <span className="text-gray-700">{network.address}</span>
                 <span className="text-gray-700">{network.createdAt}</span>
                 
-                {/* Action Icons */}
+                {/* Actions */}
                 <div className="flex items-center justify-end space-x-3">
                   <button 
                     onClick={() => handleViewClick(network)}
@@ -352,10 +323,18 @@ function Networks() {
                   >
                     <EyeIcon className="w-5 h-5" />
                   </button>
-                  <button className="text-yellow-500 hover:text-yellow-700" title="Edit">
+                  <button
+                    onClick={() => openEdit(network)}
+                    className="text-yellow-500 hover:text-yellow-700"
+                    title="Edit"
+                  >
                     <PencilIcon className="w-5 h-5" />
                   </button>
-                  <button className="text-red-500 hover:text-red-700" title="Delete">
+                  <button
+                    onClick={() => deleteNetwork(network.id)}
+                    className="text-red-500 hover:text-red-700"
+                    title="Delete"
+                  >
                     <TrashIcon className="w-5 h-5" />
                   </button>
                 </div>
@@ -364,10 +343,9 @@ function Networks() {
           </div>
         )}
 
-        {/* CONDITIONAL TABLE: USERS */}
+        {/* CONDITIONAL TABLE: USERS (unchanged, mock) */}
         {activeView === 'users' && (
           <div className="space-y-2">
-            {/* List Header - Users */}
             <div className="grid grid-cols-7 gap-4 items-center bg-gray-50 p-4 rounded-lg font-semibold text-gray-600">
               <span>ID</span>
               <span>Name</span>
@@ -378,7 +356,6 @@ function Networks() {
               <span className="text-right">Action</span>
             </div>
 
-            {/* List Body - Users */}
             {users.map((user) => (
               <div 
                 key={user.id} 
@@ -390,11 +367,9 @@ function Networks() {
                 <span className="text-gray-700">{user.phone}</span>
                 <span className="text-gray-700 truncate">{user.sahakari}</span>
                 <span className="text-gray-700 capitalize">{user.role}</span>
-                
-                {/* Action Icons */}
                 <div className="flex items-center justify-end space-x-3">
                   <button 
-                    onClick={() => handleViewClick(user)}
+                    onClick={() => setViewModalItem(user)}
                     className="text-blue-500 hover:text-blue-700" 
                     title="View"
                   >
@@ -411,13 +386,10 @@ function Networks() {
             ))}
           </div>
         )}
-
       </div>
 
-      {/* FLOATING ACTION BUTTON */}
+      {/* FAB */}
       <div className="group fixed z-20 bottom-10 right-10 flex flex-col items-center gap-3">
-        
-        {/* Pop-up Options Container */}
         <div 
           className="flex flex-col items-center gap-3 
                      opacity-0 scale-90 translate-y-4 
@@ -425,12 +397,11 @@ function Networks() {
                      pointer-events-none group-hover:pointer-events-auto
                      transition-all duration-200 ease-in-out"
         >
-          
-          {/* Add User Button */}
+          {/* Add User (unchanged) */}
           <button
             title="Add User"
             className="relative flex items-center justify-center w-14 h-14 bg-white rounded-full text-teal-500 shadow-lg hover:bg-gray-100 hover:scale-105 transition-all"
-            onClick={() => setIsAddUserModalOpen(true)}
+            onClick={() => alert('User add handled elsewhere')}
           >
             <UserCircleIcon className="w-7 h-7" />
             <span className="absolute right-full mr-4 px-3 py-1.5 bg-black text-white text-xs font-semibold rounded-md whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity delay-150 pointer-events-none">
@@ -438,7 +409,7 @@ function Networks() {
             </span>
           </button>
 
-          {/* Add Sahakari Button */}
+          {/* Add Sahakari */}
           <button
             title="Add Sahakari"
             className="relative flex items-center justify-center w-14 h-14 bg-white rounded-full text-teal-500 shadow-lg hover:bg-gray-100 hover:scale-105 transition-all"
@@ -451,7 +422,7 @@ function Networks() {
           </button>
         </div>
 
-        {/* Main FAB Button */}
+        {/* Main FAB */}
         <button
           title="Add"
           className="fab-button bg-teal-500 rounded-full p-4 text-white shadow-lg hover:bg-teal-600 transition-all"
@@ -460,10 +431,9 @@ function Networks() {
         </button>
       </div>
 
+      {/* --- MODALS --- */}
 
-      {/* MODAL DEFINITIONS */}
-
-      {/* View Details Modal */}
+      {/* View Details */}
       <Modal 
         isOpen={!!viewModalItem} 
         onClose={handleCloseViewModal} 
@@ -477,24 +447,35 @@ function Networks() {
         )}
       </Modal>
 
-      {/* Add Network Modal */}
+      {/* Add Network */}
       <Modal 
         isOpen={isAddNetworkModalOpen} 
         onClose={() => setIsAddNetworkModalOpen(false)} 
         title="Add New Sahakari"
         size="2xl" 
       >
-        <AddNetworkForm onClose={() => setIsAddNetworkModalOpen(false)} />
+        <AddNetworkForm
+          onClose={() => setIsAddNetworkModalOpen(false)}
+          onNetworkAdded={handleAddSuccess}
+          apiBase={API_BASE}
+        />
       </Modal>
 
-      {/* Add User Modal */}
+      {/* Edit Network */}
       <Modal 
-        isOpen={isAddUserModalOpen} 
-        onClose={() => setIsAddUserModalOpen(false)} 
-        title="Add New User"
-        size="2xl"
+        isOpen={isEditNetworkModalOpen} 
+        onClose={() => setIsEditNetworkModalOpen(false)} 
+        title="Edit Sahakari"
+        size="2xl" 
       >
-        <AddUserForm onClose={() => setIsAddUserModalOpen(false)} />
+        {editingNetwork && (
+          <EditNetworkForm
+            initialData={editingNetwork}
+            onClose={() => setIsEditNetworkModalOpen(false)}
+            onNetworkUpdated={handleEditSuccess}
+            apiBase={API_BASE}
+          />
+        )}
       </Modal>
     </>
   );
