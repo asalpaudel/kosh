@@ -8,13 +8,21 @@ import {
   UserCircleIcon,
   DocumentIcon,
   CheckIcon,  
-  XIcon       
+  XIcon,
+  UserPlusIcon // Ensure this is imported
 } from '../../component/icons.jsx';
 
-import Modal from '../../component/superadmin/Modal.jsx';
-import AddUserForm from '../../component/superadmin/AddUserForm.jsx';
+// Re-using the Superadmin's Modal component
+import Modal from '../../component/superadmin/Modal.jsx'; 
+
+// --- UPDATED IMPORTS ---
+// Importing the new admin-specific forms
+import AddUserForm from '../../component/admin/AddUserForm.jsx';
+import AddStaffForm from '../../component/admin/AddStaffForm.jsx';
+// This form is still needed for editing
 import EditUserForm from '../../component/admin/EditUserForm.jsx';
 
+// (Mock data remains the same)
 const allUsers = [
   { 
     id: 1, 
@@ -94,6 +102,7 @@ const allUsers = [
 ];
 
 
+// (DetailItem, DocumentLink, and UserDetails components remain the same)
 const DetailItem = ({ label, value }) => (
   <div>
     <span className="text-sm font-semibold text-gray-500 block">{label}</span>
@@ -202,7 +211,10 @@ const UserDetails = ({ item, onCloseViewModal, handleApprove, handleDeny, handle
 
 function AdminUsers() {
   const [viewModalItem, setViewModalItem] = useState(null); 
-  const [isAddUserModalOpen, setIsAddUserModalOpen] = useState(false);
+  
+  // --- UPDATED MODAL STATES ---
+  const [isAddUserModalOpen, setIsAddUserModalOpen] = useState(false); // For Members
+  const [isAddStaffModalOpen, setIsAddStaffModalOpen] = useState(false); // For Staff
   
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [currentUserToEdit, setCurrentUserToEdit] = useState(null);
@@ -229,6 +241,7 @@ function AdminUsers() {
     setIsEditModalOpen(true);
   };
 
+  // (filteredUsers and getButtonClass functions remain the same)
   const filteredUsers = useMemo(() => {
     return allUsers
       .filter(user => {
@@ -259,6 +272,7 @@ function AdminUsers() {
     <>
       <div className="bg-white p-6 min-h-[calc(100vh-8.5rem)]"> 
         
+        {/* (Search and Filter Bar remains the same) */}
         <div className="flex flex-wrap items-center justify-between mb-8 gap-4">
           <div className="relative flex-grow sm:flex-grow-0">
             <span className="absolute inset-y-0 left-0 flex items-center pl-4">
@@ -301,6 +315,7 @@ function AdminUsers() {
           </div>
         </div>
 
+        {/* (Table markup remains the same) */}
         <div className="w-full overflow-x-auto">
           <table className="min-w-full text-left">
             <thead>
@@ -399,17 +414,56 @@ function AdminUsers() {
 
       </div>
 
-      <button
-        title="Add User"
-        onClick={() => setIsAddUserModalOpen(true)}
-        className="group fixed z-20 bottom-10 right-10 flex items-center justify-center 
-                   w-16 h-16 bg-teal-500 rounded-full text-white shadow-lg hover:bg-teal-600 
-                   transition-all"
-      >
-        <PlusCircleIcon className="w-10 h-10 fab-icon" />
-      </button>
+      {/* --- UPDATED FLOATING ACTION BUTTON --- */}
+      <div className="group fixed z-20 bottom-10 right-10 flex flex-col items-center gap-3">
+
+        {/* Pop-up Options Container */}
+        <div
+          className="flex flex-col items-center gap-3
+                     opacity-0 scale-90 translate-y-4
+                     group-hover:opacity-100 group-hover:scale-100 group-hover:translate-y-0
+                     pointer-events-none group-hover:pointer-events-auto
+                     transition-all duration-200 ease-in-out"
+        >
+
+          {/* Add Staff Button */}
+          <button
+            title="Add Staff"
+            className="relative flex items-center justify-center w-14 h-14 bg-white rounded-full text-teal-500 shadow-lg hover:bg-gray-100 hover:scale-105 transition-all"
+            onClick={() => setIsAddStaffModalOpen(true)} // <-- UPDATED
+          >
+            <UserPlusIcon className="w-7 h-7" />
+            <span className="absolute right-full mr-4 px-3 py-1.5 bg-black text-white text-xs font-semibold rounded-md whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity delay-150 pointer-events-none">
+              Add Staff
+            </span>
+          </button>
+
+          {/* Add User Button (Member) */}
+          <button
+            title="Add User"
+            className="relative flex items-center justify-center w-14 h-14 bg-white rounded-full text-teal-500 shadow-lg hover:bg-gray-100 hover:scale-105 transition-all"
+            onClick={() => setIsAddUserModalOpen(true)} // <-- UPDATED
+          >
+            <UserCircleIcon className="w-7 h-7" />
+            <span className="absolute right-full mr-4 px-3 py-1.5 bg-black text-white text-xs font-semibold rounded-md whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity delay-150 pointer-events-none">
+              Add User
+            </span>
+          </button>
+
+        </div>
+
+        {/* Main FAB Button */}
+        <button
+          title="Add"
+          className="fab-button bg-teal-500 rounded-full p-4 text-white shadow-lg hover:bg-teal-600 transition-all"
+        >
+          <PlusCircleIcon className="w-10 h-10 fab-icon" />
+        </button>
+      </div>
+      {/* --- END OF UPDATED BUTTON --- */}
 
 
+      {/* (View Details Modal remains the same) */}
       <Modal 
         isOpen={!!viewModalItem} 
         onClose={handleCloseViewModal} 
@@ -427,6 +481,9 @@ function AdminUsers() {
         )}
       </Modal>
 
+      {/* --- UPDATED MODAL DEFINITIONS --- */}
+
+      {/* Add User (Member) Modal */}
       <Modal 
         isOpen={isAddUserModalOpen} 
         onClose={() => setIsAddUserModalOpen(false)} 
@@ -434,6 +491,16 @@ function AdminUsers() {
         size="2xl"
       >
         <AddUserForm onClose={() => setIsAddUserModalOpen(false)} />
+      </Modal>
+
+      {/* Add Staff Modal (NEW) */}
+      <Modal 
+        isOpen={isAddStaffModalOpen} 
+        onClose={() => setIsAddStaffModalOpen(false)} 
+        title="Add New Staff"
+        size="2xl"
+      >
+        <AddStaffForm onClose={() => setIsAddStaffModalOpen(false)} />
       </Modal>
 
       <Modal 

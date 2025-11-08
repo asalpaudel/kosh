@@ -22,6 +22,7 @@ import AdminLayout from "./component/admin/Layout.jsx";
 import AdminDashboard from "./pages/admin/Dashboard.jsx";
 import AdminUsers from "./pages/admin/Users.jsx";
 import AdminTransactions from "./pages/admin/Transactions.jsx";
+import AdminPackages from "./pages/admin/Packages.jsx"; 
 
 function App() {
   return (
@@ -45,6 +46,7 @@ function App() {
             <Route index element={<AdminDashboard />} />
             <Route path="dashboard" element={<AdminDashboard />} />
             <Route path="users" element={<AdminUsers />} />
+            <Route path="packages" element={<AdminPackages />} /> 
             <Route path="transactions" element={<AdminTransactions />} />
           </Route>
 
