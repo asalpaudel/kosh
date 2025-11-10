@@ -1,24 +1,41 @@
-import React, { useState } from 'react';
-import { UserCircleIcon } from '../icons';
+import React, { useState, useEffect } from "react";
+import { UserCircleIcon } from "../icons";
 
-// Mock list of sahakaris, this would likely come from an API
-const sahakariList = [
-  "Sahakari 1",
-  "Sahakari 2",
-  "Geda Sahakari",
-  "Janata Sahakari",
-];
-
-function AddUserForm({ onClose }) {
+export default function AddUserForm({
+  onClose,
+  onUserAdded,
+  apiBase = "http://localhost:8080/api",
+}) {
   const [formData, setFormData] = useState({
-    name: '',
-    email: '',
-    phone: '',
-    role: 'member',
-    sahakari: '',
-    password: '',
+    name: "",
+    email: "",
+    phone: "",
+    role: "member",
+    sahakari: "",
+    password: "",
     document: null,
   });
+
+  const [sahakariList, setSahakariList] = useState([]);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+
+  // Fetch sahakari (networks) from backend
+  useEffect(() => {
+    const fetchSahakaris = async () => {
+      try {
+        const res = await fetch(`${apiBase}/networks`);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json();
+        setSahakariList(data);
+      } catch (err) {
+        console.error("Failed to load sahakari:", err);
+        setError("Could not load sahakari list.");
+      }
+    };
+
+    fetchSahakaris();
+  }, [apiBase]);
 
   const handleChange = (e) => {
     const { name, value, files } = e.target;
@@ -28,12 +45,45 @@ function AddUserForm({ onClose }) {
     }));
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    // Handle form submission logic (e.g., API call)
-    console.log('New User Data:', formData);
-    alert(`User "${formData.name}" created!`);
-    onClose(); // Close the modal on submit
+    setSaving(true);
+    setError("");
+
+    try {
+      const form = new FormData();
+      form.append("name", formData.name);
+      form.append("email", formData.email);
+      form.append("phone", formData.phone);
+      form.append("role", formData.role);
+      form.append("sahakari", formData.sahakari);
+      form.append("password", formData.password);
+      if (formData.document) {
+        form.append("document", formData.document);
+      }
+
+      const res = await fetch(`${apiBase}/users`, {
+        method: "POST",
+        body: form,
+      });
+
+      if (!res.ok) {
+        const text = await res.text();
+        throw new Error(`HTTP ${res.status}: ${text}`);
+      }
+
+      const saved = await res.json();
+      console.log("Saved user:", saved);
+
+      onUserAdded?.(saved);
+      alert(`User "${saved.name}" added successfully!`);
+      onClose?.();
+    } catch (err) {
+      console.error("Error adding user:", err);
+      setError(`Failed to save: ${err.message}`);
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -69,8 +119,8 @@ function AddUserForm({ onClose }) {
           required
         />
       </div>
-      
-      {/* Phone Number */}
+
+      {/* Phone */}
       <div>
         <label className="block font-semibold mb-2">Phone Number</label>
         <input
@@ -83,9 +133,9 @@ function AddUserForm({ onClose }) {
         />
       </div>
 
-      {/* Role and Sahakari (in one row) */}
+      {/* Role + Sahakari */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {/* Role Dropdown */}
+        {/* Role */}
         <div>
           <label className="block font-semibold mb-2">Select Role</label>
           <select
@@ -100,7 +150,7 @@ function AddUserForm({ onClose }) {
           </select>
         </div>
 
-        {/* Sahakari Dropdown */}
+        {/* Sahakari */}
         <div>
           <label className="block font-semibold mb-2">Select Sahakari</label>
           <select
@@ -111,9 +161,9 @@ function AddUserForm({ onClose }) {
             required
           >
             <option value="">Choose Sahakari</option>
-            {sahakariList.map((item, index) => (
-              <option key={index} value={item}>
-                {item}
+            {sahakariList.map((net) => (
+              <option key={net.id} value={net.name}>
+                {net.name}
               </option>
             ))}
           </select>
@@ -134,7 +184,7 @@ function AddUserForm({ onClose }) {
         />
       </div>
 
-      {/* Document Upload */}
+      {/* Document */}
       <div>
         <label className="block font-semibold mb-2">
           Upload User Document (PDF / Image)
@@ -148,15 +198,16 @@ function AddUserForm({ onClose }) {
         />
       </div>
 
-      {/* Submit Button */}
+      {error && <p className="text-sm text-red-600">{error}</p>}
+
+      {/* Submit */}
       <button
         type="submit"
+        disabled={saving}
         className="w-full bg-teal-500 text-white font-semibold py-3 rounded-full hover:bg-teal-600 transition-colors mt-4"
       >
-        Add User
+        {saving ? "Saving..." : "Add User"}
       </button>
     </form>
   );
 }
-
-export default AddUserForm;
