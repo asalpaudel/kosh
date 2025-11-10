@@ -16,6 +16,7 @@ import Modal from "../../component/superadmin/Modal.jsx";
 import AddNetworkForm from "../../component/superadmin/AddNetworkForm.jsx";
 import EditNetworkForm from "../../component/superadmin/EditNetworkForm.jsx";
 import AddUserForm from "../../component/superadmin/AddUserForm.jsx";
+import EditUserForm from "../../component/superadmin/EditUserForm.jsx";
 
 // --- API BASE ---
 const API_BASE = "http://localhost:8080/api";
@@ -149,6 +150,9 @@ function Networks() {
   const [isEditNetworkModalOpen, setIsEditNetworkModalOpen] = useState(false);
   const [editingNetwork, setEditingNetwork] = useState(null);
 
+  const [isEditUserModalOpen, setIsEditUserModalOpen] = useState(false);
+  const [editingUser, setEditingUser] = useState(null);
+
   // Load networks
   const loadNetworks = async () => {
     try {
@@ -227,6 +231,15 @@ function Networks() {
   const openEdit = (net) => {
     setEditingNetwork(net);
     setIsEditNetworkModalOpen(true);
+  };
+
+  const openEditUser = (user) => {
+    setEditingUser(user);
+    setIsEditUserModalOpen(true);
+  };
+
+  const handleUserEditSuccess = (saved) => {
+    setUsers((prev) => prev.map((u) => (u.id === saved.id ? saved : u)));
   };
 
   const handleEditSuccess = (saved) => {
@@ -407,6 +420,7 @@ function Networks() {
                       <EyeIcon className="w-5 h-5" />
                     </button>
                     <button
+                      onClick={() => openEditUser(user)}
                       className="text-yellow-500 hover:text-yellow-700"
                       title="Edit"
                     >
@@ -529,6 +543,23 @@ function Networks() {
           onUserAdded={handleUserAddSuccess}
           apiBase={API_BASE}
         />
+      </Modal>
+
+      {/* Edit User Modal */}
+      <Modal
+        isOpen={isEditUserModalOpen}
+        onClose={() => setIsEditUserModalOpen(false)}
+        title="Edit User"
+        size="2xl"git
+      >
+        {editingUser && (
+          <EditUserForm
+            initialData={editingUser}
+            onClose={() => setIsEditUserModalOpen(false)}
+            onUserUpdated={handleUserEditSuccess}
+            apiBase={API_BASE}
+          />
+        )}
       </Modal>
     </>
   );
