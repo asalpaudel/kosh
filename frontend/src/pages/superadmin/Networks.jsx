@@ -104,7 +104,7 @@ const UserDetails = ({ item }) => (
             ${item.status === "Suspended" ? "text-red-600" : ""}
           `}
           >
-            {item.status}
+            {item.status ?? "Active"}
           </span>
         </div>
         <DetailItem label="Email" value={item.email} />
@@ -113,16 +113,20 @@ const UserDetails = ({ item }) => (
           <DetailItem label="Associated Sahakari" value={item.sahakari} />
         </div>
       </div>
-      <div>
-        <span className="text-sm font-semibold text-gray-500 block mb-2">
-          Uploaded Documents
-        </span>
-        <div className="flex flex-col gap-1.5">
-          {item.documents.map((doc, index) => (
-            <DocumentLink key={index} doc={doc} />
-          ))}
+
+      {/* Only show if documents exist */}
+      {!!item.documents?.length && (
+        <div>
+          <span className="text-sm font-semibold text-gray-500 block mb-2">
+            Uploaded Documents
+          </span>
+          <div className="flex flex-col gap-1.5">
+            {item.documents.map((doc, index) => (
+              <DocumentLink key={index} doc={doc} />
+            ))}
+          </div>
         </div>
-      </div>
+      )}
     </div>
   </div>
 );
@@ -131,8 +135,9 @@ const UserDetails = ({ item }) => (
 function Networks() {
   const [activeView, setActiveView] = useState("networks");
 
-  // Networks state from backend
+  // Networks and Users state from backend
   const [networks, setNetworks] = useState([]);
+  const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(false);
 
   // View Details modal
@@ -145,29 +150,52 @@ function Networks() {
   const [editingNetwork, setEditingNetwork] = useState(null);
 
   // Load networks
-  // Load networks
   const loadNetworks = async () => {
     try {
       setLoading(true);
       const res = await fetch(`${API_BASE}/networks`);
 
-      // Check if the response was successful (status 200-299)
       if (!res.ok) {
         throw new Error(`Failed to fetch: ${res.status} ${res.statusText}`);
       }
 
       const data = await res.json();
 
-      // Make sure the data is actually an array before setting it
       if (Array.isArray(data)) {
         setNetworks(data);
       } else {
         console.error("API did not return an array:", data);
-        setNetworks([]); // Set to empty array to prevent crash
+        setNetworks([]);
       }
     } catch (e) {
       console.error("Error fetching networks:", e);
-      setNetworks([]); // Set to empty array on any error
+      setNetworks([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Load users
+  const loadUsers = async () => {
+    try {
+      setLoading(true);
+      const res = await fetch(`${API_BASE}/users`);
+
+      if (!res.ok) {
+        throw new Error(`Failed to fetch: ${res.status} ${res.statusText}`);
+      }
+
+      const data = await res.json();
+
+      if (Array.isArray(data)) {
+        setUsers(data);
+      } else {
+        console.error("API did not return an array:", data);
+        setUsers([]);
+      }
+    } catch (e) {
+      console.error("Error fetching users:", e);
+      setUsers([]);
     } finally {
       setLoading(false);
     }
@@ -175,6 +203,7 @@ function Networks() {
 
   useEffect(() => {
     loadNetworks();
+    loadUsers();
   }, []);
 
   // UI helpers
@@ -191,6 +220,10 @@ function Networks() {
     setNetworks((prev) => [...prev, saved]);
   };
 
+  const handleUserAddSuccess = (saved) => {
+    setUsers((prev) => [...prev, saved]);
+  };
+
   const openEdit = (net) => {
     setEditingNetwork(net);
     setIsEditNetworkModalOpen(true);
@@ -205,6 +238,16 @@ function Networks() {
     try {
       await fetch(`${API_BASE}/networks/${id}`, { method: "DELETE" });
       setNetworks((prev) => prev.filter((n) => n.id !== id));
+    } catch (e) {
+      console.error("Delete failed:", e);
+    }
+  };
+
+  const deleteUser = async (id) => {
+    if (!window.confirm("Delete this user?")) return;
+    try {
+      await fetch(`${API_BASE}/users/${id}`, { method: "DELETE" });
+      setUsers((prev) => prev.filter((u) => u.id !== id));
     } catch (e) {
       console.error("Delete failed:", e);
     }
@@ -318,7 +361,7 @@ function Networks() {
           </div>
         )}
 
-        {/* CONDITIONAL TABLE: USERS (unchanged, mock) */}
+        {/* CONDITIONAL TABLE: USERS */}
         {activeView === "users" && (
           <div className="space-y-2">
             <div className="grid grid-cols-7 gap-4 items-center bg-gray-50 p-4 rounded-lg font-semibold text-gray-600">
@@ -331,40 +374,54 @@ function Networks() {
               <span className="text-right">Action</span>
             </div>
 
-            {users.map((user) => (
-              <div
-                key={user.id}
-                className="grid grid-cols-7 gap-4 items-center bg-white p-4 rounded-lg hover:bg-gray-50 transition-colors"
-              >
-                <span className="text-gray-600 font-medium">{user.id}</span>
-                <span className="text-gray-800 font-bold">{user.name}</span>
-                <span className="text-gray-700 truncate">{user.email}</span>
-                <span className="text-gray-700">{user.phone}</span>
-                <span className="text-gray-700 truncate">{user.sahakari}</span>
-                <span className="text-gray-700 capitalize">{user.role}</span>
-                <div className="flex items-center justify-end space-x-3">
-                  <button
-                    onClick={() => setViewModalItem(user)}
-                    className="text-blue-500 hover:text-blue-700"
-                    title="View"
-                  >
-                    <EyeIcon className="w-5 h-5" />
-                  </button>
-                  <button
-                    className="text-yellow-500 hover:text-yellow-700"
-                    title="Edit"
-                  >
-                    <PencilIcon className="w-5 h-5" />
-                  </button>
-                  <button
-                    className="text-red-500 hover:text-red-700"
-                    title="Delete"
-                  >
-                    <TrashIcon className="w-5 h-5" />
-                  </button>
+            {/* Loading state */}
+            {loading && (
+              <div className="p-4 text-sm text-gray-500">Loading users…</div>
+            )}
+
+            {/* Body */}
+            {!loading && users.length === 0 && (
+              <div className="p-4 text-sm text-gray-500">No users found.</div>
+            )}
+
+            {!loading &&
+              users.map((user) => (
+                <div
+                  key={user.id}
+                  className="grid grid-cols-7 gap-4 items-center bg-white p-4 rounded-lg hover:bg-gray-50 transition-colors"
+                >
+                  <span className="text-gray-600 font-medium">{user.id}</span>
+                  <span className="text-gray-800 font-bold">{user.name}</span>
+                  <span className="text-gray-700 truncate">{user.email}</span>
+                  <span className="text-gray-700">{user.phone}</span>
+                  <span className="text-gray-700 truncate">
+                    {user.sahakari}
+                  </span>
+                  <span className="text-gray-700 capitalize">{user.role}</span>
+                  <div className="flex items-center justify-end space-x-3">
+                    <button
+                      onClick={() => handleViewClick(user)}
+                      className="text-blue-500 hover:text-blue-700"
+                      title="View"
+                    >
+                      <EyeIcon className="w-5 h-5" />
+                    </button>
+                    <button
+                      className="text-yellow-500 hover:text-yellow-700"
+                      title="Edit"
+                    >
+                      <PencilIcon className="w-5 h-5" />
+                    </button>
+                    <button
+                      onClick={() => deleteUser(user.id)}
+                      className="text-red-500 hover:text-red-700"
+                      title="Delete"
+                    >
+                      <TrashIcon className="w-5 h-5" />
+                    </button>
+                  </div>
                 </div>
-              </div>
-            ))}
+              ))}
           </div>
         )}
       </div>
@@ -378,7 +435,7 @@ function Networks() {
                      pointer-events-none group-hover:pointer-events-auto
                      transition-all duration-200 ease-in-out"
         >
-          {/* Add User (unchanged) */}
+          {/* Add User */}
           <button
             title="Add User"
             className="relative flex items-center justify-center w-14 h-14 bg-white rounded-full text-teal-500 shadow-lg hover:bg-gray-100 hover:scale-105 transition-all"
@@ -467,7 +524,11 @@ function Networks() {
         title="Add New User"
         size="2xl"
       >
-        <AddUserForm onClose={() => setIsAddUserModalOpen(false)} />
+        <AddUserForm
+          onClose={() => setIsAddUserModalOpen(false)}
+          onUserAdded={handleUserAddSuccess}
+          apiBase={API_BASE}
+        />
       </Modal>
     </>
   );
