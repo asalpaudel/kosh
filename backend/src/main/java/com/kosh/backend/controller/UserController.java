@@ -3,6 +3,7 @@ package com.kosh.backend.controller;
 import java.util.List;
 
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import com.kosh.backend.model.User;
 import com.kosh.backend.repository.UserRepository;
@@ -18,9 +19,33 @@ public class UserController {
     }
 
     @PostMapping
-    public User createUser(@RequestBody User user) {
+    public User createUser(
+            @RequestParam("name") String name,
+            @RequestParam("email") String email,
+            @RequestParam("phone") String phone,
+            @RequestParam("role") String role,
+            @RequestParam("sahakari") String sahakari,
+            @RequestParam("password") String password,
+            @RequestParam(value = "document", required = false) MultipartFile document) {
+        
         System.out.println("POST /api/users hit!");
-        System.out.println("Received user: " + user);
+        System.out.println("Received user: " + name + ", " + email);
+        
+        User user = new User();
+        user.setName(name);
+        user.setEmail(email);
+        user.setPhone(phone);
+        user.setRole(role);
+        user.setSahakari(sahakari);
+        user.setPassword(password);
+        
+        // Handle document if needed
+        if (document != null && !document.isEmpty()) {
+            System.out.println("Document received: " + document.getOriginalFilename());
+            // TODO: Save the document file to storage and store the path/URL in the user object
+            // user.setDocumentPath(savedPath);
+        }
+        
         User saved = repo.save(user);
         System.out.println("Saved user with ID: " + saved.getId());
         return saved;
