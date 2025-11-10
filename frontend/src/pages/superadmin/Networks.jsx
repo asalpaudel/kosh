@@ -158,13 +158,13 @@ function Networks() {
     try {
       setLoading(true);
       const res = await fetch(`${API_BASE}/networks`);
-
+  
       if (!res.ok) {
         throw new Error(`Failed to fetch: ${res.status} ${res.statusText}`);
       }
-
+  
       const data = await res.json();
-
+  
       if (Array.isArray(data)) {
         setNetworks(data);
       } else {
@@ -178,19 +178,20 @@ function Networks() {
       setLoading(false);
     }
   };
+  
 
   // Load users
   const loadUsers = async () => {
     try {
       setLoading(true);
       const res = await fetch(`${API_BASE}/users`);
-
+  
       if (!res.ok) {
         throw new Error(`Failed to fetch: ${res.status} ${res.statusText}`);
       }
-
+  
       const data = await res.json();
-
+  
       if (Array.isArray(data)) {
         setUsers(data);
       } else {
@@ -204,6 +205,7 @@ function Networks() {
       setLoading(false);
     }
   };
+  
 
   useEffect(() => {
     loadNetworks();
@@ -255,6 +257,7 @@ function Networks() {
       console.error("Delete failed:", e);
     }
   };
+  
 
   const deleteUser = async (id) => {
     if (!window.confirm("Delete this user?")) return;
@@ -265,6 +268,7 @@ function Networks() {
       console.error("Delete failed:", e);
     }
   };
+  
 
   return (
     <>

@@ -172,3 +172,48 @@ export const DocumentIcon = ({ className }) => (
     <line x1="16" y1="17" x2="8" y2="17"></line>
   </svg>
 );
+// ... (all your existing icons like LeafIcon, Logo, SearchIcon, etc.)
+
+export const CheckIcon = ({ className }) => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+    <polyline points="20 6 9 17 4 12"></polyline>
+  </svg>
+);
+
+export const XIcon = ({ className }) => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+    <line x1="18" y1="6" x2="6" y2="18"></line>
+    <line x1="6" y1="6" x2="18" y2="18"></line>
+  </svg>
+);
+
+
+export const UserPlusIcon = ({ className }) => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+    <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+    <circle cx="8.5" cy="7" r="4"></circle>
+    <line x1="20" y1="8" x2="20" y2="14"></line>
+    <line x1="17" y1="11" x2="23" y2="11"></line>
+  </svg>
+);
+
+// --- NEW ICONS FOR PACKAGES PAGE ---
+// (Using 24x24 outline style from Heroicons)
+
+export const DocumentTextIcon = ({ className }) => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+  </svg>
+);
+
+export const CurrencyDollarIcon = ({ className }) => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v12m-3-2.818l.879.659c1.171.879 3.07.879 4.242 0l.879-.659M12 6a2.25 2.25 0 00-2.25 2.25v1.318c0 .597.237 1.17.659 1.591l.879.879c1.171 1.171 3.07 1.171 4.242 0l.879-.879a2.25 2.25 0 00.659-1.591V8.25A2.25 2.25 0 0012 6z" />
+  </svg>
+);
+
+export const BanknotesIcon = ({ className }) => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 18.75a60.07 60.07 0 0115.797 2.101c.727.198 1.453-.342 1.453-1.096V18.75M3.75 4.5v.75A.75.75 0 013 6h-.75m0 0v-.75A.75.75 0 013 4.5h.75m0 0H21m-12 6.75A.75.75 0 0010.5 12h.75m.75 0A.75.75 0 0113.5 12h.75m0 0v.75c0 .414.336.75.75.75H15v-.75A.75.75 0 0014.25 12h-.75m0 0h-.75A.75.75 0 0012 11.25v.75m0 0H9m1.5-1.5A.75.75 0 0012 9h.75m0 0v-.75a.75.75 0 01.75-.75h.75v.75A.75.75 0 0113.5 9h-.75m0 0H9m7.5 6v.75c0 .414.336.75.75.75h.75v-.75A.75.75 0 0016.5 15h-.75m0 0h.75A.75.75 0 0118 15v.75c0 .414.336.75.75.75h.75v-.75A.75.75 0 0019.5 15h-.75m0 0h-.75a.75.75 0 00-.75.75v.75c0 .414.336.75.75.75h.75v-.75A.75.75 0 0016.5 15z" />
+  </svg>
+);
