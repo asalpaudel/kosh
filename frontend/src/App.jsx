@@ -15,7 +15,14 @@ import SuperadminLayout from "./component/superadmin/Layout.jsx";
 import SuperadminDashboard from "./pages/superadmin/Dashboard.jsx";
 import Analytics from "./pages/superadmin/Analytics.jsx";
 import History from "./pages/superadmin/History.jsx"; 
-import Networks from "./pages/superadmin/Networks.jsx"; // <-- IMPORTED NEW PAGE
+import Networks from "./pages/superadmin/Networks.jsx";
+
+// --- ADMIN IMPORTS (NEW) ---
+import AdminLayout from "./component/admin/Layout.jsx";
+import AdminDashboard from "./pages/admin/Dashboard.jsx";
+import AdminUsers from "./pages/admin/Users.jsx";
+import AdminTransactions from "./pages/admin/Transactions.jsx";
+import AdminPackages from "./pages/admin/Packages.jsx"; 
 
 function App() {
   return (
@@ -34,14 +41,21 @@ function App() {
             <Route path="statement" element={<Statement />} />
           </Route>
 
+          {/* --- ADDED ADMIN ROUTES (NEW) --- */}
+          <Route path="/admin" element={<AdminLayout />}>
+            <Route index element={<AdminDashboard />} />
+            <Route path="dashboard" element={<AdminDashboard />} />
+            <Route path="users" element={<AdminUsers />} />
+            <Route path="packages" element={<AdminPackages />} /> 
+            <Route path="transactions" element={<AdminTransactions />} />
+          </Route>
+
           {/* Protected (nested) Superadmin Routes */}
           <Route path="/superadmin" element={<SuperadminLayout />}>
             <Route index element={<SuperadminDashboard />} /> 
             <Route path="dashboard" element={<SuperadminDashboard />} />
             <Route path="analytics" element={<Analytics />} />
             <Route path="history" element={<History />} />
-
-            {/* --- ADDED NETWORKS ROUTE --- */}
             <Route path="networks" element={<Networks />} /> 
           </Route>
           
