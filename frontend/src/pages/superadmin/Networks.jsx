@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+
 import {
   SearchIcon,
   EyeIcon,
@@ -14,6 +15,7 @@ import {
 import Modal from "../../component/superadmin/Modal.jsx";
 import AddNetworkForm from "../../component/superadmin/AddNetworkForm.jsx";
 import EditNetworkForm from "../../component/superadmin/EditNetworkForm.jsx";
+import AddUserForm from "../../component/superadmin/AddUserForm.jsx";
 
 // --- API BASE ---
 const API_BASE = "http://localhost:8080/api";
@@ -459,14 +461,14 @@ function Networks() {
       </Modal>
 
       {/* Add User Modal */}
-      {/* <Modal
+      <Modal
         isOpen={isAddUserModalOpen}
         onClose={() => setIsAddUserModalOpen(false)}
         title="Add New User"
         size="2xl"
       >
         <AddUserForm onClose={() => setIsAddUserModalOpen(false)} />
-      </Modal> */}
+      </Modal>
     </>
   );
 }
