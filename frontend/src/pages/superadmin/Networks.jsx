@@ -1,95 +1,28 @@
-import React, { useState, useEffect } from 'react';
-import { 
-  SearchIcon, 
-  EyeIcon, 
-  PencilIcon, 
-  TrashIcon, 
-  PlusCircleIcon, 
+import React, { useState, useEffect } from "react";
+import {
+  SearchIcon,
+  EyeIcon,
+  PencilIcon,
+  TrashIcon,
+  PlusCircleIcon,
   BuildingIcon,
   UserCircleIcon,
-  DocumentIcon
-} from '../../component/icons.jsx';
+  DocumentIcon,
+} from "../../component/icons.jsx";
 
 // --- ADDED IMPORTS ---
-import Modal from '../../component/superadmin/Modal.jsx';
-import AddNetworkForm from '../../component/superadmin/AddNetworkForm.jsx';
-import EditNetworkForm from '../../component/superadmin/EditNetworkForm.jsx';
+import Modal from "../../component/superadmin/Modal.jsx";
+import AddNetworkForm from "../../component/superadmin/AddNetworkForm.jsx";
+import EditNetworkForm from "../../component/superadmin/EditNetworkForm.jsx";
 
 // --- API BASE ---
-const API_BASE = 'http://localhost:8080/api';
-
-// --- USERS MOCK (unchanged) ---
-const users = [
-  { 
-    id: 1, 
-    name: 'Asal Admin', 
-    email: 'asal@example.com', 
-    phone: '9800000001', 
-    sahakari: 'Sahakari 1', 
-    role: 'admin',
-    status: 'Active',
-    documents: [
-      { name: 'citizenship.pdf', url: '#' },
-      { name: 'photo.jpg', url: '#' },
-    ]
-  },
-  { 
-    id: 2, 
-    name: 'Barshat Admin', 
-    email: 'barshat@example.com', 
-    phone: '9800000002', 
-    sahakari: 'Sahakari 2', 
-    role: 'admin',
-    status: 'Pending',
-    documents: [
-      { name: 'citizenship.pdf', url: '#' },
-    ]
-  },
-  { 
-    id: 3, 
-    name: 'Ram Member', 
-    email: 'ram@example.com', 
-    phone: '9800000003', 
-    sahakari: 'Sahakari 1', 
-    role: 'member',
-    status: 'Active',
-    documents: [
-      { name: 'citizenship.pdf', url: '#' },
-      { name: 'photo.jpg', url: '#' },
-    ]
-  },
-  { 
-    id: 4, 
-    name: 'Sita Staff', 
-    email: 'sita@example.com', 
-    phone: '9800000004', 
-    sahakari: 'Geda Sahakari', 
-    role: 'staff',
-    status: 'Suspended',
-    documents: [
-      { name: 'citizenship.pdf', url: '#' },
-    ]
-  },
-  { 
-    id: 5, 
-    name: 'Hari Member', 
-    email: 'hari@example.com', 
-    phone: '9800000005', 
-    sahakari: 'Janata Sahakari', 
-    role: 'member',
-    status: 'Active',
-    documents: [
-      { name: 'citizenship.pdf', url: '#' },
-      { name: 'photo.jpg', url: '#' },
-    ]
-  },
-];
+const API_BASE = "http://localhost:8080/api";
 
 // --- DETAIL ITEM ---
 const DetailItem = ({ label, value }) => (
   <div>
     <span className="text-sm font-semibold text-gray-500 block">{label}</span>
-    <span className="text-lg text-gray-800">{value ?? '-'}</span>
+    <span className="text-lg text-gray-800">{value ?? "-"}</span>
   </div>
 );
 
@@ -120,13 +53,18 @@ const NetworkDetails = ({ item }) => (
         <DetailItem label="Phone Number" value={item.phone} />
         <DetailItem label="Created At" value={item.createdAt} />
         <DetailItem label="Staff Count" value={item.staffCount} />
-        <DetailItem label="User Count" value={item.userCount?.toLocaleString?.('en-IN') ?? item.userCount} />
+        <DetailItem
+          label="User Count"
+          value={item.userCount?.toLocaleString?.("en-IN") ?? item.userCount}
+        />
       </div>
 
       {/* Only show if present (your backend currently doesn't send docs) */}
       {!!item.regDocuments?.length && (
         <div>
-          <span className="text-sm font-semibold text-gray-500 block mb-2">Registration Documents</span>
+          <span className="text-sm font-semibold text-gray-500 block mb-2">
+            Registration Documents
+          </span>
           <div className="flex flex-col gap-1.5">
             {item.regDocuments.map((doc, index) => (
               <DocumentLink key={index} doc={doc} />
@@ -147,17 +85,23 @@ const UserDetails = ({ item }) => (
     <div className="flex-1 space-y-5">
       <div>
         <h3 className="text-3xl font-bold">{item.name}</h3>
-        <span className="text-lg text-teal-600 font-semibold capitalize block">{item.role}</span>
+        <span className="text-lg text-teal-600 font-semibold capitalize block">
+          {item.role}
+        </span>
       </div>
       <div className="grid grid-cols-2 gap-x-4 gap-y-5">
         <DetailItem label="User ID" value={item.id} />
         <div>
-          <span className="text-sm font-semibold text-gray-500 block">Status</span>
-          <span className={`text-lg font-bold
-            ${item.status === 'Active' ? 'text-green-600' : ''}
-            ${item.status === 'Pending' ? 'text-yellow-600' : ''}
-            ${item.status === 'Suspended' ? 'text-red-600' : ''}
-          `}>
+          <span className="text-sm font-semibold text-gray-500 block">
+            Status
+          </span>
+          <span
+            className={`text-lg font-bold
+            ${item.status === "Active" ? "text-green-600" : ""}
+            ${item.status === "Pending" ? "text-yellow-600" : ""}
+            ${item.status === "Suspended" ? "text-red-600" : ""}
+          `}
+          >
             {item.status}
           </span>
         </div>
@@ -168,7 +112,9 @@ const UserDetails = ({ item }) => (
         </div>
       </div>
       <div>
-        <span className="text-sm font-semibold text-gray-500 block mb-2">Uploaded Documents</span>
+        <span className="text-sm font-semibold text-gray-500 block mb-2">
+          Uploaded Documents
+        </span>
         <div className="flex flex-col gap-1.5">
           {item.documents.map((doc, index) => (
             <DocumentLink key={index} doc={doc} />
@@ -181,49 +127,49 @@ const UserDetails = ({ item }) => (
 
 // --- MAIN PAGE ---
 function Networks() {
-  const [activeView, setActiveView] = useState('networks');
+  const [activeView, setActiveView] = useState("networks");
 
   // Networks state from backend
   const [networks, setNetworks] = useState([]);
   const [loading, setLoading] = useState(false);
 
   // View Details modal
-  const [viewModalItem, setViewModalItem] = useState(null); 
+  const [viewModalItem, setViewModalItem] = useState(null);
 
   // Add / Edit modals
   const [isAddNetworkModalOpen, setIsAddNetworkModalOpen] = useState(false);
+  const [isAddUserModalOpen, setIsAddUserModalOpen] = useState(false);
   const [isEditNetworkModalOpen, setIsEditNetworkModalOpen] = useState(false);
   const [editingNetwork, setEditingNetwork] = useState(null);
 
   // Load networks
-// Load networks
-const loadNetworks = async () => {
-  try {
-    setLoading(true);
-    const res = await fetch(`${API_BASE}/networks`);
+  // Load networks
+  const loadNetworks = async () => {
+    try {
+      setLoading(true);
+      const res = await fetch(`${API_BASE}/networks`);
 
-    // Check if the response was successful (status 200-299)
-    if (!res.ok) {
-      throw new Error(`Failed to fetch: ${res.status} ${res.statusText}`);
+      // Check if the response was successful (status 200-299)
+      if (!res.ok) {
+        throw new Error(`Failed to fetch: ${res.status} ${res.statusText}`);
+      }
+
+      const data = await res.json();
+
+      // Make sure the data is actually an array before setting it
+      if (Array.isArray(data)) {
+        setNetworks(data);
+      } else {
+        console.error("API did not return an array:", data);
+        setNetworks([]); // Set to empty array to prevent crash
+      }
+    } catch (e) {
+      console.error("Error fetching networks:", e);
+      setNetworks([]); // Set to empty array on any error
+    } finally {
+      setLoading(false);
     }
-
-    const data = await res.json();
-
-    // Make sure the data is actually an array before setting it
-    if (Array.isArray(data)) {
-      setNetworks(data);
-    } else {
-      console.error("API did not return an array:", data);
-      setNetworks([]); // Set to empty array to prevent crash
-    }
-
-  } catch (e) {
-    console.error('Error fetching networks:', e);
-    setNetworks([]); // Set to empty array on any error
-  } finally {
-    setLoading(false);
-  }
-};
+  };
 
   useEffect(() => {
     loadNetworks();
@@ -232,8 +178,8 @@ const loadNetworks = async () => {
   // UI helpers
   const getButtonClass = (viewName) =>
     activeView === viewName
-      ? 'bg-black text-white'
-      : 'bg-gray-200 text-gray-700 hover:bg-gray-300';
+      ? "bg-black text-white"
+      : "bg-gray-200 text-gray-700 hover:bg-gray-300";
 
   // Handlers
   const handleViewClick = (item) => setViewModalItem(item);
@@ -253,12 +199,12 @@ const loadNetworks = async () => {
   };
 
   const deleteNetwork = async (id) => {
-    if (!window.confirm('Delete this sahakari?')) return;
+    if (!window.confirm("Delete this sahakari?")) return;
     try {
-      await fetch(`${API_BASE}/networks/${id}`, { method: 'DELETE' });
+      await fetch(`${API_BASE}/networks/${id}`, { method: "DELETE" });
       setNetworks((prev) => prev.filter((n) => n.id !== id));
     } catch (e) {
-      console.error('Delete failed:', e);
+      console.error("Delete failed:", e);
     }
   };
 
@@ -283,15 +229,19 @@ const loadNetworks = async () => {
 
           {/* View Toggle */}
           <div className="flex items-center gap-3">
-            <button 
-              onClick={() => setActiveView('networks')}
-              className={`font-medium py-3 px-6 rounded-full transition-colors text-base ${getButtonClass('networks')}`}
+            <button
+              onClick={() => setActiveView("networks")}
+              className={`font-medium py-3 px-6 rounded-full transition-colors text-base ${getButtonClass(
+                "networks"
+              )}`}
             >
               Networks
             </button>
-            <button 
-              onClick={() => setActiveView('users')}
-              className={`font-medium py-3 px-6 rounded-full transition-colors text-base ${getButtonClass('users')}`}
+            <button
+              onClick={() => setActiveView("users")}
+              className={`font-medium py-3 px-6 rounded-full transition-colors text-base ${getButtonClass(
+                "users"
+              )}`}
             >
               Users
             </button>
@@ -299,7 +249,7 @@ const loadNetworks = async () => {
         </div>
 
         {/* CONDITIONAL TABLE: NETWORKS */}
-        {activeView === 'networks' && (
+        {activeView === "networks" && (
           <div className="space-y-2">
             {/* Header */}
             <div className="grid grid-cols-6 gap-4 items-center bg-gray-50 p-4 rounded-lg font-semibold text-gray-600">
@@ -317,50 +267,57 @@ const loadNetworks = async () => {
 
             {/* Body */}
             {!loading && networks.length === 0 && (
-              <div className="p-4 text-sm text-gray-500">No networks found.</div>
+              <div className="p-4 text-sm text-gray-500">
+                No networks found.
+              </div>
             )}
 
-            {!loading && networks.map((network) => (
-              <div 
-                key={network.id} 
-                className="grid grid-cols-6 gap-4 items-center bg-white p-4 rounded-lg hover:bg-gray-50 transition-colors"
-              >
-                <span className="text-gray-600 font-medium">{network.registeredId}</span>
-                <span className="text-gray-800 font-bold col-span-2">{network.name}</span>
-                <span className="text-gray-700">{network.address}</span>
-                <span className="text-gray-700">{network.createdAt}</span>
-                
-                {/* Actions */}
-                <div className="flex items-center justify-end space-x-3">
-                  <button 
-                    onClick={() => handleViewClick(network)}
-                    className="text-blue-500 hover:text-blue-700" 
-                    title="View"
-                  >
-                    <EyeIcon className="w-5 h-5" />
-                  </button>
-                  <button
-                    onClick={() => openEdit(network)}
-                    className="text-yellow-500 hover:text-yellow-700"
-                    title="Edit"
-                  >
-                    <PencilIcon className="w-5 h-5" />
-                  </button>
-                  <button
-                    onClick={() => deleteNetwork(network.id)}
-                    className="text-red-500 hover:text-red-700"
-                    title="Delete"
-                  >
-                    <TrashIcon className="w-5 h-5" />
-                  </button>
+            {!loading &&
+              networks.map((network) => (
+                <div
+                  key={network.id}
+                  className="grid grid-cols-6 gap-4 items-center bg-white p-4 rounded-lg hover:bg-gray-50 transition-colors"
+                >
+                  <span className="text-gray-600 font-medium">
+                    {network.registeredId}
+                  </span>
+                  <span className="text-gray-800 font-bold col-span-2">
+                    {network.name}
+                  </span>
+                  <span className="text-gray-700">{network.address}</span>
+                  <span className="text-gray-700">{network.createdAt}</span>
+
+                  {/* Actions */}
+                  <div className="flex items-center justify-end space-x-3">
+                    <button
+                      onClick={() => handleViewClick(network)}
+                      className="text-blue-500 hover:text-blue-700"
+                      title="View"
+                    >
+                      <EyeIcon className="w-5 h-5" />
+                    </button>
+                    <button
+                      onClick={() => openEdit(network)}
+                      className="text-yellow-500 hover:text-yellow-700"
+                      title="Edit"
+                    >
+                      <PencilIcon className="w-5 h-5" />
+                    </button>
+                    <button
+                      onClick={() => deleteNetwork(network.id)}
+                      className="text-red-500 hover:text-red-700"
+                      title="Delete"
+                    >
+                      <TrashIcon className="w-5 h-5" />
+                    </button>
+                  </div>
                 </div>
-              </div>
-            ))}
+              ))}
           </div>
         )}
 
         {/* CONDITIONAL TABLE: USERS (unchanged, mock) */}
-        {activeView === 'users' && (
+        {activeView === "users" && (
           <div className="space-y-2">
             <div className="grid grid-cols-7 gap-4 items-center bg-gray-50 p-4 rounded-lg font-semibold text-gray-600">
               <span>ID</span>
@@ -373,8 +330,8 @@ const loadNetworks = async () => {
             </div>
 
             {users.map((user) => (
-              <div 
-                key={user.id} 
+              <div
+                key={user.id}
                 className="grid grid-cols-7 gap-4 items-center bg-white p-4 rounded-lg hover:bg-gray-50 transition-colors"
               >
                 <span className="text-gray-600 font-medium">{user.id}</span>
@@ -384,17 +341,23 @@ const loadNetworks = async () => {
                 <span className="text-gray-700 truncate">{user.sahakari}</span>
                 <span className="text-gray-700 capitalize">{user.role}</span>
                 <div className="flex items-center justify-end space-x-3">
-                  <button 
+                  <button
                     onClick={() => setViewModalItem(user)}
-                    className="text-blue-500 hover:text-blue-700" 
+                    className="text-blue-500 hover:text-blue-700"
                     title="View"
                   >
                     <EyeIcon className="w-5 h-5" />
                   </button>
-                  <button className="text-yellow-500 hover:text-yellow-700" title="Edit">
+                  <button
+                    className="text-yellow-500 hover:text-yellow-700"
+                    title="Edit"
+                  >
                     <PencilIcon className="w-5 h-5" />
                   </button>
-                  <button className="text-red-500 hover:text-red-700" title="Delete">
+                  <button
+                    className="text-red-500 hover:text-red-700"
+                    title="Delete"
+                  >
                     <TrashIcon className="w-5 h-5" />
                   </button>
                 </div>
@@ -406,7 +369,7 @@ const loadNetworks = async () => {
 
       {/* FAB */}
       <div className="group fixed z-20 bottom-10 right-10 flex flex-col items-center gap-3">
-        <div 
+        <div
           className="flex flex-col items-center gap-3 
                      opacity-0 scale-90 translate-y-4 
                      group-hover:opacity-100 group-hover:scale-100 group-hover:translate-y-0 
@@ -417,7 +380,7 @@ const loadNetworks = async () => {
           <button
             title="Add User"
             className="relative flex items-center justify-center w-14 h-14 bg-white rounded-full text-teal-500 shadow-lg hover:bg-gray-100 hover:scale-105 transition-all"
-            onClick={() => alert('User add handled elsewhere')}
+            onClick={() => setIsAddUserModalOpen(true)}
           >
             <UserCircleIcon className="w-7 h-7" />
             <span className="absolute right-full mr-4 px-3 py-1.5 bg-black text-white text-xs font-semibold rounded-md whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity delay-150 pointer-events-none">
@@ -450,25 +413,26 @@ const loadNetworks = async () => {
       {/* --- MODALS --- */}
 
       {/* View Details */}
-      <Modal 
-        isOpen={!!viewModalItem} 
-        onClose={handleCloseViewModal} 
-        title={activeView === 'networks' ? 'Network Details' : 'User Details'}
+      <Modal
+        isOpen={!!viewModalItem}
+        onClose={handleCloseViewModal}
+        title={activeView === "networks" ? "Network Details" : "User Details"}
         size="3xl"
       >
-        {viewModalItem && (
-          activeView === 'networks' 
-            ? <NetworkDetails item={viewModalItem} />
-            : <UserDetails item={viewModalItem} />
-        )}
+        {viewModalItem &&
+          (activeView === "networks" ? (
+            <NetworkDetails item={viewModalItem} />
+          ) : (
+            <UserDetails item={viewModalItem} />
+          ))}
       </Modal>
 
       {/* Add Network */}
-      <Modal 
-        isOpen={isAddNetworkModalOpen} 
-        onClose={() => setIsAddNetworkModalOpen(false)} 
+      <Modal
+        isOpen={isAddNetworkModalOpen}
+        onClose={() => setIsAddNetworkModalOpen(false)}
         title="Add New Sahakari"
-        size="2xl" 
+        size="2xl"
       >
         <AddNetworkForm
           onClose={() => setIsAddNetworkModalOpen(false)}
@@ -478,11 +442,11 @@ const loadNetworks = async () => {
       </Modal>
 
       {/* Edit Network */}
-      <Modal 
-        isOpen={isEditNetworkModalOpen} 
-        onClose={() => setIsEditNetworkModalOpen(false)} 
+      <Modal
+        isOpen={isEditNetworkModalOpen}
+        onClose={() => setIsEditNetworkModalOpen(false)}
         title="Edit Sahakari"
-        size="2xl" 
+        size="2xl"
       >
         {editingNetwork && (
           <EditNetworkForm
@@ -493,6 +457,16 @@ const loadNetworks = async () => {
           />
         )}
       </Modal>
+
+      {/* Add User Modal */}
+      {/* <Modal
+        isOpen={isAddUserModalOpen}
+        onClose={() => setIsAddUserModalOpen(false)}
+        title="Add New User"
+        size="2xl"
+      >
+        <AddUserForm onClose={() => setIsAddUserModalOpen(false)} />
+      </Modal> */}
     </>
   );
 }
