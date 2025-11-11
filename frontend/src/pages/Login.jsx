@@ -5,21 +5,22 @@ export default function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [remember, setRemember] = useState(false);
-  const [role, setRole] = useState("user"); // 'user', 'admin', or 'superadmin'
+  const [role, setRole] = useState("user"); // Just for UI toggle
   const [errorMessage, setErrorMessage] = useState("");
+
   const nav = useNavigate();
 
-  // Helper object to map role to a CSS transform value
+  // UI translation for role toggle bar
   const roleTranslate = {
     user: "0%",
     admin: "100%",
     superadmin: "200%",
   };
 
-  // Async API call handler
+  // LOGIN HANDLER (Updated for DB-based validation)
   const handleLogin = async (e) => {
     e.preventDefault();
-    setErrorMessage(""); 
+    setErrorMessage("");
 
     if (!email || !password) {
       setErrorMessage("Please fill in all fields.");
@@ -32,47 +33,46 @@ export default function Login() {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({
-          email: email,
-          password: password,
-          role: role, 
-        }),
+        body: JSON.stringify({ email, password }),
       });
 
       const data = await response.json();
+      console.log("Login Response:", data);
 
-      if (data.success) {
-        if (data.role === "user") {
-          nav("/home");
-        } else if (data.role === "admin") {
-          nav("/admin"); 
-        } else if (data.role === "superadmin") {
-          nav("/superadmin");
-        }
-      } else {
+      if (!data.success) {
         setErrorMessage(data.message);
+        return;
+      }
+
+      localStorage.setItem("userRole", data.role);
+      localStorage.setItem("userId", data.userId);
+
+      // ✅ Fix: Use REAL paths from your App.jsx
+      if (data.role === "member") {
+        nav("/home");
+      } else if (data.role === "admin") {
+        nav("/admin");
+      } else if (data.role === "superadmin") {
+        nav("/superadmin");
       }
     } catch (error) {
       console.error("Login failed:", error);
-      setErrorMessage("Could not connect to the server. Please try again later.");
+      setErrorMessage(
+        "Could not connect to the server. Please try again later."
+      );
     }
   };
 
-  // Helper component for the toggle buttons
+  // Role toggle button component (UI only)
   const RoleToggleButton = ({ value, label }) => (
     <button
       type="button"
       onClick={() => {
         setRole(value);
-        setErrorMessage(""); 
+        setErrorMessage("");
       }}
-      className={`flex-1 py-3 px-4 rounded-full font-semibold transition-colors duration-300
-        relative z-10  
-        ${
-          role === value
-            ? "text-black" // Active text color
-            : "text-gray-600 hover:text-black" // Inactive text color
-        }
+      className={`flex-1 py-3 px-4 rounded-full font-semibold transition-colors duration-300 relative z-10
+        ${role === value ? "text-black" : "text-gray-600 hover:text-black"}
       `}
     >
       {label}
@@ -81,7 +81,7 @@ export default function Login() {
 
   return (
     <div className="flex flex-col lg:flex-row min-h-screen bg-white">
-      {/* Left Panel */}
+      {/* Left panel */}
       <div className="flex-1 bg-black flex items-center justify-center relative">
         <div className="absolute top-4 right-4 bg-black p-2 rounded-lg border border-[#00FFB2]">
           <svg
@@ -99,6 +99,7 @@ export default function Login() {
             />
           </svg>
         </div>
+
         <svg
           xmlns="http://www.w3.org/2000/svg"
           viewBox="0 0 100 100"
@@ -118,7 +119,7 @@ export default function Login() {
         </svg>
       </div>
 
-      {/* Right Panel */}
+      {/* Right panel */}
       <div className="flex-1 flex flex-col justify-center items-center p-8">
         <div className="w-full max-w-md">
           <h2 className="text-3xl font-bold mb-6">
@@ -128,28 +129,6 @@ export default function Login() {
           </h2>
 
           <form onSubmit={handleLogin} className="flex flex-col gap-5">
-            {/* Role Toggle */}
-            <div className="flex w-full bg-gray-200 rounded-full p-1 relative">
-              
-              {/* --- 
-                THE SLIDING PILL
-                These classes create the animation:
-                - transition-transform: Tells it to animate the 'transform' property
-                - duration-300:       Sets the speed to 300ms
-                - ease-in-out:        This is the smoothing curve you want
-              --- */}
-              <div
-                className="absolute top-1 left-1 bottom-1 w-1/3 bg-[#00FFB2] rounded-full shadow-lg 
-                           transition-transform duration-300 ease-in-out"
-                style={{ transform: `translateX(${roleTranslate[role]})` }}
-              />
-
-              {/* The buttons now sit on top of the pill */}
-              <RoleToggleButton value="user" label="User" />
-              <RoleToggleButton value="admin" label="Admin" />
-              <RoleToggleButton value="superadmin" label="Superadmin" />
-            </div>
-
             {/* Email */}
             <div>
               <label className="block font-semibold mb-2">Email</label>
@@ -180,24 +159,25 @@ export default function Login() {
                 <input
                   type="checkbox"
                   checked={remember}
-                  onChange={(e) => setRemember(e.g.target.checked)}
+                  onChange={(e) => setRemember(e.target.checked)}
                   className="accent-[#00FFB2]"
                 />
                 Remember me
               </label>
+
               <NavLink to="/forgot" className="text-gray-500 hover:text-black">
                 Forgot Password?
               </NavLink>
             </div>
 
-            {/* Error Message Display */}
+            {/* Error Message */}
             {errorMessage && (
               <p className="text-center text-red-600 font-medium">
                 {errorMessage}
               </p>
             )}
 
-            {/* Signin Button */}
+            {/* Sign In Button */}
             <button
               type="submit"
               className="w-full bg-[#00FFB2] text-black font-semibold py-3 rounded-full hover:bg-[#00e6a0] transition-colors"

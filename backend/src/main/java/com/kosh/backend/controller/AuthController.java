@@ -1,67 +1,77 @@
 package com.kosh.backend.controller;
 
-import org.springframework.web.bind.annotation.CrossOrigin;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
+import com.kosh.backend.model.User;
+import com.kosh.backend.repository.UserRepository;
 
 @RestController
 @RequestMapping("/api/auth")
-@CrossOrigin(origins = "http://localhost:5173") // Allow frontend (Vite dev server)
+@CrossOrigin(origins = "http://localhost:5173")
 public class AuthController {
 
-    // DTO for login request now includes role
+    private final UserRepository repo;
+
+    public AuthController(UserRepository repo) {
+        this.repo = repo;
+    }
+
+    // Request DTO
     public static class LoginRequest {
         public String email;
         public String password;
-        public String role; // "user", "admin", or "superadmin"
     }
 
-    // DTO for response now includes role for redirection
+    // Response DTO
     public static class LoginResponse {
         public boolean success;
         public String message;
-        public String role; // The role we validated
+        public String role;
+        public int userId;
 
-        public LoginResponse(boolean success, String message, String role) {
+        public LoginResponse(boolean success, String message, String role, int userId) {
             this.success = success;
             this.message = message;
             this.role = role;
+            this.userId = userId;
         }
     }
 
     @PostMapping("/login")
     public LoginResponse login(@RequestBody LoginRequest req) {
-        
-        // Hardcoded credentials for all three roles
-        // In a real app, you would look this up in a database
 
-        switch (req.role) {
-            case "user":
-                if ("user@example.com".equals(req.email) && "pass123".equals(req.password)) {
-                    return new LoginResponse(true, "Welcome User!", "user");
-                }
-                break;
-            
-            case "admin":
-                if ("admin@example.com".equals(req.email) && "pass123".equals(req.password)) {
-                    return new LoginResponse(true, "Welcome Admin!", "admin");
-                }
-                break;
-            
-            case "superadmin":
-                if ("superadmin@example.com".equals(req.email) && "pass123".equals(req.password)) {
-                    return new LoginResponse(true, "Welcome Superadmin!", "superadmin");
-                }
-                break;
-            
-            default:
-                // If role is not "user", "admin", or "superadmin"
-                return new LoginResponse(false, "Invalid role specified.", null);
+        System.out.println("============= LOGIN REQUEST =============");
+        System.out.println("EMAIL: " + req.email);
+        System.out.println("PASSWORD: " + req.password);
+        System.out.println("=========================================");
+
+        User user = repo.findByEmail(req.email);
+
+        // Email not found
+        if (user == null) {
+            System.out.println("Login failed: Email not found.");
+            return new LoginResponse(false, "Email not found", null, -1);
         }
 
-        // If we get here, the role was valid but credentials were wrong
-        return new LoginResponse(false, "Invalid email or password for that role.", null);
+        // Debug actual DB values
+        System.out.println("DB Email Match: TRUE");
+        System.out.println("DB Password: " + user.getPassword());
+        System.out.println("DB Role: " + user.getRole());
+
+        // Password mismatch
+        if (!user.getPassword().equals(req.password)) {
+            System.out.println("Login failed: Incorrect password.");
+            return new LoginResponse(false, "Incorrect password", null, -1);
+        }
+
+        // Login success
+        System.out.println("Login successful!");
+        System.out.println("User Role: " + user.getRole());
+        System.out.println("User ID: " + user.getId());
+
+        return new LoginResponse(
+                true,
+                "Login successful",
+                user.getRole(),
+                user.getId());
     }
 }
