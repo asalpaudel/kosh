@@ -376,7 +376,7 @@ export default function Signup() {
           </form>
 
           {/* Login Link */}
-          <p className="mt-6 text-center font-medium">
+          <p className="mt-6 text-center font-medium"> 
             Already have an account?{" "}
             <NavLink to="/login" className="text-[#00FFB2] hover:underline">
               Signin
