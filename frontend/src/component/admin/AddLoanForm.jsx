@@ -1,27 +1,49 @@
-import React, { useState } from 'react';
-import { BanknotesIcon } from '../icons'; 
+import React, { useState } from "react";
+import { BanknotesIcon } from "../icons";
 
-function AddLoanForm({ onClose }) {
+function AddLoanForm({ onAdded, onClose, networkId }) {
   const [formData, setFormData] = useState({
-    name: '',
-    interestRate: '',
-    maxAmount: '',
-    maxDuration: '',
+    name: "",
+    interestRate: "",
+    maxAmount: "",
+    maxDuration: "",
   });
 
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+
+  const apiBase = "http://localhost:8080/api";
+  // handle input change
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData((prev) => ({
-      ...prev,
-      [name]: value,
-    }));
+    setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
-  const handleSubmit = (e) => {
+  // submit to backend
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    console.log('New Loan Package:', formData);
-    alert(`Package "${formData.name}" created!`);
-    onClose(); 
+    setLoading(true);
+    setError("");
+
+    try {
+      const res = await fetch(`${apiBase}/finance/loan-packages/${networkId}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(formData),
+      });
+
+      if (!res.ok) {
+        throw new Error("Failed to add loan package");
+      }
+
+      // Success: call onAdded to refresh list
+      if (onAdded) onAdded();
+    } catch (err) {
+      console.error(err);
+      setError(err.message || "Something went wrong");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -29,6 +51,8 @@ function AddLoanForm({ onClose }) {
       <div className="flex justify-center">
         <BanknotesIcon className="w-16 h-16 text-teal-500" />
       </div>
+
+      {error && <p className="text-red-500 text-center">{error}</p>}
 
       <div>
         <label className="block font-semibold mb-2">Package Name</label>
@@ -58,7 +82,9 @@ function AddLoanForm({ onClose }) {
           />
         </div>
         <div>
-          <label className="block font-semibold mb-2">Max. Duration (Months)</label>
+          <label className="block font-semibold mb-2">
+            Max. Duration (Months)
+          </label>
           <input
             type="number"
             name="maxDuration"
@@ -69,7 +95,7 @@ function AddLoanForm({ onClose }) {
           />
         </div>
       </div>
-      
+
       <div>
         <label className="block font-semibold mb-2">Maximum Amount (Rs.)</label>
         <input
@@ -84,9 +110,12 @@ function AddLoanForm({ onClose }) {
 
       <button
         type="submit"
-        className="w-full bg-teal-500 text-white font-semibold py-3 rounded-full hover:bg-teal-600 transition-colors mt-4"
+        disabled={loading}
+        className={`w-full bg-teal-500 text-white font-semibold py-3 rounded-full hover:bg-teal-600 transition-colors mt-4 ${
+          loading ? "opacity-50 cursor-not-allowed" : ""
+        }`}
       >
-        Add Loan Package
+        {loading ? "Adding..." : "Add Loan Package"}
       </button>
     </form>
   );
