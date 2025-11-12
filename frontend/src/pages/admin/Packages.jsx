@@ -41,7 +41,7 @@ const PackageActions = ({ pkg, onView, onEdit, onDelete }) => (
   </div>
 );
 
-function AdminPackages({ selectedNetworkId = 1 }) {
+function AdminPackages({ selectedNetworkId = 6 }) {
   // default for testing
   const [fixedDeposits, setFixedDeposits] = useState([]);
   const [savingAccounts, setSavingAccounts] = useState([]);
