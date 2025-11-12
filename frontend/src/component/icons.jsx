@@ -1,219 +1,91 @@
 import React from 'react';
+import {
+  FiActivity,
+  FiBarChart2,
+  FiBell,
+  FiBriefcase,
+  FiCheck,
+  // FiCreditCard, --- No longer used
+  // FiDollarSign, --- No longer used
+  FiEdit2,
+  FiEye,
+  FiFile,
+  // FiFileText, --- No longer used
+  FiGrid,
+  FiLogOut,
+  FiMail,
+  FiPhone,
+  FiPlusCircle,
+  FiSearch,
+  FiSettings,
+  FiTrash2,
+  FiUser,
+  FiUserPlus,
+  FiUsers,
+  FiX,
+  FiFeather,
+} from 'react-icons/fi';
 
-export const LeafIcon = ({ className }) => (
-  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
-    <path d="M11 20A7 7 0 0 1 4 13H2a10 10 0 0 0 10 10z"></path>
-    <path d="M12 2a7 7 0 0 1 7 7h2a10 10 0 0 0-10-10z"></path>
-    <path d="M12 22a10 10 0 0 0 10-10h-2a7 7 0 0 1-7 7z"></path>
-    <path d="M2 12a10 10 0 0 0 10 10v-2a7 7 0 0 1-7-7z"></path>
-  </svg>
-);
+// --- NEW IMPORTS ---
+// We are adding icons from Font Awesome (fa) and Lucide (lu)
+import { FaPiggyBank, FaFileSignature } from 'react-icons/fa';
+import { LuFileClock } from 'react-icons/lu';
+import { FiDollarSign, FiCreditCard, FiFileText } from 'react-icons/fi'; // Keep old ones for other mappings if needed
+
+// --- CUSTOM BRAND LOGO (Keep as-is) ---
 export const Logo = ({ className }) => (
-  <svg width="30" height="30" viewBox="0 0 189 235" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <svg width="30" height="30" viewBox="0 0 189 235" fill="none" xmlns="http://www.w3.org/2000/svg" className={className}>
   <path d="M54.6339 159.688C54.6339 161.055 54.1681 162.387 53.3071 163.458L34.2955 187.171L10.7546 218.031L10.7559 218.032C7.2741 222.599 0 220.129 0 214.383V96.8369C0.000311621 72.7101 19.0853 52.9297 43.1379 52.1278L45.3102 52.0548V44.7339C45.3102 20.0281 65.2876 0 89.9309 0H147.257C151.983 0 154.788 5.18751 152.382 9.12569L152.134 9.50256L118.563 56.6098C117.547 58.0358 115.964 58.9419 114.233 59.1005L113.885 59.1227L54.6339 61.097V159.688ZM9.32374 204.521L26.9658 181.394L27.0009 181.349L45.3102 158.51V61.4074L43.4475 61.47C24.4209 62.1044 9.32405 77.7516 9.32374 96.8369V204.521ZM54.6339 51.7444L111.932 49.834L140.786 9.34738H89.9309C70.437 9.34738 54.6339 25.1905 54.6339 44.7339V51.7444Z" fill="#3EEFB1"/>
   <path d="M133.138 183.254L75.2937 185.163L46.1673 225.653H97.5052C117.185 225.653 133.138 209.81 133.138 190.266V183.254ZM178.879 30.478L161.104 53.5622L161.068 53.6078L161.033 53.6509L142.551 76.4872V173.591L144.43 173.53C163.638 172.895 178.879 157.249 178.879 138.163V30.478ZM188.292 138.163C188.292 162.291 169.026 182.07 144.743 182.872L142.551 182.944V190.266C142.551 214.973 122.383 235 97.5052 235H39.6332C34.7126 235 31.8479 229.477 34.709 225.499L68.5994 178.39L68.6007 178.389C69.6989 176.864 71.4439 175.944 73.3122 175.879L73.3214 175.877L133.138 173.902V75.3123C133.138 73.9417 133.61 72.6179 134.464 71.5566L134.472 71.5475L153.669 47.8283L177.435 16.9669L177.603 16.7569C181.179 12.4802 188.292 14.9612 188.292 20.6169V138.163Z" fill="#3EEFB1"/>
   </svg>
-
 );
 
-export const SearchIcon = ({ className }) => (
-  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
-    <circle cx="11" cy="11" r="8"></circle>
-    <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-  </svg>
-);
+// --- MAPPED ICONS ---
 
-export const BellIcon = ({ className }) => (
-  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
-    <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
-    <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
-  </svg>
-);
-
-export const SettingsIcon = ({ className }) => (
-  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
-    <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 0 2l-.15.08a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.38a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1 0-2l.15-.08a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"></path>
-    <circle cx="12" cy="12" r="3"></circle>
-  </svg>
-);
-
-export const LayoutDashboardIcon = ({ className }) => (
-  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
-    <rect x="3" y="3" width="7" height="7"></rect>
-    <rect x="14" y="3" width="7" height="7"></rect>
-    <rect x="14" y="14" width="7" height="7"></rect>
-    <rect x="3" y="14" width="7" height="7"></rect>
-  </svg>
-);
-
-export const UsersIcon = ({ className }) => (
-  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
-    <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
-    <circle cx="8.5" cy="7" r="4"></circle>
-    <polyline points="17 11 19 13 23 9"></polyline>
-  </svg>
-);
-
-export const MailIcon = ({ className }) => (
-  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
-    <rect x="2" y="4" width="20" height="16" rx="2"></rect>
-    <path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"></path>
-  </svg>
-);
-
-export const BarChartIcon = ({ className }) => (
-  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
-    <line x1="12" y1="20" x2="12" y2="10"></line>
-    <line x1="18" y1="20" x2="18" y2="4"></line>
-    <line x1="6" y1="20" x2="6" y2="16"></line>
-  </svg>
-);
-
-export const FileTextIcon = ({ className }) => (
-  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
-    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-    <polyline points="14 2 14 8 20 8"></polyline>
-    <line x1="16" y1="13" x2="8" y2="13"></line>
-    <line x1="16" y1="17" x2="8" y2="17"></line>
-    <polyline points="10 9 9 9 8 9"></polyline>
-  </svg>
-);
-
-export const PlusCircleIcon = ({ className }) => (
-  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
-    <circle cx="12" cy="12" r="10"></circle>
-    <line x1="12" y1="8" x2="12" y2="16"></line>
-    <line x1="8" y1="12" x2="16" y2="12"></line>
-  </svg>
-);
-
-export const LogOutIcon = ({ className }) => (
-    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
-        <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
-        <polyline points="16 17 21 12 16 7"></polyline>
-        <line x1="21" y1="12" x2="9" y2="12"></line>
-    </svg>
-);
-
-export const PiggyBankIcon = ({ className }) => (
-  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
-    <path d="M16 8.5a4 4 0 0 1-8 0"/>
-    <path d="M21 10h-2a2 2 0 0 0-2 2v2a2 2 0 0 0 2 2h2"/>
-    <path d="M21.5 10a8.5 8.5 0 0 0-18.01 1.43c0 3.24 2.14 5.92 5.01 6.57"/>
-    <path d="M4.5 12H10"/>
-    <path d="M2 14h6"/>
-    <path d="M12 21.5V16"/>
-  </svg>
-);
-export const EyeIcon = ({ className }) => (
-  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
-    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
-    <circle cx="12" cy="12" r="3"></circle>
-  </svg>
-);
-
-export const PencilIcon = ({ className }) => (
-  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
-    <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path>
-    <path d="m15 5 4 4"></path>
-  </svg>
-);
-
-export const TrashIcon = ({ className }) => (
-  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
-    <polyline points="3 6 5 6 21 6"></polyline>
-    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-  </svg>
-);
-export const CloseIcon = ({ className }) => (
-  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
-    <line x1="18" y1="6" x2="6" y2="18"></line>
-    <line x1="6" y1="6" x2="18" y2="18"></line>
-  </svg>
-);
-
-// --- ADDED ICONS ---
-export const BuildingIcon = ({ className }) => (
-  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
-    <rect x="4" y="4" width="16" height="16" rx="2" ry="2"></rect>
-    <path d="M9 22v-4h6v4"></path>
-    <path d="M8 6h.01"></path>
-    <path d="M16 6h.01"></path>
-    <path d="M12 6h.01"></path>
-    <path d="M12 10h.01"></path>
-    <path d="M12 14h.01"></path>
-    <path d="M16 10h.01"></path>
-    <path d="M16 14h.01"></path>
-    <path d="M8 10h.01"></path>
-    <path d="M8 14h.01"></path>
-  </svg>
-);
-
-export const UserCircleIcon = ({ className }) => (
-  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
-    <circle cx="12" cy="12" r="10"></circle>
-    <circle cx="12" cy="10" r="3"></circle>
-    <path d="M7 20.662V19a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v1.662"></path>
-  </svg>
-);
-
-// --- NEW ICONS FOR MODAL ---
-export const PhoneIcon = ({ className }) => (
-  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
-    <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path>
-  </svg>
-);
-
-export const DocumentIcon = ({ className }) => (
-  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
-    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-    <polyline points="14 2 14 8 20 8"></polyline>
-    <line x1="16" y1="13" x2="8" y2="13"></line>
-    <line x1="16" y1="17" x2="8" y2="17"></line>
-  </svg>
-);
-// ... (all your existing icons like LeafIcon, Logo, SearchIcon, etc.)
-
-export const CheckIcon = ({ className }) => (
-  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
-    <polyline points="20 6 9 17 4 12"></polyline>
-  </svg>
-);
-
-export const XIcon = ({ className }) => (
-  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
-    <line x1="18" y1="6" x2="6" y2="18"></line>
-    <line x1="6" y1="6" x2="18" y2="18"></line>
-  </svg>
-);
+// Standard Icons (unchanged)
+export { FiSearch as SearchIcon } from 'react-icons/fi';
+export { FiBell as BellIcon } from 'react-icons/fi';
+export { FiSettings as SettingsIcon } from 'react-icons/fi';
+export { FiGrid as LayoutDashboardIcon } from 'react-icons/fi';
+export { FiUsers as UsersIcon } from 'react-icons/fi';
+export { FiMail as MailIcon } from 'react-icons/fi';
+export { FiBarChart2 as BarChartIcon } from 'react-icons/fi';
+export { FiFileText as FileTextIcon } from 'react-icons/fi'; // Note: FiFileText is still used in sidebars
+export { FiPlusCircle as PlusCircleIcon } from 'react-icons/fi';
+export { FiLogOut as LogOutIcon } from 'react-icons/fi';
+export { FiEye as EyeIcon } from 'react-icons/fi';
+export { FiEdit2 as PencilIcon } from 'react-icons/fi';
+export { FiTrash2 as TrashIcon } from 'react-icons/fi';
+export { FiX as CloseIcon } from 'react-icons/fi';
+export { FiBriefcase as BuildingIcon } from 'react-icons/fi';
+export { FiUser as UserCircleIcon } from 'react-icons/fi';
+export { FiPhone as PhoneIcon } from 'react-icons/fi';
+export { FiFile as DocumentIcon } from 'react-icons/fi';
+export { FiCheck as CheckIcon } from 'react-icons/fi';
+export { FiX as XIcon } from 'react-icons/fi';
+export { FiUserPlus as UserPlusIcon } from 'react-icons/fi';
+export { FiActivity as ActivityIcon } from 'react-icons/fi';
+export { FiFeather as LeafIcon } from 'react-icons/fi';
 
 
-export const UserPlusIcon = ({ className }) => (
-  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
-    <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
-    <circle cx="8.5" cy="7" r="4"></circle>
-    <line x1="20" y1="8" x2="20" y2="14"></line>
-    <line x1="17" y1="11" x2="23" y2="11"></line>
-  </svg>
-);
+// --- UPDATED ICONS FOR 'PACKAGES' PAGE ---
 
-// --- NEW ICONS FOR PACKAGES PAGE ---
-// (Using 24x24 outline style from Heroicons)
+/** * For: Admin Sidebar "Packages" link
+ * For: Admin Packages "Saving Account" card
+ * Was: FiDollarSign
+ * Now: FaPiggyBank
+ */
+export { FaPiggyBank as PiggyBankIcon } from 'react-icons/fa';
+export { FaPiggyBank as CurrencyDollarIcon } from 'react-icons/fa';
 
-export const DocumentTextIcon = ({ className }) => (
-  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
-    <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-  </svg>
-);
+/** * For: Admin Packages "Loan" card
+ * Was: FiCreditCard
+ * Now: FaFileSignature (matches your loan image)
+ */
+export { FaFileSignature as BanknotesIcon } from 'react-icons/fa';
 
-export const CurrencyDollarIcon = ({ className }) => (
-  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
-    <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v12m-3-2.818l.879.659c1.171.879 3.07.879 4.242 0l.879-.659M12 6a2.25 2.25 0 00-2.25 2.25v1.318c0 .597.237 1.17.659 1.591l.879.879c1.171 1.171 3.07 1.171 4.242 0l.879-.879a2.25 2.25 0 00.659-1.591V8.25A2.25 2.25 0 0012 6z" />
-  </svg>
-);
-
-export const BanknotesIcon = ({ className }) => (
-  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
-    <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 18.75a60.07 60.07 0 0115.797 2.101c.727.198 1.453-.342 1.453-1.096V18.75M3.75 4.5v.75A.75.75 0 013 6h-.75m0 0v-.75A.75.75 0 013 4.5h.75m0 0H21m-12 6.75A.75.75 0 0010.5 12h.75m.75 0A.75.75 0 0113.5 12h.75m0 0v.75c0 .414.336.75.75.75H15v-.75A.75.75 0 0014.25 12h-.75m0 0h-.75A.75.75 0 0012 11.25v.75m0 0H9m1.5-1.5A.75.75 0 0012 9h.75m0 0v-.75a.75.75 0 01.75-.75h.75v.75A.75.75 0 0113.5 9h-.75m0 0H9m7.5 6v.75c0 .414.336.75.75.75h.75v-.75A.75.75 0 0016.5 15h-.75m0 0h.75A.75.75 0 0118 15v.75c0 .414.336.75.75.75h.75v-.75A.75.75 0 0019.5 15h-.75m0 0h-.75a.75.75 0 00-.75.75v.75c0 .414.336.75.75.75h.75v-.75A.75.75 0 0016.5 15z" />
-  </svg>
-);
+/** * For: Admin Packages "Fixed Deposit" card
+ * Was: FiFileText
+ * Now: LuFileClock (a file with a clock, for time-deposits)
+ */
+export { LuFileClock as DocumentTextIcon } from 'react-icons/lu';
