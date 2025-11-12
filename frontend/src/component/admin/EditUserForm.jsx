@@ -1,39 +1,36 @@
-import React, { useState, useEffect } from 'react';
-
-// Mock list of sahakaris, this would likely come from an API
-const sahakariList = [
-  "Sahakari 1",
-  "Sahakari 2",
-  "Geda Sahakari",
-  "Janata Sahakari",
-];
+import React, { useState, useEffect } from "react";
 
 /**
  * A form to edit an existing user's details.
  * @param {object} props
  * @param {object} props.user - The user object to edit.
  * @param {function} props.onClose - Function to close the modal.
+ * @param {function} props.onUserUpdated - Callback when user is successfully updated.
+ * @param {string} props.apiBase - Base URL for API calls.
  */
-function EditUserForm({ user, onClose }) {
+function EditUserForm({ user, onClose, onUserUpdated, apiBase }) {
   const [formData, setFormData] = useState({
-    name: '',
-    email: '',
-    phone: '',
-    role: 'member',
-    sahakari: '',
-    status: 'Pending',
+    name: "",
+    email: "",
+    phone: "",
+    role: "member",
+    sahakari: "",
+    status: "Pending",
   });
+
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
 
   // Pre-fill the form when the 'user' prop changes
   useEffect(() => {
     if (user) {
       setFormData({
-        name: user.name || '',
-        email: user.email || '',
-        phone: user.phone || '',
-        role: user.role || 'member',
-        sahakari: user.sahakari || '',
-        status: user.status || 'Pending',
+        name: user.name || "",
+        email: user.email || "",
+        phone: user.phone || "",
+        role: user.role || "member",
+        sahakari: user.sahakari || "",
+        status: user.status || "Pending",
       });
     }
   }, [user]);
@@ -44,20 +41,65 @@ function EditUserForm({ user, onClose }) {
       ...prev,
       [name]: value,
     }));
+    // Clear error when user starts typing
+    if (error) setError(null);
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    // Handle form submission logic (e.g., API call)
-    console.log(`Updating user ${user.id}:`, formData);
-    alert(`User "${formData.name}" updated! (Mock)`);
-    onClose(); // Close the modal on submit
+    setLoading(true);
+    setError(null);
+
+    try {
+      const response = await fetch(`${apiBase}/users/${user.id}`, {
+        method: "PUT", // or "PATCH" depending on your API
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(formData),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => null);
+        throw new Error(
+          errorData?.message || `Failed to update user: ${response.statusText}`
+        );
+      }
+
+      const updatedUser = await response.json();
+      
+      console.log(`Successfully updated user ${user.id}:`, updatedUser);
+      
+      // Call the callback to update the parent component's state
+      if (onUserUpdated) {
+        onUserUpdated(updatedUser);
+      }
+      
+      // Show success message
+      alert(`User "${formData.name}" updated successfully!`);
+      
+      // Close the modal
+      onClose();
+    } catch (err) {
+      console.error("Error updating user:", err);
+      setError(err.message || "Failed to update user. Please try again.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   if (!user) return null; // Don't render if no user is provided
 
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-5">
+      {/* Error Message */}
+      {error && (
+        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
+          <p className="font-semibold">Error:</p>
+          <p className="text-sm">{error}</p>
+        </div>
+      )}
+
       {/* Full Name */}
       <div>
         <label className="block font-semibold mb-2">Full Name</label>
@@ -69,6 +111,7 @@ function EditUserForm({ user, onClose }) {
           placeholder="Enter user's full name"
           className="w-full px-4 py-3 border border-gray-300 rounded-full focus:outline-none focus:border-black"
           required
+          disabled={loading}
         />
       </div>
 
@@ -83,9 +126,10 @@ function EditUserForm({ user, onClose }) {
           placeholder="Enter user's email"
           className="w-full px-4 py-3 border border-gray-300 rounded-full focus:outline-none focus:border-black"
           required
+          disabled={loading}
         />
       </div>
-      
+
       {/* Phone Number */}
       <div>
         <label className="block font-semibold mb-2">Phone Number</label>
@@ -96,68 +140,74 @@ function EditUserForm({ user, onClose }) {
           onChange={handleChange}
           placeholder="98XXXXXXXX"
           className="w-full px-4 py-3 border border-gray-300 rounded-full focus:outline-none focus:border-black"
+          disabled={loading}
         />
       </div>
 
-      {/* Role, Sahakari, and Status (in one row) */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        {/* Role Dropdown */}
-        <div>
-          <label className="block font-semibold mb-2">Role</label>
-          <select
-            name="role"
-            value={formData.role}
-            onChange={handleChange}
-            className="w-full px-4 py-3 border border-gray-300 rounded-full focus:outline-none focus:border-black"
-          >
-            <option value="member">Member</option>
-            <option value="staff">Staff</option>
-            <option value="admin">Admin</option>
-          </select>
-        </div>
-
-        {/* Sahakari Dropdown */}
-        <div>
-          <label className="block font-semibold mb-2">Sahakari</label>
-          <select
-            name="sahakari"
-            value={formData.sahakari}
-            onChange={handleChange}
-            className="w-full px-4 py-3 border border-gray-300 rounded-full focus:outline-none focus:border-black"
-            required
-          >
-            <option value="">Choose Sahakari</option>
-            {sahakariList.map((item, index) => (
-              <option key={index} value={item}>
-                {item}
-              </option>
-            ))}
-          </select>
-        </div>
-        
-        {/* Status Dropdown */}
-        <div>
-          <label className="block font-semibold mb-2">Status</label>
-          <select
-            name="status"
-            value={formData.status}
-            onChange={handleChange}
-            className="w-full px-4 py-3 border border-gray-300 rounded-full focus:outline-none focus:border-black"
-          >
-            <option value="Pending">Pending</option>
-            <option value="Active">Active</option>
-            <option value="Suspended">Suspended</option>
-          </select>
-        </div>
+      {/* Role */}
+      <div>
+        <label className="block font-semibold mb-2">Role</label>
+        <select
+          name="role"
+          value={formData.role}
+          onChange={handleChange}
+          className="w-full px-4 py-3 border border-gray-300 rounded-full focus:outline-none focus:border-black"
+          disabled={loading}
+        >
+          <option value="member">Member</option>
+          <option value="staff">Staff</option>
+          <option value="admin">Admin</option>
+        </select>
       </div>
 
-      {/* Submit Button */}
-      <button
-        type="submit"
-        className="w-full bg-teal-500 text-white font-semibold py-3 rounded-full hover:bg-teal-600 transition-colors mt-4"
-      >
-        Save Changes
-      </button>
+      {/* Sahakari */}
+      <div>
+        <label className="block font-semibold mb-2">Associated Sahakari</label>
+        <input
+          type="text"
+          name="sahakari"
+          value={formData.sahakari}
+          onChange={handleChange}
+          placeholder="Enter associated sahakari"
+          className="w-full px-4 py-3 border border-gray-300 rounded-full focus:outline-none focus:border-black"
+          disabled={loading}
+        />
+      </div>
+
+      {/* Status */}
+      <div>
+        <label className="block font-semibold mb-2">Status</label>
+        <select
+          name="status"
+          value={formData.status}
+          onChange={handleChange}
+          className="w-full px-4 py-3 border border-gray-300 rounded-full focus:outline-none focus:border-black"
+          disabled={loading}
+        >
+          <option value="Pending">Pending</option>
+          <option value="Active">Active</option>
+          <option value="Suspended">Suspended</option>
+        </select>
+      </div>
+
+      {/* Action Buttons */}
+      <div className="flex gap-3 mt-4">
+        <button
+          type="button"
+          onClick={onClose}
+          className="flex-1 bg-gray-200 text-gray-700 font-semibold py-3 rounded-full hover:bg-gray-300 transition-colors"
+          disabled={loading}
+        >
+          Cancel
+        </button>
+        <button
+          type="submit"
+          className="flex-1 bg-teal-500 text-white font-semibold py-3 rounded-full hover:bg-teal-600 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed"
+          disabled={loading}
+        >
+          {loading ? "Saving..." : "Save Changes"}
+        </button>
+      </div>
     </form>
   );
 }
