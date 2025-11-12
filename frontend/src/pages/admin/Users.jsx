@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { 
   SearchIcon, 
   EyeIcon, 
@@ -9,104 +9,24 @@ import {
   DocumentIcon,
   CheckIcon,  
   XIcon,
-  UserPlusIcon // Ensure this is imported
+  UserPlusIcon
 } from '../../component/icons.jsx';
 
-// Re-using the Superadmin's Modal component
 import Modal from '../../component/superadmin/Modal.jsx'; 
-
-// --- UPDATED IMPORTS ---
-// Importing the new admin-specific forms
 import AddUserForm from '../../component/admin/AddUserForm.jsx';
 import AddStaffForm from '../../component/admin/AddStaffForm.jsx';
-// This form is still needed for editing
 import EditUserForm from '../../component/admin/EditUserForm.jsx';
 
-// (Mock data remains the same)
-const allUsers = [
-  { 
-    id: 1, 
-    name: 'Asal Admin', 
-    email: 'asal@example.com', 
-    phone: '9800000001', 
-    sahakari: 'Sahakari 1', 
-    role: 'admin',
-    status: 'Active',
-    documents: [
-      { name: 'citizenship.pdf', url: '#' },
-      { name: 'photo.jpg', url: '#' },
-    ]
-  },
-  { 
-    id: 3, 
-    name: 'Ram Member', 
-    email: 'ram@example.com', 
-    phone: '9800000003', 
-    sahakari: 'Sahakari 1', 
-    role: 'member',
-    status: 'Active',
-    documents: [
-      { name: 'citizenship.pdf', url: '#' },
-      { name: 'photo.jpg', url: '#' },
-    ]
-  },
-  { 
-    id: 6, 
-    name: 'Shyam Staff', 
-    email: 'shyam@example.com', 
-    phone: '9800000006', 
-    sahakari: 'Sahakari 1', 
-    role: 'staff',
-    status: 'Active',
-    documents: [
-      { name: 'citizenship.pdf', url: '#' },
-    ]
-  },
-  { 
-    id: 7, 
-    name: 'Gita Thapa', 
-    email: 'gita@example.com', 
-    phone: '9800000007', 
-    sahakari: 'Sahakari 1', 
-    role: 'member',
-    status: 'Pending',
-    documents: [
-      { name: 'citizenship.pdf', url: '#' },
-    ]
-  },
-  { 
-    id: 8, 
-    name: 'Hari Bahadur', 
-    email: 'hari@example.com', 
-    phone: '9800000008', 
-    sahakari: 'Sahakari 1', 
-    role: 'staff',
-    status: 'Pending',
-    documents: [
-      { name: 'citizenship.pdf', url: '#' },
-      { name: 'photo.jpg', url: '#' },
-    ]
-  },
-  { 
-    id: 9, 
-    name: 'Sita Sharma', 
-    email: 'sita@example.com', 
-    phone: '9800000009', 
-    sahakari: 'Sahakari 1', 
-    role: 'member',
-    status: 'Active',
-    documents: [
-      { name: 'citizenship.pdf', url: '#' },
-    ]
-  },
-];
+const API_BASE = "http://localhost:8080/api";
 
+// Assume the admin is logged in and we know their sahakari
+// In a real app, this would come from auth context/session
+const ADMIN_SAHAKARI = "Mahalaxmi Sahakari"; // Replace with actual logged-in admin's sahakari
 
-// (DetailItem, DocumentLink, and UserDetails components remain the same)
 const DetailItem = ({ label, value }) => (
   <div>
     <span className="text-sm font-semibold text-gray-500 block">{label}</span>
-    <span className="text-lg text-gray-800">{value}</span>
+    <span className="text-lg text-gray-800">{value ?? "-"}</span>
   </div>
 );
 
@@ -140,7 +60,7 @@ const UserDetails = ({ item, onCloseViewModal, handleApprove, handleDeny, handle
             <span className={`text-lg font-bold
               ${item.status === 'Active' ? 'text-green-600' : ''}
               ${item.status === 'Pending' ? 'text-yellow-600' : ''}
-              ${item.status === 'Suspended' ? 'text-red-600' : ''}
+              ${item.status === 'Rejected' ? 'text-red-600' : ''}
             `}>
               {item.status}
             </span>
@@ -151,14 +71,16 @@ const UserDetails = ({ item, onCloseViewModal, handleApprove, handleDeny, handle
             <DetailItem label="Associated Sahakari" value={item.sahakari} />
           </div>
         </div>
-        <div>
-          <span className="text-sm font-semibold text-gray-500 block mb-2">Uploaded Documents</span>
-          <div className="flex flex-col gap-1.5">
-            {item.documents.map((doc, index) => (
-              <DocumentLink key={index} doc={doc} />
-            ))}
+        {item.documents && item.documents.length > 0 && (
+          <div>
+            <span className="text-sm font-semibold text-gray-500 block mb-2">Uploaded Documents</span>
+            <div className="flex flex-col gap-1.5">
+              {item.documents.map((doc, index) => (
+                <DocumentLink key={index} doc={doc} />
+              ))}
+            </div>
           </div>
-        </div>
+        )}
       </div>
     </div>
 
@@ -167,7 +89,7 @@ const UserDetails = ({ item, onCloseViewModal, handleApprove, handleDeny, handle
         <>
           <button 
             onClick={() => {
-              handleDeny(item.id);
+              handleDeny(item.id, item.name);
               onCloseViewModal();
             }}
             className="bg-red-500 text-white font-semibold py-2 px-5 rounded-full hover:bg-red-600 transition-colors"
@@ -185,7 +107,7 @@ const UserDetails = ({ item, onCloseViewModal, handleApprove, handleDeny, handle
           </button>
           <button 
             onClick={() => {
-              handleApprove(item.id);
+              handleApprove(item.id, item.name);
               onCloseViewModal();
             }}
             className="bg-green-500 text-white font-semibold py-2 px-5 rounded-full hover:bg-green-600 transition-colors"
@@ -208,40 +130,136 @@ const UserDetails = ({ item, onCloseViewModal, handleApprove, handleDeny, handle
   </div>
 );
 
-
 function AdminUsers() {
+  const [allUsers, setAllUsers] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [actionLoading, setActionLoading] = useState(null);
+  
   const [viewModalItem, setViewModalItem] = useState(null); 
-  
-  // --- UPDATED MODAL STATES ---
-  const [isAddUserModalOpen, setIsAddUserModalOpen] = useState(false); // For Members
-  const [isAddStaffModalOpen, setIsAddStaffModalOpen] = useState(false); // For Staff
-  
+  const [isAddUserModalOpen, setIsAddUserModalOpen] = useState(false);
+  const [isAddStaffModalOpen, setIsAddStaffModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [currentUserToEdit, setCurrentUserToEdit] = useState(null);
 
   const [activeFilter, setActiveFilter] = useState('All'); 
   const [searchQuery, setSearchQuery] = useState('');
 
+  // Load users from backend
+  const loadUsers = async () => {
+    try {
+      setLoading(true);
+      const res = await fetch(`${API_BASE}/users`);
+
+      if (!res.ok) {
+        throw new Error(`Failed to fetch: ${res.status} ${res.statusText}`);
+      }
+
+      const data = await res.json();
+      
+      // Filter to only show users from admin's sahakari
+      const filteredData = Array.isArray(data) 
+        ? data.filter(user => user.sahakari === ADMIN_SAHAKARI)
+        : [];
+      
+      setAllUsers(filteredData);
+    } catch (e) {
+      console.error("Error fetching users:", e);
+      setAllUsers([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadUsers();
+  }, []);
+
   const handleViewClick = (item) => setViewModalItem(item);
   const handleCloseViewModal = () => setViewModalItem(null);
 
-  const handleApprove = (userId) => {
-    console.log(`Approving user ${userId}`);
-    alert(`User ${userId} approved! (Mock)`);
+  // Approve user
+  const handleApprove = async (userId, userName) => {
+    if (!window.confirm(`Approve user: ${userName}?`)) return;
+    
+    try {
+      setActionLoading(userId);
+      const res = await fetch(`${API_BASE}/users/${userId}/approve`, {
+        method: "PATCH",
+      });
+
+      if (!res.ok) {
+        throw new Error("Failed to approve user");
+      }
+
+      const updatedUser = await res.json();
+      
+      // Update local state
+      setAllUsers(prev => prev.map(u => u.id === userId ? updatedUser : u));
+      
+      alert(`User ${userName} has been approved!`);
+    } catch (e) {
+      console.error("Approve failed:", e);
+      alert("Failed to approve user. Please try again.");
+    } finally {
+      setActionLoading(null);
+    }
   };
 
-  const handleDeny = (userId) => {
-    console.log(`Denying user ${userId}`);
-    alert(`User ${userId} denied! (Mock)`);
+  // Deny/Reject user
+  const handleDeny = async (userId, userName) => {
+    if (!window.confirm(`Reject user: ${userName}? This will deny their registration.`)) return;
+    
+    try {
+      setActionLoading(userId);
+      const res = await fetch(`${API_BASE}/users/${userId}/reject`, {
+        method: "PATCH",
+      });
+
+      if (!res.ok) {
+        throw new Error("Failed to reject user");
+      }
+
+      const updatedUser = await res.json();
+      
+      // Update local state
+      setAllUsers(prev => prev.map(u => u.id === userId ? updatedUser : u));
+      
+      alert(`User ${userName} has been rejected.`);
+    } catch (e) {
+      console.error("Reject failed:", e);
+      alert("Failed to reject user. Please try again.");
+    } finally {
+      setActionLoading(null);
+    }
   };
 
   const handleEdit = (user) => {
-    console.log(`Editing user ${user.id}`);
     setCurrentUserToEdit(user);
     setIsEditModalOpen(true);
   };
 
-  // (filteredUsers and getButtonClass functions remain the same)
+  const handleDelete = async (userId, userName) => {
+    if (!window.confirm(`Delete user: ${userName}? This action cannot be undone.`)) return;
+    
+    try {
+      await fetch(`${API_BASE}/users/${userId}`, { method: "DELETE" });
+      setAllUsers(prev => prev.filter(u => u.id !== userId));
+      alert(`User ${userName} has been deleted.`);
+    } catch (e) {
+      console.error("Delete failed:", e);
+      alert("Failed to delete user. Please try again.");
+    }
+  };
+
+  const handleUserAdded = (newUser) => {
+    setAllUsers(prev => [...prev, newUser]);
+  };
+
+  const handleUserUpdated = (updatedUser) => {
+    setAllUsers(prev => prev.map(u => u.id === updatedUser.id ? updatedUser : u));
+  };
+
+  // Filter users based on active filter and search query
   const filteredUsers = useMemo(() => {
     return allUsers
       .filter(user => {
@@ -260,7 +278,7 @@ function AdminUsers() {
           String(user.id).includes(query)
         );
       });
-  }, [activeFilter, searchQuery]);
+  }, [allUsers, activeFilter, searchQuery]);
 
   const getButtonClass = (filterName) => {
     return activeFilter === filterName
@@ -268,11 +286,14 @@ function AdminUsers() {
       : 'bg-gray-200 text-gray-700 hover:bg-gray-300';
   };
 
+  // Count pending users for badge
+  const pendingCount = allUsers.filter(u => u.status === 'Pending').length;
+
   return (
     <>
       <div className="bg-white p-6 min-h-[calc(100vh-8.5rem)]"> 
         
-        {/* (Search and Filter Bar remains the same) */}
+        {/* Search and Filter Bar */}
         <div className="flex flex-wrap items-center justify-between mb-8 gap-4">
           <div className="relative flex-grow sm:flex-grow-0">
             <span className="absolute inset-y-0 left-0 flex items-center pl-4">
@@ -296,9 +317,14 @@ function AdminUsers() {
             </button>
             <button 
               onClick={() => setActiveFilter('Pending')}
-              className={`font-medium py-3 px-6 rounded-full transition-colors text-base ${getButtonClass('Pending')}`}
+              className={`font-medium py-3 px-6 rounded-full transition-colors text-base relative ${getButtonClass('Pending')}`}
             >
               Pending
+              {pendingCount > 0 && (
+                <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">
+                  {pendingCount}
+                </span>
+              )}
             </button>
             <button 
               onClick={() => setActiveFilter('Staff')}
@@ -315,97 +341,119 @@ function AdminUsers() {
           </div>
         </div>
 
-        {/* (Table markup remains the same) */}
-        <div className="w-full overflow-x-auto">
-          <table className="min-w-full text-left">
-            <thead>
-              <tr className="bg-gray-50 border-b border-gray-200">
-                <th className="py-4 px-3 text-sm font-semibold text-gray-600">ID</th>
-                <th className="py-4 px-3 text-sm font-semibold text-gray-600">Name</th>
-                <th className="py-4 px-3 text-sm font-semibold text-gray-600">Email</th>
-                <th className="py-4 px-3 text-sm font-semibold text-gray-600">Phone</th>
-                <th className="py-4 px-3 text-sm font-semibold text-gray-600">Role</th>
-                <th className="py-4 px-3 text-sm font-semibold text-gray-600">Status</th>
-                <th className="py-4 px-3 text-sm font-semibold text-gray-600 text-right">Action</th>
-              </tr>
-            </thead>
+        {/* Loading State */}
+        {loading && (
+          <div className="flex items-center justify-center py-12">
+            <div className="text-gray-500">Loading users...</div>
+          </div>
+        )}
 
-            <tbody>
-              {filteredUsers.map((user) => (
-                <tr 
-                  key={user.id} 
-                  className="bg-white border-b border-gray-200 hover:bg-gray-50 transition-colors"
-                >
-                  <td className="py-4 px-3 text-gray-600 font-medium">{user.id}</td>
-                  <td className="py-4 px-3 text-gray-800 font-bold">{user.name}</td>
-                  <td className="py-4 px-3 text-gray-700 truncate">{user.email}</td>
-                  <td className="py-4 px-3 text-gray-700">{user.phone}</td>
-                  <td className="py-4 px-3 text-gray-700 capitalize">{user.role}</td>
-                  <td className="py-4 px-3">
-                    <span className={`font-bold
-                      ${user.status === 'Active' ? 'text-green-600' : ''}
-                      ${user.status === 'Pending' ? 'text-yellow-600' : ''}
-                      ${user.status === 'Suspended' ? 'text-red-600' : ''}
-                    `}>
-                      {user.status}
-                    </span>
-                  </td>
-                  
-                  <td className="py-4 px-3">
-                    {user.status === 'Pending' ? (
-                      <div className="flex items-center justify-end space-x-3">
-                        <button 
-                          onClick={() => handleViewClick(user)}
-                          className="text-blue-500 hover:text-blue-700" 
-                          title="View"
-                        >
-                          <EyeIcon className="w-5 h-5" />
-                        </button>
-                        <button 
-                          onClick={() => handleDeny(user.id)}
-                          className="text-red-500 hover:text-red-700" 
-                          title="Deny"
-                        >
-                          <XIcon className="w-5 h-5" />
-                        </button>
-                        <button 
-                          onClick={() => handleEdit(user)}
-                          className="text-yellow-500 hover:text-yellow-700" 
-                          title="Edit"
-                        >
-                          <PencilIcon className="w-5 h-5" />
-                        </button>
-                      </div>
-                    ) : (
-                      // STANDARD ACTIONS
-                      <div className="flex items-center justify-end space-x-3">
-                        <button 
-                          onClick={() => handleViewClick(user)}
-                          className="text-blue-500 hover:text-blue-700" 
-                          title="View"
-                        >
-                          <EyeIcon className="w-5 h-5" />
-                        </button>
-                        <button 
-                          onClick={() => handleEdit(user)}
-                          className="text-yellow-500 hover:text-yellow-700" 
-                          title="Edit"
-                        >
-                          <PencilIcon className="w-5 h-5" />
-                        </button>
-                        <button className="text-red-500 hover:text-red-700" title="Delete">
-                          <TrashIcon className="w-5 h-5" />
-                        </button>
-                      </div>
-                    )}
-                  </td>
+        {/* Users Table */}
+        {!loading && (
+          <div className="w-full overflow-x-auto">
+            <table className="min-w-full text-left">
+              <thead>
+                <tr className="bg-gray-50 border-b border-gray-200">
+                  <th className="py-4 px-3 text-sm font-semibold text-gray-600">ID</th>
+                  <th className="py-4 px-3 text-sm font-semibold text-gray-600">Name</th>
+                  <th className="py-4 px-3 text-sm font-semibold text-gray-600">Email</th>
+                  <th className="py-4 px-3 text-sm font-semibold text-gray-600">Phone</th>
+                  <th className="py-4 px-3 text-sm font-semibold text-gray-600">Role</th>
+                  <th className="py-4 px-3 text-sm font-semibold text-gray-600">Status</th>
+                  <th className="py-4 px-3 text-sm font-semibold text-gray-600 text-right">Action</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
 
-        {filteredUsers.length === 0 && (
+              <tbody>
+                {filteredUsers.map((user) => (
+                  <tr 
+                    key={user.id} 
+                    className="bg-white border-b border-gray-200 hover:bg-gray-50 transition-colors"
+                  >
+                    <td className="py-4 px-3 text-gray-600 font-medium">{user.id}</td>
+                    <td className="py-4 px-3 text-gray-800 font-bold">{user.name}</td>
+                    <td className="py-4 px-3 text-gray-700 truncate">{user.email}</td>
+                    <td className="py-4 px-3 text-gray-700">{user.phone || "-"}</td>
+                    <td className="py-4 px-3 text-gray-700 capitalize">{user.role}</td>
+                    <td className="py-4 px-3">
+                      <span className={`font-bold
+                        ${user.status === 'Active' ? 'text-green-600' : ''}
+                        ${user.status === 'Pending' ? 'text-yellow-600' : ''}
+                        ${user.status === 'Rejected' ? 'text-red-600' : ''}
+                      `}>
+                        {user.status}
+                      </span>
+                    </td>
+                    
+                    <td className="py-4 px-3">
+                      {user.status === 'Pending' ? (
+                        <div className="flex items-center justify-end space-x-3">
+                          <button 
+                            onClick={() => handleViewClick(user)}
+                            className="text-blue-500 hover:text-blue-700" 
+                            title="View"
+                          >
+                            <EyeIcon className="w-5 h-5" />
+                          </button>
+                          <button 
+                            onClick={() => handleDeny(user.id, user.name)}
+                            disabled={actionLoading === user.id}
+                            className="text-red-500 hover:text-red-700 disabled:opacity-50" 
+                            title="Deny"
+                          >
+                            <XIcon className="w-5 h-5" />
+                          </button>
+                          <button 
+                            onClick={() => handleEdit(user)}
+                            disabled={actionLoading === user.id}
+                            className="text-yellow-500 hover:text-yellow-700 disabled:opacity-50" 
+                            title="Edit"
+                          >
+                            <PencilIcon className="w-5 h-5" />
+                          </button>
+                          <button 
+                            onClick={() => handleApprove(user.id, user.name)}
+                            disabled={actionLoading === user.id}
+                            className="text-green-500 hover:text-green-700 disabled:opacity-50" 
+                            title="Approve"
+                          >
+                            <CheckIcon className="w-5 h-5" />
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="flex items-center justify-end space-x-3">
+                          <button 
+                            onClick={() => handleViewClick(user)}
+                            className="text-blue-500 hover:text-blue-700" 
+                            title="View"
+                          >
+                            <EyeIcon className="w-5 h-5" />
+                          </button>
+                          <button 
+                            onClick={() => handleEdit(user)}
+                            className="text-yellow-500 hover:text-yellow-700" 
+                            title="Edit"
+                          >
+                            <PencilIcon className="w-5 h-5" />
+                          </button>
+                          <button 
+                            onClick={() => handleDelete(user.id, user.name)}
+                            className="text-red-500 hover:text-red-700" 
+                            title="Delete"
+                          >
+                            <TrashIcon className="w-5 h-5" />
+                          </button>
+                        </div>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+
+        {!loading && filteredUsers.length === 0 && (
           <div className="text-center py-12">
             <h3 className="text-lg font-semibold text-gray-500">No users found</h3>
             <p className="text-gray-400">Try adjusting your filters or search query.</p>
@@ -414,10 +462,8 @@ function AdminUsers() {
 
       </div>
 
-      {/* --- UPDATED FLOATING ACTION BUTTON --- */}
+      {/* Floating Action Button */}
       <div className="group fixed z-20 bottom-10 right-10 flex flex-col items-center gap-3">
-
-        {/* Pop-up Options Container */}
         <div
           className="flex flex-col items-center gap-3
                      opacity-0 scale-90 translate-y-4
@@ -425,12 +471,11 @@ function AdminUsers() {
                      pointer-events-none group-hover:pointer-events-auto
                      transition-all duration-200 ease-in-out"
         >
-
           {/* Add Staff Button */}
           <button
             title="Add Staff"
             className="relative flex items-center justify-center w-14 h-14 bg-white rounded-full text-teal-500 shadow-lg hover:bg-gray-100 hover:scale-105 transition-all"
-            onClick={() => setIsAddStaffModalOpen(true)} // <-- UPDATED
+            onClick={() => setIsAddStaffModalOpen(true)}
           >
             <UserPlusIcon className="w-7 h-7" />
             <span className="absolute right-full mr-4 px-3 py-1.5 bg-black text-white text-xs font-semibold rounded-md whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity delay-150 pointer-events-none">
@@ -442,14 +487,13 @@ function AdminUsers() {
           <button
             title="Add User"
             className="relative flex items-center justify-center w-14 h-14 bg-white rounded-full text-teal-500 shadow-lg hover:bg-gray-100 hover:scale-105 transition-all"
-            onClick={() => setIsAddUserModalOpen(true)} // <-- UPDATED
+            onClick={() => setIsAddUserModalOpen(true)}
           >
             <UserCircleIcon className="w-7 h-7" />
             <span className="absolute right-full mr-4 px-3 py-1.5 bg-black text-white text-xs font-semibold rounded-md whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity delay-150 pointer-events-none">
-              Add User
+              Add Member
             </span>
           </button>
-
         </div>
 
         {/* Main FAB Button */}
@@ -460,10 +504,8 @@ function AdminUsers() {
           <PlusCircleIcon className="w-10 h-10 fab-icon" />
         </button>
       </div>
-      {/* --- END OF UPDATED BUTTON --- */}
 
-
-      {/* (View Details Modal remains the same) */}
+      {/* View Details Modal */}
       <Modal 
         isOpen={!!viewModalItem} 
         onClose={handleCloseViewModal} 
@@ -481,28 +523,37 @@ function AdminUsers() {
         )}
       </Modal>
 
-      {/* --- UPDATED MODAL DEFINITIONS --- */}
-
       {/* Add User (Member) Modal */}
       <Modal 
         isOpen={isAddUserModalOpen} 
         onClose={() => setIsAddUserModalOpen(false)} 
-        title="Add New User"
+        title="Add New Member"
         size="2xl"
       >
-        <AddUserForm onClose={() => setIsAddUserModalOpen(false)} />
+        <AddUserForm 
+          onClose={() => setIsAddUserModalOpen(false)}
+          onUserAdded={handleUserAdded}
+          apiBase={API_BASE}
+          adminSahakari={ADMIN_SAHAKARI}
+        />
       </Modal>
 
-      {/* Add Staff Modal (NEW) */}
+      {/* Add Staff Modal */}
       <Modal 
         isOpen={isAddStaffModalOpen} 
         onClose={() => setIsAddStaffModalOpen(false)} 
         title="Add New Staff"
         size="2xl"
       >
-        <AddStaffForm onClose={() => setIsAddStaffModalOpen(false)} />
+        <AddStaffForm 
+          onClose={() => setIsAddStaffModalOpen(false)}
+          onUserAdded={handleUserAdded}
+          apiBase={API_BASE}
+          adminSahakari={ADMIN_SAHAKARI}
+        />
       </Modal>
 
+      {/* Edit User Modal */}
       <Modal 
         isOpen={isEditModalOpen} 
         onClose={() => setIsEditModalOpen(false)} 
@@ -511,7 +562,9 @@ function AdminUsers() {
       >
         <EditUserForm 
           user={currentUserToEdit} 
-          onClose={() => setIsEditModalOpen(false)} 
+          onClose={() => setIsEditModalOpen(false)}
+          onUserUpdated={handleUserUpdated}
+          apiBase={API_BASE}
         />
       </Modal>
     </>

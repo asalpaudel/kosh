@@ -1,10 +1,10 @@
 import React, { useState } from "react";
 
-export default function EditUserForm({ 
-  initialData, 
-  onClose, 
-  onUserUpdated, 
-  apiBase = "http://localhost:8080/api" 
+export default function EditUserForm({
+  initialData,
+  onClose,
+  onUserUpdated,
+  apiBase = "http://localhost:8080/api",
 }) {
   const [formData, setFormData] = useState({
     id: initialData.id,
@@ -21,9 +21,9 @@ export default function EditUserForm({
 
   const onChange = (e) => {
     const { name, value } = e.target;
-    setFormData((prev) => ({ 
-      ...prev, 
-      [name]: value 
+    setFormData((prev) => ({
+      ...prev,
+      [name]: value,
     }));
   };
 
@@ -55,9 +55,9 @@ export default function EditUserForm({
 
       const res = await fetch(`${apiBase}/users/${formData.id}`, {
         method: "PUT",
-        headers: { 
+        headers: {
           "Content-Type": "application/json",
-          "Accept": "application/json"
+          Accept: "application/json",
         },
         body: JSON.stringify(payload),
       });
@@ -86,84 +86,70 @@ export default function EditUserForm({
   return (
     <form className="space-y-4" onSubmit={onSubmit}>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <input 
-          name="name" 
-          onChange={onChange} 
-          value={formData.name} 
-          placeholder="Full Name" 
-          className="w-full bg-gray-100 rounded-lg px-4 py-2 outline-none" 
-          required 
-        />
-        
-        <input 
-          type="email"
-          name="email" 
-          onChange={onChange} 
-          value={formData.email} 
-          placeholder="Email Address" 
-          className="w-full bg-gray-100 rounded-lg px-4 py-2 outline-none" 
-          required 
-        />
-        
-        <input 
-          type="tel"
-          name="phone" 
-          onChange={onChange} 
-          value={formData.phone} 
-          placeholder="Phone Number" 
-          className="w-full bg-gray-100 rounded-lg px-4 py-2 outline-none" 
-        />
-        
-        <select
-          name="role"
+        <input
+          name="name"
           onChange={onChange}
-          value={formData.role}
+          value={formData.name}
+          placeholder="Full Name"
           className="w-full bg-gray-100 rounded-lg px-4 py-2 outline-none"
           required
-        >
-          <option value="">Select Role</option>
-          <option value="admin">Admin</option>
-          <option value="manager">Manager</option>
-          <option value="staff">Staff</option>
-          <option value="member">Member</option>
-        </select>
-        
-        <input 
-          name="sahakari" 
-          onChange={onChange} 
-          value={formData.sahakari} 
-          placeholder="Associated Sahakari" 
-          className="w-full bg-gray-100 rounded-lg px-4 py-2 outline-none" 
+        />
+
+        <input
+          type="email"
+          name="email"
+          onChange={onChange}
+          value={formData.email}
+          placeholder="Email Address"
+          className="w-full bg-gray-100 rounded-lg px-4 py-2 outline-none"
           required
         />
-        
-        <input 
+
+        <input
+          type="tel"
+          name="phone"
+          onChange={onChange}
+          value={formData.phone}
+          placeholder="Phone Number"
+          className="w-full bg-gray-100 rounded-lg px-4 py-2 outline-none"
+        />
+
+        <input
+          name="sahakari"
+          onChange={onChange}
+          value={formData.sahakari}
+          placeholder="Associated Sahakari"
+          className="w-full bg-gray-100 rounded-lg px-4 py-2 outline-none"
+          required
+        />
+
+        <input
           type="password"
-          name="password" 
-          onChange={onChange} 
-          value={formData.password} 
-          placeholder="New Password (leave empty to keep current)" 
-          className="w-full bg-gray-100 rounded-lg px-4 py-2 outline-none" 
+          name="password"
+          onChange={onChange}
+          value={formData.password}
+          placeholder="New Password (leave empty to keep current)"
+          className="w-full bg-gray-100 rounded-lg px-4 py-2 outline-none"
         />
       </div>
 
       {error && <p className="text-sm text-red-600">{error}</p>}
-      
+
       <p className="text-xs text-gray-500">
         Note: Leave password field empty to keep the current password.
       </p>
 
       <div className="flex justify-end gap-3 pt-2">
-        <button 
-          type="button" 
-          onClick={onClose} 
+        <button
+          type="button"
+          onClick={onClose}
           className="px-4 py-2 bg-gray-200 rounded-lg hover:bg-gray-300"
         >
           Cancel
         </button>
-        <button 
-          type="submit" 
-          disabled={saving} 
+        <button
+          type="submit"
+          disabled={saving}
           className="px-4 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 disabled:opacity-60"
         >
           {saving ? "Updating..." : "Update User"}
