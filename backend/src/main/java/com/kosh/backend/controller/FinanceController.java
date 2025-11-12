@@ -14,6 +14,7 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/finance")
+@CrossOrigin(origins = {"http://localhost:3000", "http://localhost:5173"}, allowCredentials = "true")
 public class FinanceController {
 
     @Autowired
@@ -30,11 +31,14 @@ public class FinanceController {
 
     // --- FIXED DEPOSIT ---
     @GetMapping("/fixed-deposits/{networkId}")
-    public List<FixedDeposit> getFixedDeposits(@PathVariable Long networkId) {
-        return fixedDepositRepo.findByNetworkId(networkId);
+    public ResponseEntity<List<FixedDeposit>> getFixedDeposits(@PathVariable Long networkId) {
+        List<FixedDeposit> deposits = fixedDepositRepo.findByNetworkId(networkId);
+        return ResponseEntity.ok(deposits);
     }
 
-    @PostMapping("/fixed-deposits/{networkId}")
+    @PostMapping(value = "/fixed-deposits/{networkId}", 
+                 consumes = "application/json", 
+                 produces = "application/json")
     public ResponseEntity<?> addFixedDeposit(@PathVariable Long networkId, @RequestBody FixedDeposit fd) {
         try {
             System.out.println("=== POST /fixed-deposits/" + networkId + " ===");
@@ -66,17 +70,21 @@ public class FinanceController {
     }
 
     @DeleteMapping("/fixed-deposits/{id}")
-    public void deleteFixedDeposit(@PathVariable Long id) {
+    public ResponseEntity<Void> deleteFixedDeposit(@PathVariable Long id) {
         fixedDepositRepo.deleteById(id);
+        return ResponseEntity.ok().build();
     }
 
     // --- SAVING ACCOUNT ---
     @GetMapping("/saving-accounts/{networkId}")
-    public List<SavingAccount> getSavingAccounts(@PathVariable Long networkId) {
-        return savingAccountRepo.findByNetworkId(networkId);
+    public ResponseEntity<List<SavingAccount>> getSavingAccounts(@PathVariable Long networkId) {
+        List<SavingAccount> accounts = savingAccountRepo.findByNetworkId(networkId);
+        return ResponseEntity.ok(accounts);
     }
 
-    @PostMapping("/saving-accounts/{networkId}")
+    @PostMapping(value = "/saving-accounts/{networkId}",
+                 consumes = "application/json",
+                 produces = "application/json")
     public ResponseEntity<?> addSavingAccount(@PathVariable Long networkId, @RequestBody SavingAccount sa) {
         try {
             System.out.println("=== POST /saving-accounts/" + networkId + " ===");
@@ -99,17 +107,21 @@ public class FinanceController {
     }
 
     @DeleteMapping("/saving-accounts/{id}")
-    public void deleteSavingAccount(@PathVariable Long id) {
+    public ResponseEntity<Void> deleteSavingAccount(@PathVariable Long id) {
         savingAccountRepo.deleteById(id);
+        return ResponseEntity.ok().build();
     }
 
     // --- LOAN PACKAGE ---
     @GetMapping("/loan-packages/{networkId}")
-    public List<LoanPackage> getLoanPackages(@PathVariable Long networkId) {
-        return loanPackageRepo.findByNetworkId(networkId);
+    public ResponseEntity<List<LoanPackage>> getLoanPackages(@PathVariable Long networkId) {
+        List<LoanPackage> packages = loanPackageRepo.findByNetworkId(networkId);
+        return ResponseEntity.ok(packages);
     }
 
-    @PostMapping("/loan-packages/{networkId}")
+    @PostMapping(value = "/loan-packages/{networkId}",
+                 consumes = "application/json",
+                 produces = "application/json")
     public ResponseEntity<?> addLoanPackage(@PathVariable Long networkId, @RequestBody LoanPackage lp) {
         try {
             System.out.println("=== POST /loan-packages/" + networkId + " ===");
@@ -132,7 +144,8 @@ public class FinanceController {
     }
 
     @DeleteMapping("/loan-packages/{id}")
-    public void deleteLoanPackage(@PathVariable Long id) {
+    public ResponseEntity<Void> deleteLoanPackage(@PathVariable Long id) {
         loanPackageRepo.deleteById(id);
+        return ResponseEntity.ok().build();
     }
 }
