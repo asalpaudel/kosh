@@ -13,6 +13,9 @@ public class SavingAccount {
     private String name;
     private Double interestRate;
     private Double minBalance;
+    
+    @Column(length = 1000)
+    private String description;
 
     @ManyToOne
     @JoinColumn(name = "network_id", nullable = false)
@@ -30,6 +33,9 @@ public class SavingAccount {
 
     public Double getMinBalance() { return minBalance; }
     public void setMinBalance(Double minBalance) { this.minBalance = minBalance; }
+
+    public String getDescription() { return description; }
+    public void setDescription(String description) { this.description = description; }
 
     public Network getNetwork() { return network; }
     public void setNetwork(Network network) { this.network = network; }

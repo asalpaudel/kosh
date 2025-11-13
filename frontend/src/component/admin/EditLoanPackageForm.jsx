@@ -1,17 +1,18 @@
 import React, { useState } from "react";
-import { DocumentTextIcon } from "../icons";
 
 const apiBase = "http://localhost:8080/api";
 
-function AddFixedDepositForm({ onAdded, onClose, networkId }) {
+export default function EditLoanPackageForm({ initialData, onClose, onUpdated }) {
   const [formData, setFormData] = useState({
-    name: "",
-    interestRate: "",
-    minDuration: "",
-    minAmount: "",
-    description: "",
+    id: initialData.id,
+    name: initialData.name ?? "",
+    interestRate: initialData.interestRate ?? "",
+    maxAmount: initialData.maxAmount ?? "",
+    maxDuration: initialData.maxDuration ?? "",
+    description: initialData.description ?? "",
   });
-  const [loading, setLoading] = useState(false);
+
+  const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
   const handleChange = (e) => {
@@ -21,50 +22,37 @@ function AddFixedDepositForm({ onAdded, onClose, networkId }) {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setLoading(true);
+    setSaving(true);
     setError("");
 
-    console.log("Form Data:", formData);
-    console.log("Network ID:", networkId);
-    console.log("URL:", `${apiBase}/finance/fixed-deposits/${networkId}`);
-
     try {
-      const response = await fetch(
-        `${apiBase}/finance/fixed-deposits/${networkId}`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(formData),
-        }
-      );
+      const payload = {
+        name: formData.name,
+        interestRate: parseFloat(formData.interestRate),
+        maxAmount: parseFloat(formData.maxAmount),
+        maxDuration: parseInt(formData.maxDuration),
+        description: formData.description,
+      };
 
-      console.log("Response status:", response.status);
-      console.log("Response ok:", response.ok);
+      const res = await fetch(`${apiBase}/finance/loan-packages/${formData.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
 
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error("Error response:", errorText);
-        throw new Error(`Failed to add: ${response.status} - ${errorText}`);
-      }
-
-      const data = await response.json();
-      console.log("Success! Response data:", data);
-
-      onAdded();
+      if (!res.ok) throw new Error(await res.text());
+      const saved = await res.json();
+      onUpdated?.(saved);
+      onClose?.();
     } catch (err) {
-      console.error("Error:", err);
-      setError(err.message);
+      setError(`Failed to update: ${err.message}`);
     } finally {
-      setLoading(false);
+      setSaving(false);
     }
   };
 
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-5">
-      <div className="flex justify-center">
-        <DocumentTextIcon className="w-16 h-16 text-teal-500" />
-      </div>
-
       {error && (
         <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-lg">
           {error}
@@ -75,6 +63,7 @@ function AddFixedDepositForm({ onAdded, onClose, networkId }) {
       <div>
         <label className="block font-semibold mb-2">Package Name</label>
         <input
+          type="text"
           name="name"
           value={formData.name}
           onChange={handleChange}
@@ -84,48 +73,46 @@ function AddFixedDepositForm({ onAdded, onClose, networkId }) {
         />
       </div>
 
-      {/* Interest Rate and Min Duration in one row */}
+      {/* Interest Rate and Max Duration in one row */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
           <label className="block font-semibold mb-2">Interest Rate (%)</label>
           <input
-            name="interestRate"
             type="number"
             step="0.01"
+            name="interestRate"
             value={formData.interestRate}
             onChange={handleChange}
-            placeholder="e.g., 8.5"
+            placeholder="e.g., 12.5"
             className="w-full px-4 py-3 border border-gray-300 rounded-full focus:outline-none focus:border-black"
             required
           />
         </div>
 
         <div>
-          <label className="block font-semibold mb-2">
-            Minimum Duration (months)
-          </label>
+          <label className="block font-semibold mb-2">Maximum Duration (months)</label>
           <input
-            name="minDuration"
             type="number"
-            value={formData.minDuration}
+            name="maxDuration"
+            value={formData.maxDuration}
             onChange={handleChange}
-            placeholder="e.g., 12"
+            placeholder="e.g., 60"
             className="w-full px-4 py-3 border border-gray-300 rounded-full focus:outline-none focus:border-black"
             required
           />
         </div>
       </div>
 
-      {/* Minimum Amount */}
+      {/* Maximum Amount */}
       <div>
-        <label className="block font-semibold mb-2">Minimum Amount</label>
+        <label className="block font-semibold mb-2">Maximum Amount</label>
         <input
-          name="minAmount"
           type="number"
           step="0.01"
-          value={formData.minAmount}
+          name="maxAmount"
+          value={formData.maxAmount}
           onChange={handleChange}
-          placeholder="e.g., 10000"
+          placeholder="e.g., 500000"
           className="w-full px-4 py-3 border border-gray-300 rounded-full focus:outline-none focus:border-black"
           required
         />
@@ -139,7 +126,7 @@ function AddFixedDepositForm({ onAdded, onClose, networkId }) {
           value={formData.description}
           onChange={handleChange}
           placeholder="Enter package description (optional)"
-          rows="3"
+          rows={3}
           className="w-full px-4 py-3 border border-gray-300 rounded-2xl focus:outline-none focus:border-black resize-none"
         />
       </div>
@@ -147,13 +134,11 @@ function AddFixedDepositForm({ onAdded, onClose, networkId }) {
       {/* Submit Button */}
       <button
         type="submit"
-        disabled={loading}
+        disabled={saving}
         className="w-full bg-teal-500 text-white font-semibold py-3 rounded-full hover:bg-teal-600 transition-colors mt-4 disabled:bg-gray-300 disabled:cursor-not-allowed"
       >
-        {loading ? "Adding..." : "Add Fixed Deposit"}
+        {saving ? "Updating..." : "Save Changes"}
       </button>
     </form>
   );
 }
-
-export default AddFixedDepositForm;

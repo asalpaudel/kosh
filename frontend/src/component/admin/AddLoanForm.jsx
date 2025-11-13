@@ -1,46 +1,51 @@
 import React, { useState } from "react";
 import { BanknotesIcon } from "../icons";
 
+const apiBase = "http://localhost:8080/api";
+
 function AddLoanForm({ onAdded, onClose, networkId }) {
   const [formData, setFormData] = useState({
     name: "",
     interestRate: "",
     maxAmount: "",
     maxDuration: "",
+    description: "",
   });
-
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  const apiBase = "http://localhost:8080/api";
-  // handle input change
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
-  // submit to backend
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
     setError("");
 
     try {
-      const res = await fetch(`${apiBase}/finance/loan-packages/${networkId}`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(formData),
-      });
+      const response = await fetch(
+        `${apiBase}/finance/loan-packages/${networkId}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(formData),
+        }
+      );
 
-      if (!res.ok) {
-        throw new Error("Failed to add loan package");
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Failed to add: ${response.status} - ${errorText}`);
       }
 
-      // Success: call onAdded to refresh list
-      if (onAdded) onAdded();
+      const data = await response.json();
+      console.log("Success! Response data:", data);
+
+      onAdded();
     } catch (err) {
-      console.error(err);
-      setError(err.message || "Something went wrong");
+      console.error("Error:", err);
+      setError(err.message);
     } finally {
       setLoading(false);
     }
@@ -52,68 +57,90 @@ function AddLoanForm({ onAdded, onClose, networkId }) {
         <BanknotesIcon className="w-16 h-16 text-teal-500" />
       </div>
 
-      {error && <p className="text-red-500 text-center">{error}</p>}
+      {error && (
+        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-lg">
+          {error}
+        </div>
+      )}
 
+      {/* Package Name */}
       <div>
         <label className="block font-semibold mb-2">Package Name</label>
         <input
-          type="text"
           name="name"
           value={formData.name}
           onChange={handleChange}
-          placeholder="e.g., Personal Loan"
+          placeholder="Enter package name"
           className="w-full px-4 py-3 border border-gray-300 rounded-full focus:outline-none focus:border-black"
           required
         />
       </div>
 
+      {/* Interest Rate and Max Duration in one row */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
           <label className="block font-semibold mb-2">Interest Rate (%)</label>
           <input
+            name="interestRate"
             type="number"
             step="0.01"
-            name="interestRate"
             value={formData.interestRate}
             onChange={handleChange}
-            placeholder="e.g., 12.0"
+            placeholder="e.g., 12.5"
             className="w-full px-4 py-3 border border-gray-300 rounded-full focus:outline-none focus:border-black"
             required
           />
         </div>
+
         <div>
           <label className="block font-semibold mb-2">
-            Max. Duration (Months)
+            Maximum Duration (months)
           </label>
           <input
-            type="number"
             name="maxDuration"
+            type="number"
             value={formData.maxDuration}
             onChange={handleChange}
             placeholder="e.g., 60"
             className="w-full px-4 py-3 border border-gray-300 rounded-full focus:outline-none focus:border-black"
+            required
           />
         </div>
       </div>
 
+      {/* Maximum Amount */}
       <div>
-        <label className="block font-semibold mb-2">Maximum Amount (Rs.)</label>
+        <label className="block font-semibold mb-2">Maximum Amount</label>
         <input
-          type="number"
           name="maxAmount"
+          type="number"
+          step="0.01"
           value={formData.maxAmount}
           onChange={handleChange}
           placeholder="e.g., 500000"
           className="w-full px-4 py-3 border border-gray-300 rounded-full focus:outline-none focus:border-black"
+          required
         />
       </div>
 
+      {/* Description */}
+      <div>
+        <label className="block font-semibold mb-2">Description</label>
+        <textarea
+          name="description"
+          value={formData.description}
+          onChange={handleChange}
+          placeholder="Enter package description (optional)"
+          rows="3"
+          className="w-full px-4 py-3 border border-gray-300 rounded-2xl focus:outline-none focus:border-black resize-none"
+        />
+      </div>
+
+      {/* Submit Button */}
       <button
         type="submit"
         disabled={loading}
-        className={`w-full bg-teal-500 text-white font-semibold py-3 rounded-full hover:bg-teal-600 transition-colors mt-4 ${
-          loading ? "opacity-50 cursor-not-allowed" : ""
-        }`}
+        className="w-full bg-teal-500 text-white font-semibold py-3 rounded-full hover:bg-teal-600 transition-colors mt-4 disabled:bg-gray-300 disabled:cursor-not-allowed"
       >
         {loading ? "Adding..." : "Add Loan Package"}
       </button>

@@ -9,9 +9,16 @@ import {
   TrashIcon,
 } from "../../component/icons.jsx";
 import Modal from "../../component/superadmin/Modal.jsx";
+
+// Add Forms
 import AddFixedDepositForm from "../../component/admin/AddFixedDepositForm.jsx";
 import AddSavingAccountForm from "../../component/admin/AddSavingAccountForm.jsx";
 import AddLoanForm from "../../component/admin/AddLoanForm.jsx";
+
+// Edit Forms — now separated into their own files
+import EditFixedDepositForm from "../../component/admin/EditFixedDepositForm.jsx";
+import EditSavingAccountForm from "../../component/admin/EditSavingAccountForm.jsx";
+import EditLoanPackageForm from "../../component/admin/EditLoanPackageForm.jsx";
 
 const apiBase = "http://localhost:8080/api";
 
@@ -41,20 +48,201 @@ const PackageActions = ({ pkg, onView, onEdit, onDelete }) => (
   </div>
 );
 
+// View Package Modal Component
+const ViewPackageModal = ({ isOpen, onClose, packageData, packageType }) => {
+  if (!packageData) return null;
+
+  const renderContent = () => {
+    switch (packageType) {
+      case "fixed-deposit":
+        return (
+          <div className="flex flex-col gap-5">
+            {/* Package Name */}
+            <div>
+              <label className="block font-semibold mb-2">Package Name</label>
+              <div className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-full text-gray-900">
+                {packageData.name}
+              </div>
+            </div>
+
+            {/* Interest Rate and Min Duration in one row */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block font-semibold mb-2">
+                  Interest Rate (%)
+                </label>
+                <div className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-full text-gray-900">
+                  {packageData.interestRate}%
+                </div>
+              </div>
+
+              <div>
+                <label className="block font-semibold mb-2">
+                  Minimum Duration (months)
+                </label>
+                <div className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-full text-gray-900">
+                  {packageData.minDuration} months
+                </div>
+              </div>
+            </div>
+
+            {/* Minimum Amount */}
+            <div>
+              <label className="block font-semibold mb-2">Minimum Amount</label>
+              <div className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-full text-gray-900">
+                ₹{packageData.minAmount?.toLocaleString()}
+              </div>
+            </div>
+
+            {/* Description */}
+            {packageData.description && (
+              <div>
+                <label className="block font-semibold mb-2">Description</label>
+                <div className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-2xl text-gray-900 min-h-[80px]">
+                  {packageData.description}
+                </div>
+              </div>
+            )}
+          </div>
+        );
+      case "saving-account":
+        return (
+          <div className="flex flex-col gap-5">
+            {/* Package Name */}
+            <div>
+              <label className="block font-semibold mb-2">Package Name</label>
+              <div className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-full text-gray-900">
+                {packageData.name}
+              </div>
+            </div>
+
+            {/* Interest Rate and Min Balance in one row */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block font-semibold mb-2">
+                  Interest Rate (%)
+                </label>
+                <div className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-full text-gray-900">
+                  {packageData.interestRate}%
+                </div>
+              </div>
+
+              <div>
+                <label className="block font-semibold mb-2">
+                  Minimum Balance
+                </label>
+                <div className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-full text-gray-900">
+                  ₹{packageData.minBalance?.toLocaleString()}
+                </div>
+              </div>
+            </div>
+
+            {/* Description */}
+            {packageData.description && (
+              <div>
+                <label className="block font-semibold mb-2">Description</label>
+                <div className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-2xl text-gray-900 min-h-[80px]">
+                  {packageData.description}
+                </div>
+              </div>
+            )}
+          </div>
+        );
+      case "loan-package":
+        return (
+          <div className="flex flex-col gap-5">
+            {/* Package Name */}
+            <div>
+              <label className="block font-semibold mb-2">Package Name</label>
+              <div className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-full text-gray-900">
+                {packageData.name}
+              </div>
+            </div>
+
+            {/* Interest Rate and Max Duration in one row */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block font-semibold mb-2">
+                  Interest Rate (%)
+                </label>
+                <div className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-full text-gray-900">
+                  {packageData.interestRate}%
+                </div>
+              </div>
+
+              <div>
+                <label className="block font-semibold mb-2">
+                  Maximum Duration (months)
+                </label>
+                <div className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-full text-gray-900">
+                  {packageData.maxDuration} months
+                </div>
+              </div>
+            </div>
+
+            {/* Maximum Amount */}
+            <div>
+              <label className="block font-semibold mb-2">Maximum Amount</label>
+              <div className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-full text-gray-900">
+                ₹{packageData.maxAmount?.toLocaleString()}
+              </div>
+            </div>
+
+            {/* Description */}
+            {packageData.description && (
+              <div>
+                <label className="block font-semibold mb-2">Description</label>
+                <div className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-2xl text-gray-900 min-h-[80px]">
+                  {packageData.description}
+                </div>
+              </div>
+            )}
+          </div>
+        );
+      default:
+        return null;
+    }
+  };
+
+  return (
+    <Modal
+      isOpen={isOpen}
+      onClose={onClose}
+      title="View Package Details"
+      size="xl"
+    >
+      {renderContent()}
+    </Modal>
+  );
+};
+
 function AdminPackages({ selectedNetworkId = 6 }) {
-  // default for testing
   const [fixedDeposits, setFixedDeposits] = useState([]);
   const [savingAccounts, setSavingAccounts] = useState([]);
   const [loans, setLoans] = useState([]);
   const [loading, setLoading] = useState(false);
 
+  // Add modals
   const [isAddFixedDepositModalOpen, setIsAddFixedDepositModalOpen] =
     useState(false);
   const [isAddSavingAccountModalOpen, setIsAddSavingAccountModalOpen] =
     useState(false);
   const [isAddLoanModalOpen, setIsAddLoanModalOpen] = useState(false);
+
+  // Edit modals
+  const [isEditFixedDepositModalOpen, setIsEditFixedDepositModalOpen] =
+    useState(false);
+  const [isEditSavingAccountModalOpen, setIsEditSavingAccountModalOpen] =
+    useState(false);
+  const [isEditLoanModalOpen, setIsEditLoanModalOpen] = useState(false);
+
+  // View modal
   const [viewPackageModalOpen, setViewPackageModalOpen] = useState(false);
   const [currentPackageToView, setCurrentPackageToView] = useState(null);
+  const [currentPackageType, setCurrentPackageType] = useState(null);
+
+  // Current package for editing
+  const [currentEditPackage, setCurrentEditPackage] = useState(null);
 
   // Fetch all finance data
   const fetchData = async () => {
@@ -91,16 +279,43 @@ function AdminPackages({ selectedNetworkId = 6 }) {
     fetchData();
   };
 
-  const handleViewPackage = (pkg) => {
+  // View handler
+  const handleViewPackage = (pkg, type) => {
     setCurrentPackageToView(pkg);
+    setCurrentPackageType(type);
     setViewPackageModalOpen(true);
   };
 
+  // Edit handlers
+  const handleEditFixedDeposit = (pkg) => {
+    setCurrentEditPackage(pkg);
+    setIsEditFixedDepositModalOpen(true);
+  };
+
+  const handleEditSavingAccount = (pkg) => {
+    setCurrentEditPackage(pkg);
+    setIsEditSavingAccountModalOpen(true);
+  };
+
+  const handleEditLoan = (pkg) => {
+    setCurrentEditPackage(pkg);
+    setIsEditLoanModalOpen(true);
+  };
+
+  // Handle form completion
   const handleAdded = () => {
     fetchData();
     setIsAddFixedDepositModalOpen(false);
     setIsAddSavingAccountModalOpen(false);
     setIsAddLoanModalOpen(false);
+  };
+
+  const handleUpdated = () => {
+    fetchData();
+    setIsEditFixedDepositModalOpen(false);
+    setIsEditSavingAccountModalOpen(false);
+    setIsEditLoanModalOpen(false);
+    setCurrentEditPackage(null);
   };
 
   return (
@@ -139,8 +354,10 @@ function AdminPackages({ selectedNetworkId = 6 }) {
                           <td className="py-3 px-2">
                             <PackageActions
                               pkg={pkg}
-                              onView={handleViewPackage}
-                              onEdit={() => alert("Edit not implemented")}
+                              onView={() =>
+                                handleViewPackage(pkg, "fixed-deposit")
+                              }
+                              onEdit={() => handleEditFixedDeposit(pkg)}
                               onDelete={() =>
                                 handleDeletePackage(pkg.id, "fixed-deposits")
                               }
@@ -192,8 +409,10 @@ function AdminPackages({ selectedNetworkId = 6 }) {
                           <td className="py-3 px-2">
                             <PackageActions
                               pkg={pkg}
-                              onView={handleViewPackage}
-                              onEdit={() => alert("Edit not implemented")}
+                              onView={() =>
+                                handleViewPackage(pkg, "saving-account")
+                              }
+                              onEdit={() => handleEditSavingAccount(pkg)}
                               onDelete={() =>
                                 handleDeletePackage(pkg.id, "saving-accounts")
                               }
@@ -245,8 +464,10 @@ function AdminPackages({ selectedNetworkId = 6 }) {
                           <td className="py-3 px-2">
                             <PackageActions
                               pkg={pkg}
-                              onView={handleViewPackage}
-                              onEdit={() => alert("Edit not implemented")}
+                              onView={() =>
+                                handleViewPackage(pkg, "loan-package")
+                              }
+                              onEdit={() => handleEditLoan(pkg)}
                               onDelete={() =>
                                 handleDeletePackage(pkg.id, "loan-packages")
                               }
@@ -308,7 +529,7 @@ function AdminPackages({ selectedNetworkId = 6 }) {
         </button>
       </div>
 
-      {/* Modals */}
+      {/* Add Modals */}
       <Modal
         isOpen={isAddFixedDepositModalOpen}
         onClose={() => setIsAddFixedDepositModalOpen(false)}
@@ -341,6 +562,82 @@ function AdminPackages({ selectedNetworkId = 6 }) {
       >
         <AddLoanForm onAdded={handleAdded} networkId={selectedNetworkId} />
       </Modal>
+
+      {/* Edit Modals */}
+      <Modal
+        isOpen={isEditFixedDepositModalOpen}
+        onClose={() => {
+          setIsEditFixedDepositModalOpen(false);
+          setCurrentEditPackage(null);
+        }}
+        title="Edit Fixed Deposit Package"
+        size="2xl"
+      >
+        {currentEditPackage && (
+          <EditFixedDepositForm
+            initialData={currentEditPackage}
+            onClose={() => {
+              setIsEditFixedDepositModalOpen(false);
+              setCurrentEditPackage(null);
+            }}
+            onUpdated={handleUpdated}
+          />
+        )}
+      </Modal>
+
+      <Modal
+        isOpen={isEditSavingAccountModalOpen}
+        onClose={() => {
+          setIsEditSavingAccountModalOpen(false);
+          setCurrentEditPackage(null);
+        }}
+        title="Edit Saving Account Package"
+        size="2xl"
+      >
+        {currentEditPackage && (
+          <EditSavingAccountForm
+            initialData={currentEditPackage}
+            onClose={() => {
+              setIsEditSavingAccountModalOpen(false);
+              setCurrentEditPackage(null);
+            }}
+            onUpdated={handleUpdated}
+          />
+        )}
+      </Modal>
+
+      <Modal
+        isOpen={isEditLoanModalOpen}
+        onClose={() => {
+          setIsEditLoanModalOpen(false);
+          setCurrentEditPackage(null);
+        }}
+        title="Edit Loan Package"
+        size="2xl"
+      >
+        {currentEditPackage && (
+          <EditLoanPackageForm
+            initialData={currentEditPackage}
+            onClose={() => {
+              setIsEditLoanModalOpen(false);
+              setCurrentEditPackage(null);
+            }}
+            onUpdated={handleUpdated}
+          />
+        )}
+      </Modal>
+
+      {/* View Modal */}
+      <ViewPackageModal
+        isOpen={viewPackageModalOpen}
+        onClose={() => {
+          setViewPackageModalOpen(false);
+          setCurrentPackageToView(null);
+          setCurrentPackageType(null);
+        }}
+        packageData={currentPackageToView}
+        packageType={currentPackageType}
+      />
     </>
   );
 }

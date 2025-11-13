@@ -15,6 +15,9 @@ public class LoanPackage {
     private Double maxAmount;
     private Integer maxDuration;
 
+    @Column(length = 1000)
+    private String description;
+
     @ManyToOne
     @JoinColumn(name = "network_id", nullable = false)
     private Network network;
@@ -34,6 +37,9 @@ public class LoanPackage {
 
     public Integer getMaxDuration() { return maxDuration; }
     public void setMaxDuration(Integer maxDuration) { this.maxDuration = maxDuration; }
+
+    public String getDescription() { return description; }
+    public void setDescription(String description) { this.description = description; }
 
     public Network getNetwork() { return network; }
     public void setNetwork(Network network) { this.network = network; }
