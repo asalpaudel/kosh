@@ -4,6 +4,7 @@ import {
   LayoutDashboardIcon,
   LogOutIcon,
   Logo,
+  ActivityIcon,
   FileTextIcon,
   UsersIcon, 
   PiggyBankIcon, 
@@ -19,25 +20,25 @@ function Sidebar() {
         <Logo />
         
         <NavLink to="/admin/dashboard" className={navLinkClass}>
-          <LayoutDashboardIcon className="text-purple-400 h-7 w-7 transition-transform duration-200 hover:scale-110" />
+          <LayoutDashboardIcon className="text-gray-300 h-7 w-7 transition-all duration-200 hover:scale-110 hover:text-white" />
         </NavLink>
         
         <NavLink to="/admin/users" className={navLinkClass}>
-          <UsersIcon className="text-green-400 h-7 w-7 transition-transform duration-200 hover:scale-110" />
+          <UsersIcon className="text-gray-300 h-7 w-7 transition-all duration-200 hover:scale-110 hover:text-white" />
         </NavLink>
 
         <NavLink to="/admin/packages" className={navLinkClass}>
-          <PiggyBankIcon className="text-orange-400 h-7 w-7 transition-transform duration-200 hover:scale-110" />
+          <PiggyBankIcon className="text-gray-300 h-7 w-7 transition-all duration-200 hover:scale-110 hover:text-white" />
         </NavLink>
         
         <NavLink to="/admin/transactions" className={navLinkClass}>
-          <FileTextIcon className="text-blue-400 h-7 w-7 transition-transform duration-200 hover:scale-110" />
+          <ActivityIcon className="text-gray-300 h-7 w-7 transition-all duration-200 hover:scale-110 hover:text-white" />
         </NavLink>
         
       </div>
 
       <NavLink to="/" className={navLinkClass}>
-        <LogOutIcon className="text-yellow-400 h-7 w-7 transition-transform duration-200 hover:scale-110" />
+        <LogOutIcon className="text-gray-300 h-7 w-7 transition-all duration-200 hover:scale-110 hover:text-white" />
       </NavLink>
     </div>
   );

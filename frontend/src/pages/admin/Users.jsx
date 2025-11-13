@@ -12,17 +12,20 @@ import {
   UserPlusIcon,
 } from "../../component/icons.jsx";
 
+// Re-using the Superadmin's Modal component
 import Modal from "../../component/superadmin/Modal.jsx";
+
+// --- UPDATED IMPORTS ---
+// Importing the new admin-specific forms
 import AddUserForm from "../../component/admin/AddUserForm.jsx";
 import AddStaffForm from "../../component/admin/AddStaffForm.jsx";
+// This form is still needed for editing
 import EditUserForm from "../../component/admin/EditUserForm.jsx";
 
+// --- API BASE ---
 const API_BASE = "http://localhost:8080/api";
 
-// Assume the admin is logged in and we know their sahakari
-// In a real app, this would come from auth context/session
-const ADMIN_SAHAKARI = "Mahalaxmi Sahakari"; // Replace with actual logged-in admin's sahakari
-
+// --- DETAIL ITEM ---
 const DetailItem = ({ label, value }) => (
   <div>
     <span className="text-sm font-semibold text-gray-500 block">{label}</span>
@@ -71,10 +74,10 @@ const UserDetails = ({
               className={`text-lg font-bold
               ${item.status === "Active" ? "text-green-600" : ""}
               ${item.status === "Pending" ? "text-yellow-600" : ""}
-              ${item.status === "Rejected" ? "text-red-600" : ""}
+              ${item.status === "Suspended" ? "text-red-600" : ""}
             `}
             >
-              {item.status}
+              {item.status ?? "Active"}
             </span>
           </div>
           <DetailItem label="Email" value={item.email} />
@@ -83,7 +86,9 @@ const UserDetails = ({
             <DetailItem label="Associated Sahakari" value={item.sahakari} />
           </div>
         </div>
-        {item.documents && item.documents.length > 0 && (
+        
+        {/* Only show if documents exist */}
+        {!!item.documents?.length && (
           <div>
             <span className="text-sm font-semibold text-gray-500 block mb-2">
               Uploaded Documents
@@ -103,7 +108,7 @@ const UserDetails = ({
         <>
           <button
             onClick={() => {
-              handleDeny(item.id, item.name);
+              handleDeny(item.id);
               onCloseViewModal();
             }}
             className="bg-red-500 text-white font-semibold py-2 px-5 rounded-full hover:bg-red-600 transition-colors"
@@ -121,7 +126,7 @@ const UserDetails = ({
           </button>
           <button
             onClick={() => {
-              handleApprove(item.id, item.name);
+              handleApprove(item.id);
               onCloseViewModal();
             }}
             className="bg-green-500 text-white font-semibold py-2 px-5 rounded-full hover:bg-green-600 transition-colors"
@@ -145,20 +150,23 @@ const UserDetails = ({
 );
 
 function AdminUsers() {
+  // --- STATE FOR DATA FROM DATABASE ---
   const [allUsers, setAllUsers] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [actionLoading, setActionLoading] = useState(null);
 
   const [viewModalItem, setViewModalItem] = useState(null);
-  const [isAddUserModalOpen, setIsAddUserModalOpen] = useState(false);
-  const [isAddStaffModalOpen, setIsAddStaffModalOpen] = useState(false);
+
+  // --- UPDATED MODAL STATES ---
+  const [isAddUserModalOpen, setIsAddUserModalOpen] = useState(false); // For Members
+  const [isAddStaffModalOpen, setIsAddStaffModalOpen] = useState(false); // For Staff
+
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [currentUserToEdit, setCurrentUserToEdit] = useState(null);
 
   const [activeFilter, setActiveFilter] = useState("All");
   const [searchQuery, setSearchQuery] = useState("");
 
-  // Load users from backend
+  // --- LOAD USERS FROM DATABASE ---
   const loadUsers = async () => {
     try {
       setLoading(true);
@@ -170,12 +178,12 @@ function AdminUsers() {
 
       const data = await res.json();
 
-      // Filter to only show users from admin's sahakari
-      const filteredData = Array.isArray(data)
-        ? data.filter((user) => user.sahakari === ADMIN_SAHAKARI)
-        : [];
-
-      setAllUsers(filteredData);
+      if (Array.isArray(data)) {
+        setAllUsers(data);
+      } else {
+        console.error("API did not return an array:", data);
+        setAllUsers([]);
+      }
     } catch (e) {
       console.error("Error fetching users:", e);
       setAllUsers([]);
@@ -184,6 +192,7 @@ function AdminUsers() {
     }
   };
 
+  // Load users on component mount
   useEffect(() => {
     loadUsers();
   }, []);
@@ -191,103 +200,68 @@ function AdminUsers() {
   const handleViewClick = (item) => setViewModalItem(item);
   const handleCloseViewModal = () => setViewModalItem(null);
 
-  // Approve user
-  const handleApprove = async (userId, userName) => {
-    if (!window.confirm(`Approve user: ${userName}?`)) return;
-
+  const handleApprove = async (userId) => {
     try {
-      setActionLoading(userId);
-      const res = await fetch(`${API_BASE}/users/${userId}/approve`, {
-        method: "PATCH",
-      });
-
-      if (!res.ok) {
-        throw new Error("Failed to approve user");
-      }
-
-      const updatedUser = await res.json();
-
-      // Update local state
-      setAllUsers((prev) =>
-        prev.map((u) => (u.id === userId ? updatedUser : u))
-      );
-
-      alert(`User ${userName} has been approved!`);
+      // You would typically make an API call here
+      // await fetch(`${API_BASE}/users/${userId}/approve`, { method: 'PATCH' });
+      
+      console.log(`Approving user ${userId}`);
+      alert(`User ${userId} approved! (Mock)`);
+      
+      // Reload users after approval
+      await loadUsers();
     } catch (e) {
-      console.error("Approve failed:", e);
-      alert("Failed to approve user. Please try again.");
-    } finally {
-      setActionLoading(null);
+      console.error("Error approving user:", e);
     }
   };
 
-  // Deny/Reject user
-  const handleDeny = async (userId, userName) => {
-    if (
-      !window.confirm(
-        `Reject user: ${userName}? This will deny their registration.`
-      )
-    )
-      return;
-
+  const handleDeny = async (userId) => {
     try {
-      setActionLoading(userId);
-      const res = await fetch(`${API_BASE}/users/${userId}/reject`, {
-        method: "PATCH",
-      });
-
-      if (!res.ok) {
-        throw new Error("Failed to reject user");
-      }
-
-      const updatedUser = await res.json();
-
-      // Update local state
-      setAllUsers((prev) =>
-        prev.map((u) => (u.id === userId ? updatedUser : u))
-      );
-
-      alert(`User ${userName} has been rejected.`);
+      // You would typically make an API call here
+      // await fetch(`${API_BASE}/users/${userId}/deny`, { method: 'PATCH' });
+      
+      console.log(`Denying user ${userId}`);
+      alert(`User ${userId} denied! (Mock)`);
+      
+      // Reload users after denial
+      await loadUsers();
     } catch (e) {
-      console.error("Reject failed:", e);
-      alert("Failed to reject user. Please try again.");
-    } finally {
-      setActionLoading(null);
+      console.error("Error denying user:", e);
     }
   };
 
   const handleEdit = (user) => {
+    console.log(`Editing user ${user.id}`);
     setCurrentUserToEdit(user);
     setIsEditModalOpen(true);
   };
 
-  const handleDelete = async (userId, userName) => {
-    if (
-      !window.confirm(`Delete user: ${userName}? This action cannot be undone.`)
-    )
-      return;
-
+  const handleDelete = async (userId) => {
+    if (!window.confirm("Delete this user?")) return;
+    
     try {
       await fetch(`${API_BASE}/users/${userId}`, { method: "DELETE" });
       setAllUsers((prev) => prev.filter((u) => u.id !== userId));
-      alert(`User ${userName} has been deleted.`);
     } catch (e) {
       console.error("Delete failed:", e);
-      alert("Failed to delete user. Please try again.");
     }
   };
 
-  const handleUserAdded = (newUser) => {
-    setAllUsers((prev) => [...prev, newUser]);
+  // Handle successful user addition
+  const handleUserAddSuccess = (savedUser) => {
+    setAllUsers((prev) => [...prev, savedUser]);
   };
 
-  const handleUserUpdated = (updatedUser) => {
-    setAllUsers((prev) =>
-      prev.map((u) => (u.id === updatedUser.id ? updatedUser : u))
-    );
+  // Handle successful staff addition
+  const handleStaffAddSuccess = (savedStaff) => {
+    setAllUsers((prev) => [...prev, savedStaff]);
   };
 
-  // Filter users based on active filter and search query
+  // Handle successful user edit
+  const handleUserEditSuccess = (savedUser) => {
+    setAllUsers((prev) => prev.map((u) => (u.id === savedUser.id ? savedUser : u)));
+  };
+
   const filteredUsers = useMemo(() => {
     return allUsers
       .filter((user) => {
@@ -300,9 +274,9 @@ function AdminUsers() {
       .filter((user) => {
         const query = searchQuery.toLowerCase();
         return (
-          user.name.toLowerCase().includes(query) ||
-          user.email.toLowerCase().includes(query) ||
-          user.role.toLowerCase().includes(query) ||
+          user.name?.toLowerCase().includes(query) ||
+          user.email?.toLowerCase().includes(query) ||
+          user.role?.toLowerCase().includes(query) ||
           String(user.id).includes(query)
         );
       });
@@ -313,9 +287,6 @@ function AdminUsers() {
       ? "bg-black text-white"
       : "bg-gray-200 text-gray-700 hover:bg-gray-300";
   };
-
-  // Count pending users for badge
-  const pendingCount = allUsers.filter((u) => u.status === "Pending").length;
 
   return (
     <>
@@ -346,16 +317,11 @@ function AdminUsers() {
             </button>
             <button
               onClick={() => setActiveFilter("Pending")}
-              className={`font-medium py-3 px-6 rounded-full transition-colors text-base relative ${getButtonClass(
+              className={`font-medium py-3 px-6 rounded-full transition-colors text-base ${getButtonClass(
                 "Pending"
               )}`}
             >
               Pending
-              {pendingCount > 0 && (
-                <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">
-                  {pendingCount}
-                </span>
-              )}
             </button>
             <button
               onClick={() => setActiveFilter("Staff")}
@@ -378,12 +344,14 @@ function AdminUsers() {
 
         {/* Loading State */}
         {loading && (
-          <div className="flex items-center justify-center py-12">
-            <div className="text-gray-500">Loading users...</div>
+          <div className="text-center py-12">
+            <h3 className="text-lg font-semibold text-gray-500">
+              Loading users...
+            </h3>
           </div>
         )}
 
-        {/* Users Table */}
+        {/* Table */}
         {!loading && (
           <div className="w-full overflow-x-auto">
             <table className="min-w-full text-left">
@@ -428,9 +396,7 @@ function AdminUsers() {
                     <td className="py-4 px-3 text-gray-700 truncate">
                       {user.email}
                     </td>
-                    <td className="py-4 px-3 text-gray-700">
-                      {user.phone || "-"}
-                    </td>
+                    <td className="py-4 px-3 text-gray-700">{user.phone}</td>
                     <td className="py-4 px-3 text-gray-700 capitalize">
                       {user.role}
                     </td>
@@ -439,10 +405,10 @@ function AdminUsers() {
                         className={`font-bold
                         ${user.status === "Active" ? "text-green-600" : ""}
                         ${user.status === "Pending" ? "text-yellow-600" : ""}
-                        ${user.status === "Rejected" ? "text-red-600" : ""}
+                        ${user.status === "Suspended" ? "text-red-600" : ""}
                       `}
                       >
-                        {user.status}
+                        {user.status ?? "Active"}
                       </span>
                     </td>
 
@@ -457,28 +423,18 @@ function AdminUsers() {
                             <EyeIcon className="w-5 h-5" />
                           </button>
                           <button
-                            onClick={() => handleDeny(user.id, user.name)}
-                            disabled={actionLoading === user.id}
-                            className="text-red-500 hover:text-red-700 disabled:opacity-50"
+                            onClick={() => handleDeny(user.id)}
+                            className="text-red-500 hover:text-red-700"
                             title="Deny"
                           >
                             <XIcon className="w-5 h-5" />
                           </button>
                           <button
                             onClick={() => handleEdit(user)}
-                            disabled={actionLoading === user.id}
-                            className="text-yellow-500 hover:text-yellow-700 disabled:opacity-50"
+                            className="text-yellow-500 hover:text-yellow-700"
                             title="Edit"
                           >
                             <PencilIcon className="w-5 h-5" />
-                          </button>
-                          <button
-                            onClick={() => handleApprove(user.id, user.name)}
-                            disabled={actionLoading === user.id}
-                            className="text-green-500 hover:text-green-700 disabled:opacity-50"
-                            title="Approve"
-                          >
-                            <CheckIcon className="w-5 h-5" />
                           </button>
                         </div>
                       ) : (
@@ -498,7 +454,7 @@ function AdminUsers() {
                             <PencilIcon className="w-5 h-5" />
                           </button>
                           <button
-                            onClick={() => handleDelete(user.id, user.name)}
+                            onClick={() => handleDelete(user.id)}
                             className="text-red-500 hover:text-red-700"
                             title="Delete"
                           >
@@ -528,6 +484,7 @@ function AdminUsers() {
 
       {/* Floating Action Button */}
       <div className="group fixed z-20 bottom-10 right-10 flex flex-col items-center gap-3">
+        {/* Pop-up Options Container */}
         <div
           className="flex flex-col items-center gap-3
                      opacity-0 scale-90 translate-y-4
@@ -555,7 +512,7 @@ function AdminUsers() {
           >
             <UserCircleIcon className="w-7 h-7" />
             <span className="absolute right-full mr-4 px-3 py-1.5 bg-black text-white text-xs font-semibold rounded-md whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity delay-150 pointer-events-none">
-              Add Member
+              Add User
             </span>
           </button>
         </div>
@@ -591,14 +548,13 @@ function AdminUsers() {
       <Modal
         isOpen={isAddUserModalOpen}
         onClose={() => setIsAddUserModalOpen(false)}
-        title="Add New Member"
+        title="Add New User"
         size="2xl"
       >
-        <AddUserForm
-          onClose={() => setIsAddUserModalOpen(false)}
-          onUserAdded={handleUserAdded}
+        <AddUserForm 
+          onClose={() => setIsAddUserModalOpen(false)} 
+          onUserAdded={handleUserAddSuccess}
           apiBase={API_BASE}
-          adminSahakari={ADMIN_SAHAKARI}
         />
       </Modal>
 
@@ -609,11 +565,10 @@ function AdminUsers() {
         title="Add New Staff"
         size="2xl"
       >
-        <AddStaffForm
-          onClose={() => setIsAddStaffModalOpen(false)}
-          onUserAdded={handleUserAdded}
+        <AddStaffForm 
+          onClose={() => setIsAddStaffModalOpen(false)} 
+          onStaffAdded={handleStaffAddSuccess}
           apiBase={API_BASE}
-          adminSahakari={ADMIN_SAHAKARI}
         />
       </Modal>
 
@@ -624,12 +579,14 @@ function AdminUsers() {
         title="Edit User"
         size="2xl"
       >
-        <EditUserForm
-          user={currentUserToEdit}
-          onClose={() => setIsEditModalOpen(false)}
-          onUserUpdated={handleUserUpdated}
-          apiBase={API_BASE}
-        />
+        {currentUserToEdit && (
+          <EditUserForm
+            user={currentUserToEdit}
+            onClose={() => setIsEditModalOpen(false)}
+            onUserUpdated={handleUserEditSuccess}
+            apiBase={API_BASE}
+          />
+        )}
       </Modal>
     </>
   );

@@ -216,7 +216,7 @@ const ViewPackageModal = ({ isOpen, onClose, packageData, packageType }) => {
   );
 };
 
-function AdminPackages({ selectedNetworkId = 6 }) {
+function AdminPackages({ selectedNetworkId = 1 }) {
   const [fixedDeposits, setFixedDeposits] = useState([]);
   const [savingAccounts, setSavingAccounts] = useState([]);
   const [loans, setLoans] = useState([]);
