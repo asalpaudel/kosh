@@ -14,6 +14,9 @@ public class FixedDeposit {
     private Double interestRate;
     private Integer minDuration;
     private Double minAmount;
+    
+    @Column(length = 1000)
+    private String description;
 
     @ManyToOne
     @JoinColumn(name = "network_id", nullable = false)
@@ -34,6 +37,9 @@ public class FixedDeposit {
 
     public Double getMinAmount() { return minAmount; }
     public void setMinAmount(Double minAmount) { this.minAmount = minAmount; }
+
+    public String getDescription() { return description; }
+    public void setDescription(String description) { this.description = description; }
 
     public Network getNetwork() { return network; }
     public void setNetwork(Network network) { this.network = network; }

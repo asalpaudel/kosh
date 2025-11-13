@@ -43,20 +43,11 @@ public class FinanceController {
         try {
             System.out.println("=== POST /fixed-deposits/" + networkId + " ===");
             System.out.println("Received data: " + fd);
-            System.out.println("Name: " + fd.getName());
-            System.out.println("Interest Rate: " + fd.getInterestRate());
-            System.out.println("Min Duration: " + fd.getMinDuration());
-            System.out.println("Min Amount: " + fd.getMinAmount());
 
             Network network = networkRepo.findById(networkId)
-                    .orElseThrow(() -> {
-                        System.out.println("ERROR: Network not found with ID: " + networkId);
-                        return new ResponseStatusException(HttpStatus.NOT_FOUND, "Network not found");
-                    });
+                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Network not found"));
 
-            System.out.println("Found network: " + network.getName());
             fd.setNetwork(network);
-
             FixedDeposit saved = fixedDepositRepo.save(fd);
             System.out.println("SUCCESS: Saved Fixed Deposit with ID: " + saved.getId());
 
@@ -64,9 +55,24 @@ public class FinanceController {
         } catch (Exception e) {
             System.out.println("ERROR in addFixedDeposit: " + e.getMessage());
             e.printStackTrace();
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body("Error: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Error: " + e.getMessage());
         }
+    }
+
+    @PutMapping("/fixed-deposits/{id}")
+    public ResponseEntity<?> updateFixedDeposit(@PathVariable Long id, @RequestBody FixedDeposit updatedFD) {
+        return fixedDepositRepo.findById(id)
+                .map(existingFD -> {
+                    existingFD.setName(updatedFD.getName());
+                    existingFD.setInterestRate(updatedFD.getInterestRate());
+                    existingFD.setMinDuration(updatedFD.getMinDuration());
+                    existingFD.setMinAmount(updatedFD.getMinAmount());
+                    existingFD.setDescription(updatedFD.getDescription());
+                    FixedDeposit saved = fixedDepositRepo.save(existingFD);
+                    System.out.println("UPDATED Fixed Deposit ID: " + id);
+                    return ResponseEntity.ok((Object) saved);
+                })
+                .orElseGet(() -> ResponseEntity.status(HttpStatus.NOT_FOUND).body((Object) "Fixed Deposit not found"));
     }
 
     @DeleteMapping("/fixed-deposits/{id}")
@@ -88,22 +94,33 @@ public class FinanceController {
     public ResponseEntity<?> addSavingAccount(@PathVariable Long networkId, @RequestBody SavingAccount sa) {
         try {
             System.out.println("=== POST /saving-accounts/" + networkId + " ===");
-            System.out.println("Received data: " + sa.getName());
-
             Network network = networkRepo.findById(networkId)
                     .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Network not found"));
 
             sa.setNetwork(network);
             SavingAccount saved = savingAccountRepo.save(sa);
             System.out.println("SUCCESS: Saved Saving Account with ID: " + saved.getId());
-
             return ResponseEntity.ok(saved);
         } catch (Exception e) {
             System.out.println("ERROR in addSavingAccount: " + e.getMessage());
             e.printStackTrace();
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body("Error: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Error: " + e.getMessage());
         }
+    }
+
+    @PutMapping("/saving-accounts/{id}")
+    public ResponseEntity<?> updateSavingAccount(@PathVariable Long id, @RequestBody SavingAccount updatedSA) {
+        return savingAccountRepo.findById(id)
+                .map(existingSA -> {
+                    existingSA.setName(updatedSA.getName());
+                    existingSA.setInterestRate(updatedSA.getInterestRate());
+                    existingSA.setMinBalance(updatedSA.getMinBalance());
+                    existingSA.setDescription(updatedSA.getDescription());
+                    SavingAccount saved = savingAccountRepo.save(existingSA);
+                    System.out.println("UPDATED Saving Account ID: " + id);
+                    return ResponseEntity.ok((Object) saved);
+                })
+                .orElseGet(() -> ResponseEntity.status(HttpStatus.NOT_FOUND).body((Object) "Saving Account not found"));
     }
 
     @DeleteMapping("/saving-accounts/{id}")
@@ -125,22 +142,34 @@ public class FinanceController {
     public ResponseEntity<?> addLoanPackage(@PathVariable Long networkId, @RequestBody LoanPackage lp) {
         try {
             System.out.println("=== POST /loan-packages/" + networkId + " ===");
-            System.out.println("Received data: " + lp.getName());
-
             Network network = networkRepo.findById(networkId)
                     .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Network not found"));
 
             lp.setNetwork(network);
             LoanPackage saved = loanPackageRepo.save(lp);
             System.out.println("SUCCESS: Saved Loan Package with ID: " + saved.getId());
-
             return ResponseEntity.ok(saved);
         } catch (Exception e) {
             System.out.println("ERROR in addLoanPackage: " + e.getMessage());
             e.printStackTrace();
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body("Error: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Error: " + e.getMessage());
         }
+    }
+
+    @PutMapping("/loan-packages/{id}")
+    public ResponseEntity<?> updateLoanPackage(@PathVariable Long id, @RequestBody LoanPackage updatedLP) {
+        return loanPackageRepo.findById(id)
+                .map(existingLP -> {
+                    existingLP.setName(updatedLP.getName());
+                    existingLP.setInterestRate(updatedLP.getInterestRate());
+                    existingLP.setMaxAmount(updatedLP.getMaxAmount());
+                    existingLP.setMaxDuration(updatedLP.getMaxDuration());
+                    existingLP.setDescription(updatedLP.getDescription());
+                    LoanPackage saved = loanPackageRepo.save(existingLP);
+                    System.out.println("UPDATED Loan Package ID: " + id);
+                    return ResponseEntity.ok((Object) saved);
+                })
+                .orElseGet(() -> ResponseEntity.status(HttpStatus.NOT_FOUND).body((Object) "Loan Package not found"));
     }
 
     @DeleteMapping("/loan-packages/{id}")
