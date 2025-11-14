@@ -5,10 +5,10 @@ const apiBase = "http://localhost:8080/api";
 
 function AddTransactionForm({ onAdded, onClose }) {
   const [formData, setFormData] = useState({
-    date: "",
-    user: "",
+    userId: null,      
+    userName: "",    
     type: "Deposit",
-    amount: "",
+    amountValue: "", 
   });
 
   const [loading, setLoading] = useState(false);
@@ -31,19 +31,17 @@ function AddTransactionForm({ onAdded, onClose }) {
     setUserSearch(query);
 
     if (query === "") {
-      setFormData((prev) => ({ ...prev, user: "" }));
+      setFormData((prev) => ({ ...prev, userId: null, userName: "" }));
     }
 
     if (searchTimeoutRef.current) {
       clearTimeout(searchTimeoutRef.current);
     }
-
     if (query.length < 2) {
       setUserResults([]);
       setShowUserResults(false);
       return;
     }
-
     setIsUserLoading(true);
     setShowUserResults(true);
 
@@ -51,7 +49,6 @@ function AddTransactionForm({ onAdded, onClose }) {
       try {
         const response = await fetch(`${apiBase}/users?search=${query}`);
         if (!response.ok) throw new Error("Failed to fetch users");
-
         const data = await response.json();
         setUserResults(data);
       } catch (err) {
@@ -64,8 +61,12 @@ function AddTransactionForm({ onAdded, onClose }) {
   };
 
   const handleUserSelect = (user) => {
-    setFormData((prev) => ({ ...prev, user: user.name }));
-    setUserSearch(user.name);
+    setFormData((prev) => ({
+      ...prev,
+      userId: user.id,
+      userName: user.name,
+    }));
+    setUserSearch(user.name); 
     setShowUserResults(false);
     setUserResults([]);
   };
@@ -87,25 +88,31 @@ function AddTransactionForm({ onAdded, onClose }) {
     setLoading(true);
     setError("");
 
-    if (formData.user === "" || formData.date === "" || formData.amount === "") {
-      setError("Please fill in all fields (Date, User, and Amount).");
+    if (formData.userId === null || formData.amountValue === "") {
+      setError("Please select a User and enter an Amount.");
       setLoading(false);
       return;
     }
 
     try {
+      const payload = {
+        userId: formData.userId,
+        userName: formData.userName,
+        type: formData.type,
+        amountValue: parseFloat(formData.amountValue),
+      };
+
       const response = await fetch(`${apiBase}/transactions`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          ...formData,
-          amount: `Rs. ${parseFloat(formData.amount).toLocaleString("en-IN")}`,
-        }),
+        body: JSON.stringify(payload),
       });
 
       if (!response.ok) {
         const errorText = await response.text();
-        throw new Error(`Failed to add: ${response.status} - ${errorText}`);
+        throw new Error(
+          errorText || `Failed to add: ${response.status}`
+        );
       }
 
       onAdded();
@@ -130,7 +137,7 @@ function AddTransactionForm({ onAdded, onClose }) {
       )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div className="relative" ref={searchBoxRef}>
+        <div className="relative md:col-span-2" ref={searchBoxRef}>
           <label className="block font-semibold mb-2">User</label>
           <input
             type="text"
@@ -152,7 +159,7 @@ function AddTransactionForm({ onAdded, onClose }) {
                     onClick={() => handleUserSelect(user)}
                     className="px-4 py-2 hover:bg-teal-100 cursor-pointer"
                   >
-                    {user.name} ({user.email})
+                    {user.name} (Email: {user.email} | Bal: Rs. {(user.balance ?? 0).toLocaleString('en-IN')})
                   </div>
                 ))
               ) : (
@@ -160,18 +167,6 @@ function AddTransactionForm({ onAdded, onClose }) {
               )}
             </div>
           )}
-        </div>
-
-        <div>
-          <label className="block font-semibold mb-2">Date</label>
-          <input
-            name="date"
-            type="date"
-            value={formData.date}
-            onChange={handleChange}
-            className="w-full px-4 py-3 border border-gray-300 rounded-full focus:outline-none focus:border-black"
-            required
-          />
         </div>
       </div>
 
@@ -195,10 +190,10 @@ function AddTransactionForm({ onAdded, onClose }) {
         <div>
           <label className="block font-semibold mb-2">Amount (Rs.)</label>
           <input
-            name="amount"
+            name="amountValue" 
             type="number"
             step="0.01"
-            value={formData.amount}
+            value={formData.amountValue} 
             onChange={handleChange}
             placeholder="e.g., 5000"
             className="w-full px-4 py-3 border border-gray-300 rounded-full focus:outline-none focus:border-black"
@@ -212,7 +207,7 @@ function AddTransactionForm({ onAdded, onClose }) {
         disabled={loading}
         className="w-full bg-teal-500 text-white font-semibold py-3 rounded-full hover:bg-teal-600 transition-colors mt-4 disabled:bg-gray-300 disabled:cursor-not-allowed"
       >
-        {loading ? "Adding..." : "Add Transaction"}
+        {loading ? "Processing..." : "Add Transaction"}
       </button>
     </form>
   );
