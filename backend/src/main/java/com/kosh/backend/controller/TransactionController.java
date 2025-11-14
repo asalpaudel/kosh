@@ -1,18 +1,24 @@
 package com.kosh.backend.controller;
 
+import java.time.LocalDate;
 import java.util.List;
+import java.util.Locale;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus; 
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.CrossOrigin;
-import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.GetMapping; 
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.server.ResponseStatusException;
 
 import com.kosh.backend.model.Transaction;
-import com.kosh.backend.repository.TransactionRepository;
+import com.kosh.backend.model.User;
+import com.kosh.backend.repository.TransactionRepository; 
+import com.kosh.backend.repository.UserRepository;
 
 @RestController
 @RequestMapping("/api/transactions")
@@ -22,6 +28,26 @@ public class TransactionController {
     @Autowired
     private TransactionRepository repo;
 
+    @Autowired
+    private UserRepository userRepo; 
+
+
+    public static class TransactionRequest {
+        private Integer userId;
+        private String userName; 
+        private String type;
+        private Double amountValue; 
+
+        public Integer getUserId() { return userId; }
+        public void setUserId(Integer userId) { this.userId = userId; }
+        public String getUserName() { return userName; }
+        public void setUserName(String userName) { this.userName = userName; }
+        public String getType() { return type; }
+        public void setType(String type) { this.type = type; }
+        public Double getAmountValue() { return amountValue; }
+        public void setAmountValue(Double amountValue) { this.amountValue = amountValue; }
+    }
+
     @GetMapping
     public ResponseEntity<List<Transaction>> getAllTransactions() {
         List<Transaction> transactions = repo.findAll();
@@ -29,19 +55,62 @@ public class TransactionController {
     }
 
     @PostMapping
-    public ResponseEntity<Transaction> createTransaction(@RequestBody Transaction transaction) {
+    public ResponseEntity<Transaction> createTransaction(@RequestBody TransactionRequest req) {
         try {
             System.out.println("=== POST /api/transactions ===");
-            System.out.println("Received data: " + transaction.getUser() + " - " + transaction.getAmount());
+            System.out.println("Received request for UserID: " + req.getUserId() + " for amount: " + req.getAmountValue());
+
+            User user = userRepo.findById(req.getUserId())
+                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
+
+            // --- FIX 1: Prevents NullPointerException ---
+            Double currentBalance = user.getBalance() != null ? user.getBalance() : 0.0;
             
-            Transaction saved = repo.save(transaction);
+            Double txAmount = req.getAmountValue();
+            String txType = req.getType();
+
+            if ("Deposit".equals(txType) || "Interest Added".equals(txType) || "Loan Payment".equals(txType)) {
+
+                user.setBalance(currentBalance + txAmount);
+            } else if ("Withdrawal".equals(txType)) {
+
+                if (currentBalance < txAmount) {
+
+                    throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Insufficient funds. Balance: " + currentBalance);
+                }
+                user.setBalance(currentBalance - txAmount);
+            } else {
+                System.out.println("Transaction type '" + txType + "' does not affect balance.");
+            }
+
+            userRepo.save(user);
+            System.out.println("User balance updated. New balance: " + user.getBalance());
+
+            Transaction newTransaction = new Transaction();
+            newTransaction.setDate(LocalDate.now().toString());
+            newTransaction.setUserId(req.getUserId());
+            newTransaction.setUser(req.getUserName()); 
+            newTransaction.setType(txType);
             
-            System.out.println("SUCCESS: Saved Transaction with ID: " + saved.getId());
+            // --- FIX 3: Set Locale to Nepal ("en", "NP") ---
+            String formattedAmount = String.format(new Locale("en", "NP"), "Rs. %.2f", txAmount);
+            
+            newTransaction.setAmount(formattedAmount); 
+
+            Transaction saved = repo.save(newTransaction);
+            
+            System.out.println("SUCCESS: Saved Transaction log with ID: " + saved.getId());
             return ResponseEntity.ok(saved);
+
+        } catch (ResponseStatusException e) {
+            // Handle specific errors like "Insufficient funds"
+            System.out.println("ERROR in createTransaction: " + e.getMessage());
+            return ResponseEntity.status(e.getStatusCode()).body(null); 
         } catch (Exception e) {
+            // Handle general errors
             System.out.println("ERROR in createTransaction: " + e.getMessage());
             e.printStackTrace();
-            return ResponseEntity.status(500).build();
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }
 }

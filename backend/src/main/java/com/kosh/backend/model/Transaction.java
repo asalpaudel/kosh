@@ -14,6 +14,7 @@ public class Transaction {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    private Integer userId; 
     private String date; 
     private String user; 
     private String type; 
@@ -22,6 +23,9 @@ public class Transaction {
     // Getters and Setters
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
+
+    public Integer getUserId() { return userId; } 
+    public void setUserId(Integer userId) { this.userId = userId; }
 
     public String getDate() { return date; }
     public void setDate(String date) { this.date = date; }

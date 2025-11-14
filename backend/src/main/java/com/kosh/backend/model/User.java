@@ -1,6 +1,9 @@
 package com.kosh.backend.model;
 
-import jakarta.persistence.*;
+import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
 
 @Entity
 public class User {
@@ -15,10 +18,12 @@ public class User {
     private String role;
     private String sahakari;
     private String password;
-    private String documentPath; // store uploaded document path or name
+    private String documentPath;
     private String status = "Pending";
 
-    // Getters and Setters
+
+    private Double balance = 0.0;
+
     public int getId() {
         return id;  
     }
@@ -80,5 +85,12 @@ public class User {
     
     public void setStatus(String status) {
         this.status = status;
+    }
+
+    public Double getBalance() {
+        return balance;
+    }
+    public void setBalance(Double balance) {
+        this.balance = balance;
     }
 }
