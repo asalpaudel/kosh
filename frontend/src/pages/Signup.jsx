@@ -176,7 +176,7 @@ export default function Signup() {
       );
 
       // Redirect to login page
-      navigate("/login");
+      navigate("/");
     } catch (err) {
       console.error("Signup error:", err);
       setError(err.message || "Failed to create account. Please try again.");
