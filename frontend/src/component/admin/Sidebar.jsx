@@ -31,7 +31,7 @@ function Sidebar() {
           <PiggyBankIcon className="text-gray-300 h-7 w-7 transition-all duration-200 hover:scale-110 hover:text-white" />
         </NavLink>
         
-        <NavLink to="/admin/transactions" className={navLinkClass}>
+        <NavLink to="/admin/history" className={navLinkClass}>
           <ActivityIcon className="text-gray-300 h-7 w-7 transition-all duration-200 hover:scale-110 hover:text-white" />
         </NavLink>
         

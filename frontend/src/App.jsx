@@ -21,6 +21,7 @@ import Networks from "./pages/superadmin/Networks.jsx";
 import AdminLayout from "./component/admin/Layout.jsx";
 import AdminDashboard from "./pages/admin/Dashboard.jsx";
 import AdminUsers from "./pages/admin/Users.jsx";
+import AdminHistory from "./pages/admin/History.jsx";
 import AdminTransactions from "./pages/admin/Transactions.jsx";
 import AdminPackages from "./pages/admin/Packages.jsx"; 
 
@@ -47,6 +48,7 @@ function App() {
             <Route path="dashboard" element={<AdminDashboard />} />
             <Route path="users" element={<AdminUsers />} />
             <Route path="packages" element={<AdminPackages />} /> 
+            <Route path="history" element={<AdminHistory />} />
             <Route path="transactions" element={<AdminTransactions />} />
           </Route>
 
