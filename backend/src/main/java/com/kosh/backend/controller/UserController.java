@@ -3,7 +3,16 @@ package com.kosh.backend.controller;
 import java.util.List;
 import java.util.stream.Collectors;
 
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
 import com.kosh.backend.model.User;
@@ -76,7 +85,7 @@ public class UserController {
         User existingUser = repo.findById(id)
                 .orElseThrow(() -> new RuntimeException("User not found with id: " + id));
         
-        // Update only the fields that are provided, preserve the password
+        // Update all fields *except* password
         existingUser.setName(updatedUser.getName());
         existingUser.setEmail(updatedUser.getEmail());
         existingUser.setPhone(updatedUser.getPhone());
@@ -84,13 +93,17 @@ public class UserController {
         existingUser.setSahakari(updatedUser.getSahakari());
         existingUser.setStatus(updatedUser.getStatus());
         
-        // Password is NOT updated here - it remains unchanged
-        // existingUser.setPassword() is NOT called
+        // --- THIS IS THE FIX ---
+        // Only update the password if a new, non-empty password is provided
+        // This check prevents a null or blank password from overwriting the existing one
+        if (updatedUser.getPassword() != null && !updatedUser.getPassword().isEmpty()) {
+            existingUser.setPassword(updatedUser.getPassword());
+        }
         
         return repo.save(existingUser);
     }
 
-        @PatchMapping("/{id}/approve")
+    @PatchMapping("/{id}/approve")
     public User approveUser(@PathVariable int id) {
         User user = repo.findById(id).orElseThrow();
         user.setStatus("Active");

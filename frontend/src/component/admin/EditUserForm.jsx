@@ -16,6 +16,7 @@ function EditUserForm({ user, onClose, onUserUpdated, apiBase }) {
     role: "member",
     sahakari: "",
     status: "Pending",
+    password: "", // Will hold the original password
   });
 
   const [loading, setLoading] = useState(false);
@@ -31,6 +32,10 @@ function EditUserForm({ user, onClose, onUserUpdated, apiBase }) {
         role: user.role || "member",
         sahakari: user.sahakari || "",
         status: user.status || "Pending",
+        // --- THIS IS THE FIX ---
+        // Store the original password in the state.
+        // We will send this back to the backend.
+        password: user.password || "",
       });
     }
   }, [user]);
@@ -51,8 +56,10 @@ function EditUserForm({ user, onClose, onUserUpdated, apiBase }) {
     setError(null);
 
     try {
+      // Send the entire formData state, which now includes
+      // all fields, including the original password.
       const response = await fetch(`${apiBase}/users/${user.id}`, {
-        method: "PUT", // or "PATCH" depending on your API
+        method: "PUT",
         headers: {
           "Content-Type": "application/json",
         },
