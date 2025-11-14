@@ -144,34 +144,20 @@ function EditUserForm({ user, onClose, onUserUpdated, apiBase }) {
         />
       </div>
 
-      {/* Role */}
+      {/* Role (Read-only display) */}
       <div>
         <label className="block font-semibold mb-2">Role</label>
-        <select
-          name="role"
-          value={formData.role}
-          onChange={handleChange}
-          className="w-full px-4 py-3 border border-gray-300 rounded-full focus:outline-none focus:border-black"
-          disabled={loading}
-        >
-          <option value="member">Member</option>
-          <option value="staff">Staff</option>
-          <option value="admin">Admin</option>
-        </select>
+        <div className="w-full px-4 py-3 border border-gray-200 rounded-full bg-gray-50 text-gray-700 capitalize">
+          {formData.role}
+        </div>
       </div>
 
-      {/* Sahakari */}
+      {/* Sahakari (Read-only display) */}
       <div>
         <label className="block font-semibold mb-2">Associated Sahakari</label>
-        <input
-          type="text"
-          name="sahakari"
-          value={formData.sahakari}
-          onChange={handleChange}
-          placeholder="Enter associated sahakari"
-          className="w-full px-4 py-3 border border-gray-300 rounded-full focus:outline-none focus:border-black"
-          disabled={loading}
-        />
+        <div className="w-full px-4 py-3 border border-gray-200 rounded-full bg-gray-50 text-gray-700">
+          {formData.sahakari || "Not assigned"}
+        </div>
       </div>
 
       {/* Status */}

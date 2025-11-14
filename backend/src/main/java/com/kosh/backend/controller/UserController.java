@@ -72,8 +72,22 @@ public class UserController {
 
     @PutMapping("/{id}")
     public User updateUser(@PathVariable int id, @RequestBody User updatedUser) {
-        updatedUser.setId(id);
-        return repo.save(updatedUser);
+        // Fetch the existing user from database
+        User existingUser = repo.findById(id)
+                .orElseThrow(() -> new RuntimeException("User not found with id: " + id));
+        
+        // Update only the fields that are provided, preserve the password
+        existingUser.setName(updatedUser.getName());
+        existingUser.setEmail(updatedUser.getEmail());
+        existingUser.setPhone(updatedUser.getPhone());
+        existingUser.setRole(updatedUser.getRole());
+        existingUser.setSahakari(updatedUser.getSahakari());
+        existingUser.setStatus(updatedUser.getStatus());
+        
+        // Password is NOT updated here - it remains unchanged
+        // existingUser.setPassword() is NOT called
+        
+        return repo.save(existingUser);
     }
 
         @PatchMapping("/{id}/approve")
