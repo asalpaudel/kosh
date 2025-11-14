@@ -1,7 +1,7 @@
 import React from 'react';
 import { SearchIcon } from '../../component/icons.jsx'; 
 
-function AdminTransactions() {
+function AdminHistory() {
   
   const transactionLogs = [
     {
@@ -86,4 +86,4 @@ function AdminTransactions() {
   );
 }
 
-export default AdminTransactions;
+export default AdminHistory;
