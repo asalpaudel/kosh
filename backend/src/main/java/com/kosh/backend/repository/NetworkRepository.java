@@ -6,4 +6,6 @@ import org.springframework.stereotype.Repository;
 
 @Repository
 public interface NetworkRepository extends JpaRepository<Network, Long> {
+
+    Network findByName(String name);
 }

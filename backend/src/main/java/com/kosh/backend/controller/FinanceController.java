@@ -14,7 +14,7 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/finance")
-@CrossOrigin(origins = {"http://localhost:3000", "http://localhost:5173"}, allowCredentials = "true")
+@CrossOrigin(origins = { "http://localhost:3000", "http://localhost:5173" }, allowCredentials = "true")
 public class FinanceController {
 
     @Autowired
@@ -36,9 +36,7 @@ public class FinanceController {
         return ResponseEntity.ok(deposits);
     }
 
-    @PostMapping(value = "/fixed-deposits/{networkId}", 
-                 consumes = "application/json", 
-                 produces = "application/json")
+    @PostMapping(value = "/fixed-deposits/{networkId}", consumes = "application/json", produces = "application/json")
     public ResponseEntity<?> addFixedDeposit(@PathVariable Long networkId, @RequestBody FixedDeposit fd) {
         try {
             System.out.println("=== POST /fixed-deposits/" + networkId + " ===");
@@ -88,9 +86,7 @@ public class FinanceController {
         return ResponseEntity.ok(accounts);
     }
 
-    @PostMapping(value = "/saving-accounts/{networkId}",
-                 consumes = "application/json",
-                 produces = "application/json")
+    @PostMapping(value = "/saving-accounts/{networkId}", consumes = "application/json", produces = "application/json")
     public ResponseEntity<?> addSavingAccount(@PathVariable Long networkId, @RequestBody SavingAccount sa) {
         try {
             System.out.println("=== POST /saving-accounts/" + networkId + " ===");
@@ -136,9 +132,7 @@ public class FinanceController {
         return ResponseEntity.ok(packages);
     }
 
-    @PostMapping(value = "/loan-packages/{networkId}",
-                 consumes = "application/json",
-                 produces = "application/json")
+    @PostMapping(value = "/loan-packages/{networkId}", consumes = "application/json", produces = "application/json")
     public ResponseEntity<?> addLoanPackage(@PathVariable Long networkId, @RequestBody LoanPackage lp) {
         try {
             System.out.println("=== POST /loan-packages/" + networkId + " ===");
