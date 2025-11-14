@@ -22,6 +22,9 @@ function Sidebar() {
         <NavLink to="/admin/dashboard" className={navLinkClass}>
           <LayoutDashboardIcon className="text-gray-300 h-7 w-7 transition-all duration-200 hover:scale-110 hover:text-white" />
         </NavLink>
+        <NavLink to="/admin/transactions" className={navLinkClass}>
+          <FileTextIcon className="text-gray-300 h-7 w-7 transition-all duration-200 hover:scale-110 hover:text-white" />
+        </NavLink>
         
         <NavLink to="/admin/users" className={navLinkClass}>
           <UsersIcon className="text-gray-300 h-7 w-7 transition-all duration-200 hover:scale-110 hover:text-white" />

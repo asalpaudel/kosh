@@ -3,7 +3,16 @@ package com.kosh.backend.controller;
 import java.util.List;
 import java.util.stream.Collectors;
 
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
 import com.kosh.backend.model.User;
@@ -53,11 +62,6 @@ public class UserController {
         return saved;
     }
 
-    @GetMapping
-    public List<User> getAllUsers() {
-        return repo.findAll();
-    }
-
     @GetMapping("/pending")
     public List<User> getPendingUsers(@RequestParam String sahakari) {
         return repo.findAll().stream()
@@ -94,5 +98,16 @@ public class UserController {
     @DeleteMapping("/{id}")
     public void deleteUser(@PathVariable int id) {
         repo.deleteById(id);
+    }
+    @GetMapping
+    public List<User> getAllUsers(
+            @RequestParam(value = "search", required = false) String search) {
+        
+        if (search != null && !search.isEmpty()) {
+            System.out.println("Searching users for: " + search);
+            return repo.findByNameContainingIgnoreCase(search);
+        } else {
+            return repo.findAll();
+        }
     }
 }
