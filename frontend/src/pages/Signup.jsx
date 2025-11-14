@@ -508,7 +508,7 @@ export default function Signup() {
           {/* Login Link */}
           <p className="mt-6 text-center font-medium">
             Already have an account?{" "}
-            <NavLink to="/login" className="text-[#00FFB2] hover:underline">
+            <NavLink to="/" className="text-[#00FFB2] hover:underline">
               Signin
             </NavLink>
           </p>
