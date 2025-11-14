@@ -15,7 +15,7 @@ import AddFixedDepositForm from "../../component/admin/AddFixedDepositForm.jsx";
 import AddSavingAccountForm from "../../component/admin/AddSavingAccountForm.jsx";
 import AddLoanForm from "../../component/admin/AddLoanForm.jsx";
 
-// Edit Forms — now separated into their own files
+// Edit Forms
 import EditFixedDepositForm from "../../component/admin/EditFixedDepositForm.jsx";
 import EditSavingAccountForm from "../../component/admin/EditSavingAccountForm.jsx";
 import EditLoanPackageForm from "../../component/admin/EditLoanPackageForm.jsx";
@@ -216,11 +216,13 @@ const ViewPackageModal = ({ isOpen, onClose, packageData, packageType }) => {
   );
 };
 
-function AdminPackages({ selectedNetworkId = 1 }) {
+function AdminPackages() {
+  const [selectedNetworkId, setSelectedNetworkId] = useState(null);
   const [fixedDeposits, setFixedDeposits] = useState([]);
   const [savingAccounts, setSavingAccounts] = useState([]);
   const [loans, setLoans] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [sessionLoading, setSessionLoading] = useState(true);
 
   // Add modals
   const [isAddFixedDepositModalOpen, setIsAddFixedDepositModalOpen] =
@@ -244,15 +246,46 @@ function AdminPackages({ selectedNetworkId = 1 }) {
   // Current package for editing
   const [currentEditPackage, setCurrentEditPackage] = useState(null);
 
+  // Fetch session sahakariId
+  useEffect(() => {
+    const fetchSession = async () => {
+      try {
+        const response = await fetch(`${apiBase}/session`, {
+          method: "GET",
+          credentials: "include", // Important: Include cookies for session
+        });
+        
+        if (response.ok) {
+          const data = await response.json();
+          setSelectedNetworkId(data.sahakariId);
+        } else {
+          console.error("Failed to fetch session data");
+        }
+      } catch (error) {
+        console.error("Error fetching session:", error);
+      } finally {
+        setSessionLoading(false);
+      }
+    };
+
+    fetchSession();
+  }, []);
+
   // Fetch all finance data
   const fetchData = async () => {
     if (!selectedNetworkId) return;
     setLoading(true);
     try {
       const [fdRes, saRes, lpRes] = await Promise.all([
-        fetch(`${apiBase}/finance/fixed-deposits/${selectedNetworkId}`),
-        fetch(`${apiBase}/finance/saving-accounts/${selectedNetworkId}`),
-        fetch(`${apiBase}/finance/loan-packages/${selectedNetworkId}`),
+        fetch(`${apiBase}/finance/fixed-deposits/${selectedNetworkId}`, {
+          credentials: "include",
+        }),
+        fetch(`${apiBase}/finance/saving-accounts/${selectedNetworkId}`, {
+          credentials: "include",
+        }),
+        fetch(`${apiBase}/finance/loan-packages/${selectedNetworkId}`, {
+          credentials: "include",
+        }),
       ]);
 
       setFixedDeposits(await fdRes.json());
@@ -266,7 +299,9 @@ function AdminPackages({ selectedNetworkId = 1 }) {
   };
 
   useEffect(() => {
-    fetchData();
+    if (selectedNetworkId) {
+      fetchData();
+    }
   }, [selectedNetworkId]);
 
   // Delete handler
@@ -275,7 +310,10 @@ function AdminPackages({ selectedNetworkId = 1 }) {
     if (!confirm) return;
 
     let url = `${apiBase}/finance/${type}/${id}`;
-    await fetch(url, { method: "DELETE" });
+    await fetch(url, { 
+      method: "DELETE",
+      credentials: "include",
+    });
     fetchData();
   };
 
@@ -317,6 +355,26 @@ function AdminPackages({ selectedNetworkId = 1 }) {
     setIsEditLoanModalOpen(false);
     setCurrentEditPackage(null);
   };
+
+  // Show loading state while fetching session
+  if (sessionLoading) {
+    return (
+      <div className="bg-white p-6 min-h-[calc(100vh-8.5rem)] rounded-lg shadow-md flex items-center justify-center">
+        <p className="text-center text-gray-500">Loading session...</p>
+      </div>
+    );
+  }
+
+  // Show error if no network ID
+  if (!selectedNetworkId) {
+    return (
+      <div className="bg-white p-6 min-h-[calc(100vh-8.5rem)] rounded-lg shadow-md flex items-center justify-center">
+        <p className="text-center text-red-500">
+          Unable to load session. Please login again.
+        </p>
+      </div>
+    );
+  }
 
   return (
     <>
