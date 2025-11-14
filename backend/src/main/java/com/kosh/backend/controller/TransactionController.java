@@ -3,6 +3,7 @@ package com.kosh.backend.controller;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Locale;
+import java.util.UUID;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus; 
@@ -31,7 +32,7 @@ public class TransactionController {
     @Autowired
     private UserRepository userRepo; 
 
-
+    // ... (TransactionRequest class is unchanged) ...
     public static class TransactionRequest {
         private Integer userId;
         private String userName; 
@@ -48,6 +49,7 @@ public class TransactionController {
         public void setAmountValue(Double amountValue) { this.amountValue = amountValue; }
     }
 
+
     @GetMapping
     public ResponseEntity<List<Transaction>> getAllTransactions() {
         List<Transaction> transactions = repo.findAll();
@@ -63,7 +65,6 @@ public class TransactionController {
             User user = userRepo.findById(req.getUserId())
                     .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
 
-            // --- FIX 1: Prevents NullPointerException ---
             Double currentBalance = user.getBalance() != null ? user.getBalance() : 0.0;
             
             Double txAmount = req.getAmountValue();
@@ -87,27 +88,26 @@ public class TransactionController {
             System.out.println("User balance updated. New balance: " + user.getBalance());
 
             Transaction newTransaction = new Transaction();
+            
+            newTransaction.setTransactionId(UUID.randomUUID().toString());            
             newTransaction.setDate(LocalDate.now().toString());
             newTransaction.setUserId(req.getUserId());
             newTransaction.setUser(req.getUserName()); 
             newTransaction.setType(txType);
             
-            // --- FIX 3: Set Locale to Nepal ("en", "NP") ---
             String formattedAmount = String.format(new Locale("en", "NP"), "Rs. %.2f", txAmount);
             
             newTransaction.setAmount(formattedAmount); 
 
             Transaction saved = repo.save(newTransaction);
             
-            System.out.println("SUCCESS: Saved Transaction log with ID: " + saved.getId());
+            System.out.println("SUCCESS: Saved Transaction log with ID: " + saved.getId() + " (TxID: " + saved.getTransactionId() + ")");
             return ResponseEntity.ok(saved);
 
         } catch (ResponseStatusException e) {
-            // Handle specific errors like "Insufficient funds"
             System.out.println("ERROR in createTransaction: " + e.getMessage());
             return ResponseEntity.status(e.getStatusCode()).body(null); 
         } catch (Exception e) {
-            // Handle general errors
             System.out.println("ERROR in createTransaction: " + e.getMessage());
             e.printStackTrace();
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();

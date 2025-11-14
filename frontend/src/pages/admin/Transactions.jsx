@@ -1,38 +1,24 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import {
   SearchIcon,
-  EyeIcon,
-  PencilIcon,
-  TrashIcon,
   PlusCircleIcon,
-  UserCircleIcon,
-  DocumentIcon,
-  CheckIcon,
-  XIcon,
-  UserPlusIcon,
 } from "../../component/icons.jsx";
-// --- ADDED IMPORTS ---
 import Modal from "../../component/superadmin/Modal.jsx";
 import AddTransactionForm from "../../component/admin/AddTransactionForm.jsx";
 
-// Assume API base is defined, similar to other admin pages
 const API_BASE = "http://localhost:8080/api";
 
 function AdminTransactions() {
   
-  // State for data, loading, and search
   const [transactions, setTransactions] = useState([]);
   const [loading, setLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
 
-  // --- ADDED STATE ---
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
 
-  // Function to load transactions from the API
   const loadTransactions = async () => {
     setLoading(true);
     try {
-      // Assuming a general endpoint for transactions
       const res = await fetch(`${API_BASE}/transactions`); 
       if (!res.ok) {
         throw new Error(`Failed to fetch: ${res.status}`);
@@ -47,34 +33,30 @@ function AdminTransactions() {
     }
   };
 
-  // Load transactions on component mount
   useEffect(() => {
     loadTransactions();
   }, []);
 
-  // Filter transactions based on search query
   const filteredTransactions = useMemo(() => {
-    // ... (rest of the function is unchanged)
     const query = searchQuery.toLowerCase();
     if (!query) return transactions;
 
     return transactions.filter(log => 
       log.user?.toLowerCase().includes(query) ||
       log.type?.toLowerCase().includes(query) ||
-      log.amount?.toLowerCase().includes(query)
+      log.amount?.toLowerCase().includes(query) ||
+      log.transactionId?.toLowerCase().includes(query) 
     );
   }, [transactions, searchQuery]);
 
-  // --- ADDED HANDLER ---
   const handleTransactionAdded = () => {
     setIsAddModalOpen(false);
-    loadTransactions(); // Refresh the list
+    loadTransactions(); 
   };
 
   return (
     <div className="bg-white p-6"> 
       
-      {/* ... (rest of the search/export bar is unchanged) ... */}
       <div className="flex flex-wrap items-center justify-between mb-8 gap-4">
         
         <div className="relative flex-grow sm:flex-grow-0">
@@ -83,7 +65,7 @@ function AdminTransactions() {
           </span>
           <input
             type="text"
-            placeholder="Search by user, type, amount..."
+            placeholder="Search by ID, user, type..." 
             className="w-full sm:w-80 bg-gray-100 text-gray-700 border border-transparent rounded-full py-3 pl-11 pr-4 text-base focus:outline-none focus:bg-white focus:border-gray-300"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
@@ -91,7 +73,6 @@ function AdminTransactions() {
         </div>
         
         <div className="flex items-center gap-3">
-          {/* Date and Export buttons are not wired in this refactor */}
           <button className="bg-gray-100 text-gray-700 font-medium py-3 px-6 rounded-full hover:bg-gray-200 transition-colors text-base">
             1-Apr-25 to 15-Apr-25
           </button>
@@ -103,19 +84,18 @@ function AdminTransactions() {
         </div>
       </div>
 
-      {/* ... (rest of the table is unchanged) ... */}
       <div className="w-full overflow-x-auto">
         <table className="min-w-full text-left">
-          {/* ... (thead) ... */}
+          
           <thead>
             <tr className="border-b border-gray-200">
-              <th className="py-4 px-2 text-sm font-semibold text-gray-600">Date</th>
-              <th className="py-4 px-2 text-sm font-semibold text-gray-600">User</th>
+              <th className="py-4 px-2 text-sm font-semibold text-gray-600">Transaction ID</th>
+              <th className="py-4 px-2 text-sm font-semibold text-gray-600">User (Account Holder)</th>
               <th className="py-4 px-2 text-sm font-semibold text-gray-600">Transaction Type</th>
               <th className="py-4 px-2 text-sm font-semibold text-gray-600 text-right">Amount</th>
             </tr>
           </thead>
-          {/* ... (tbody) ... */}
+          
           <tbody>
             {loading ? (
               <tr>
@@ -124,9 +104,13 @@ function AdminTransactions() {
                 </td>
               </tr>
             ) : filteredTransactions.length > 0 ? (
-              filteredTransactions.map((log, index) => (
-                <tr key={log.id || index} className="border-b border-gray-200 last:border-b-0">
-                  <td className="py-4 px-2 text-gray-600 text-sm font-medium">{log.date}</td>
+              filteredTransactions.map((log) => ( 
+                <tr key={log.id} className="border-b border-gray-200 last:border-b-0">
+                  
+                  <td className="py-4 px-2 text-gray-600 text-sm font-mono">
+                    {log.transactionId || 'N/A'}
+                  </td>
+                  
                   <td className="py-4 px-2 text-gray-900 font-semibold">{log.user}</td>
                   <td className="py-4 px-2 text-gray-700">{log.type}</td>
                   <td className="py-4 px-2 text-gray-900 font-bold text-right">{log.amount}</td>
@@ -143,8 +127,6 @@ function AdminTransactions() {
         </table>
       </div>
 
-      {/* --- REPLACED FAB --- */}
-      {/* This wrapper fixes the positioning */}
       <div className="group fixed z-20 bottom-10 right-10 flex flex-col items-center gap-3">
         <button
           title="Add Transaction"
@@ -155,7 +137,6 @@ function AdminTransactions() {
         </button>
       </div>
 
-      {/* --- ADDED MODAL --- */}
       <Modal
         isOpen={isAddModalOpen}
         onClose={() => setIsAddModalOpen(false)}
