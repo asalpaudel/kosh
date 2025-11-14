@@ -10,7 +10,7 @@ import jakarta.servlet.http.HttpSession;
 
 @RestController
 @RequestMapping("/api/auth")
-@CrossOrigin(origins = "http://localhost:5173", allowCredentials = "true") // Added allowCredentials
+//@CrossOrigin(origins = "http://localhost:5173", allowCredentials = "true") // Added allowCredentials
 public class AuthController {
 
     private final UserRepository repo;
