@@ -5,22 +5,16 @@ export default function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [remember, setRemember] = useState(false);
-  const [role, setRole] = useState("user"); // Just for UI toggle
   const [errorMessage, setErrorMessage] = useState("");
+  const [isPending, setIsPending] = useState(false);
 
   const nav = useNavigate();
 
-  // UI translation for role toggle bar
-  const roleTranslate = {
-    user: "0%",
-    admin: "100%",
-    superadmin: "200%",
-  };
-
-  // LOGIN HANDLER (Updated for DB-based validation)
+  // LOGIN HANDLER (Updated with pending user check)
   const handleLogin = async (e) => {
     e.preventDefault();
     setErrorMessage("");
+    setIsPending(false);
 
     if (!email || !password) {
       setErrorMessage("Please fill in all fields.");
@@ -33,21 +27,29 @@ export default function Login() {
         headers: {
           "Content-Type": "application/json",
         },
-        credentials: "include", // This is crucial!
+        credentials: "include",
         body: JSON.stringify({ email, password }),
       });
+
       const data = await response.json();
       console.log("Login Response:", data);
 
       if (!data.success) {
+        // ⭐ Check if user is pending
+        if (data.status === "Pending") {
+          setIsPending(true);
+        }
         setErrorMessage(data.message);
         return;
       }
 
+      // Login successful
       localStorage.setItem("userRole", data.role);
       localStorage.setItem("userId", data.userId);
+      localStorage.setItem("userName", data.name);
+      localStorage.setItem("userSahakari", data.sahakari);
 
-      // ✅ Fix: Use REAL paths from your App.jsx
+      // Navigate based on role
       if (data.role === "member") {
         nav("/home");
       } else if (data.role === "admin") {
@@ -62,22 +64,6 @@ export default function Login() {
       );
     }
   };
-
-  // Role toggle button component (UI only)
-  const RoleToggleButton = ({ value, label }) => (
-    <button
-      type="button"
-      onClick={() => {
-        setRole(value);
-        setErrorMessage("");
-      }}
-      className={`flex-1 py-3 px-4 rounded-full font-semibold transition-colors duration-300 relative z-10
-        ${role === value ? "text-black" : "text-gray-600 hover:text-black"}
-      `}
-    >
-      {label}
-    </button>
-  );
 
   return (
     <div className="flex flex-col lg:flex-row min-h-screen bg-white">
@@ -170,11 +156,42 @@ export default function Login() {
               </NavLink>
             </div>
 
-            {/* Error Message */}
+            {/* Error/Status Message */}
             {errorMessage && (
-              <p className="text-center text-red-600 font-medium">
-                {errorMessage}
-              </p>
+              <div
+                className={`p-4 rounded-lg ${
+                  isPending
+                    ? "bg-yellow-50 border border-yellow-200"
+                    : "bg-red-50 border border-red-200"
+                }`}
+              >
+                <p
+                  className={`text-center font-medium ${
+                    isPending ? "text-yellow-700" : "text-red-600"
+                  }`}
+                >
+                  {isPending && (
+                    <svg
+                      className="inline w-5 h-5 mr-2 -mt-1"
+                      fill="currentColor"
+                      viewBox="0 0 20 20"
+                    >
+                      <path
+                        fillRule="evenodd"
+                        d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z"
+                        clipRule="evenodd"
+                      />
+                    </svg>
+                  )}
+                  {errorMessage}
+                </p>
+                {isPending && (
+                  <p className="text-center text-sm text-yellow-600 mt-2">
+                    Your account will be activated once an administrator reviews
+                    your registration.
+                  </p>
+                )}
+              </div>
             )}
 
             {/* Sign In Button */}
@@ -188,7 +205,7 @@ export default function Login() {
 
           {/* Signup Link */}
           <p className="mt-6 text-center font-medium">
-            Don’t have an account?{" "}
+            Don't have an account?{" "}
             <NavLink to="/signup" className="text-[#00FFB2] hover:underline">
               Signup
             </NavLink>
