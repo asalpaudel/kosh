@@ -314,7 +314,8 @@ function Networks() {
         {activeView === "networks" && (
           <div className="space-y-2">
             {/* Header */}
-            <div className="grid grid-cols-6 gap-4 items-center bg-gray-50 p-4 rounded-lg font-semibold text-gray-600">
+            <div className="grid grid-cols-7 gap-4 items-center bg-gray-50 p-4 rounded-lg font-semibold text-gray-600">
+              <span>ID</span>
               <span>Registered ID</span>
               <span className="col-span-2">Name</span>
               <span>Address</span>
@@ -335,11 +336,14 @@ function Networks() {
             )}
 
             {!loading &&
-              networks.map((network) => (
+              networks.map((network, index) => (
                 <div
                   key={network.id}
-                  className="grid grid-cols-6 gap-4 items-center bg-white p-4 rounded-lg hover:bg-gray-50 transition-colors"
+                  className="grid grid-cols-7 gap-4 items-center bg-white p-4 rounded-lg hover:bg-gray-50 transition-colors"
                 >
+                  <span className="text-gray-600 font-medium">
+                    {index + 1}
+                  </span>
                   <span className="text-gray-600 font-medium">
                     {network.registeredId}
                   </span>
@@ -402,12 +406,12 @@ function Networks() {
             )}
 
             {!loading &&
-              users.map((user) => (
+              users.map((user, index) => (
                 <div
                   key={user.id}
                   className="grid grid-cols-7 gap-4 items-center bg-white p-4 rounded-lg hover:bg-gray-50 transition-colors"
                 >
-                  <span className="text-gray-600 font-medium">{user.id}</span>
+                  <span className="text-gray-600 font-medium">{index + 1}</span>
                   <span className="text-gray-800 font-bold">{user.name}</span>
                   <span className="text-gray-700 truncate">{user.email}</span>
                   <span className="text-gray-700">{user.phone}</span>
@@ -554,7 +558,7 @@ function Networks() {
         isOpen={isEditUserModalOpen}
         onClose={() => setIsEditUserModalOpen(false)}
         title="Edit User"
-        size="2xl"git
+        size="2xl"
       >
         {editingUser && (
           <EditUserForm

@@ -28,7 +28,7 @@ public class UserController {
         this.repo = repo;
     }
 
-    @PostMapping
+   @PostMapping
     public User createUser(
             @RequestParam("name") String name,
             @RequestParam("email") String email,
@@ -36,10 +36,12 @@ public class UserController {
             @RequestParam("role") String role,
             @RequestParam("sahakari") String sahakari,
             @RequestParam("password") String password,
+            @RequestParam(value = "status", required = false) String status,  // ⭐ Removed defaultValue
             @RequestParam(value = "document", required = false) MultipartFile document) {
         
         System.out.println("POST /api/users hit!");
         System.out.println("Received user: " + name + ", " + email);
+        System.out.println("Status parameter received: " + status);
         
         User user = new User();
         user.setName(name);
@@ -48,7 +50,15 @@ public class UserController {
         user.setRole(role);
         user.setSahakari(sahakari);
         user.setPassword(password);
-        user.setStatus("Pending"); 
+        
+        // ⭐ Set status: use provided value, or default to "Pending" if not provided
+        if (status != null && !status.trim().isEmpty()) {
+            user.setStatus(status);
+            System.out.println("Setting user status to: " + status);
+        } else {
+            user.setStatus("Pending");
+            System.out.println("Setting user status to: Pending (default)");
+        }
         
         // Handle document if needed
         if (document != null && !document.isEmpty()) {
@@ -59,6 +69,7 @@ public class UserController {
         
         User saved = repo.save(user);
         System.out.println("Saved user with ID: " + saved.getId());
+        System.out.println("Saved user status: " + saved.getStatus());
         return saved;
     }
 
@@ -66,6 +77,7 @@ public class UserController {
     public List<User> getAllUsers() {
         return repo.findAll();
     }
+
 
     @GetMapping("/pending")
     public List<User> getPendingUsers(@RequestParam String sahakari) {

@@ -38,6 +38,12 @@ public class NetworkController {
         return repo.findAll();
     }
 
+    @GetMapping("/{id}")
+    public Network getNetworkById(@PathVariable Long id) {
+        System.out.println("GET /api/networks/" + id + " hit!");
+        return repo.findById(id).orElse(null);
+    }
+
     @DeleteMapping("/{id}")
     public void deleteNetwork(@PathVariable Long id) {
         repo.deleteById(id);
