@@ -16,7 +16,7 @@ public class User {
     private String sahakari;
     private String password;
     private String documentPath; // store uploaded document path or name
-    private String status;
+    private String status = "Pending";
 
     // Getters and Setters
     public int getId() {
@@ -74,8 +74,7 @@ public class User {
     public void setDocumentPath(String documentPath) {
         this.documentPath = documentPath;
     }
-    
-    public String getStatus() {
+        public String getStatus() {
         return status;
     }
     

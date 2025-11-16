@@ -78,6 +78,7 @@ public class UserController {
         return repo.findAll();
     }
 
+
     @GetMapping("/pending")
     public List<User> getPendingUsers(@RequestParam String sahakari) {
         return repo.findAll().stream()
