@@ -58,9 +58,25 @@ export default function AddUserForm({
       form.append("role", formData.role);
       form.append("sahakari", formData.sahakari);
       form.append("password", formData.password);
+
+      // ⭐⭐⭐ CRITICAL: Set status to Active for admin-created users
+      form.append("status", "Active");
+
       if (formData.document) {
         form.append("document", formData.document);
       }
+
+      // Debug logging
+      console.log("=== SENDING USER DATA ===");
+      console.log("FormData contents:");
+      for (let [key, value] of form.entries()) {
+        if (value instanceof File) {
+          console.log(`  ${key}: [File] ${value.name}`);
+        } else {
+          console.log(`  ${key}: ${value}`);
+        }
+      }
+      console.log("========================");
 
       const res = await fetch(`${apiBase}/users`, {
         method: "POST",
@@ -73,10 +89,19 @@ export default function AddUserForm({
       }
 
       const saved = await res.json();
+      console.log("=== RECEIVED RESPONSE ===");
       console.log("Saved user:", saved);
+      console.log("User status:", saved.status);
+      console.log("========================");
 
       onUserAdded?.(saved);
-      alert(`User "${saved.name}" added successfully!`);
+
+      if (saved.status === "Active") {
+        alert(`User "${saved.name}" added successfully and is now Active!`);
+      } else {
+        alert(`User "${saved.name}" added but status is: ${saved.status}`);
+      }
+
       onClose?.();
     } catch (err) {
       console.error("Error adding user:", err);

@@ -10,7 +10,7 @@ import jakarta.servlet.http.HttpSession;
 
 @RestController
 @RequestMapping("/api/auth")
-//@CrossOrigin(origins = "http://localhost:5173", allowCredentials = "true") // Added allowCredentials
+//@CrossOrigin(origins = "http://localhost:5173", allowCredentials = "true")
 public class AuthController {
 
     private final UserRepository repo;
@@ -32,6 +32,7 @@ public class AuthController {
         public String role;
         public int userId;
         public Long networkId;
+        public String status;  // ⭐ ADDED: To send user status to frontend
 
         public LoginResponse(boolean success, String message, String role, int userId, Long networkId) {
             this.success = success;
@@ -40,9 +41,19 @@ public class AuthController {
             this.userId = userId;
             this.networkId = networkId;
         }
+
+        // ⭐ ADDED: Constructor with status parameter
+        public LoginResponse(boolean success, String message, String role, int userId, Long networkId, String status) {
+            this.success = success;
+            this.message = message;
+            this.role = role;
+            this.userId = userId;
+            this.networkId = networkId;
+            this.status = status;
+        }
     }
 
-    @PostMapping("/login")
+   @PostMapping("/login")
     public LoginResponse login(@RequestBody LoginRequest req, HttpSession session) {
 
         User user = repo.findByEmail(req.email);
@@ -54,6 +65,24 @@ public class AuthController {
         if (!user.getPassword().equals(req.password)) {
             return new LoginResponse(false, "Incorrect password", null, -1, null);
         }
+
+        System.out.println("DEBUG: User status is: " + user.getStatus());
+        
+        if (user.getStatus() == null || !user.getStatus().equals("Active")) {
+            String message;
+            if ("Pending".equals(user.getStatus())) {
+                message = "Your account is pending approval. Please wait for admin approval.";
+            } else if ("Rejected".equals(user.getStatus())) {
+                message = "Your account has been rejected. Please contact support.";
+            } else {
+                message = "Your account is not active. Status: " + user.getStatus();
+            }
+            
+            System.out.println("LOGIN BLOCKED - User status: " + user.getStatus());
+            return new LoginResponse(false, message, null, -1, null, user.getStatus());
+        }
+        
+        System.out.println("User status is Active - allowing login");
 
         Long networkId = null;
 
