@@ -79,7 +79,7 @@ const UserDetails = ({
             <DetailItem label="Associated Sahakari" value={item.sahakari} />
           </div>
         </div>
-
+        
         {!!item.documents?.length && (
           <div>
             <span className="text-sm font-semibold text-gray-500 block mb-2">
@@ -95,49 +95,7 @@ const UserDetails = ({
       </div>
     </div>
 
-    <div className="mt-8 pt-6 border-t flex justify-end gap-3">
-      {item.status === "Pending" ? (
-        <>
-          <button
-            onClick={() => {
-              handleDeny(item.id);
-              onCloseViewModal();
-            }}
-            className="bg-red-500 text-white font-semibold py-2 px-5 rounded-full hover:bg-red-600 transition-colors"
-          >
-            Deny
-          </button>
-          <button
-            onClick={() => {
-              handleEdit(item);
-              onCloseViewModal();
-            }}
-            className="bg-yellow-500 text-white font-semibold py-2 px-5 rounded-full hover:bg-yellow-600 transition-colors"
-          >
-            Edit
-          </button>
-          <button
-            onClick={() => {
-              handleApprove(item.id);
-              onCloseViewModal();
-            }}
-            className="bg-green-500 text-white font-semibold py-2 px-5 rounded-full hover:bg-green-600 transition-colors"
-          >
-            Approve
-          </button>
-        </>
-      ) : (
-        <button
-          onClick={() => {
-            handleEdit(item);
-            onCloseViewModal();
-          }}
-          className="bg-yellow-500 text-white font-semibold py-2 px-5 rounded-full hover:bg-yellow-600 transition-colors"
-        >
-          Edit
-        </button>
-      )}
-    </div>
+
   </div>
 );
 
@@ -179,20 +137,15 @@ function AdminUsers() {
           }
 
           // Clean the sahakariId - remove any non-numeric characters
-          let cleanId = String(data.sahakariId).replace(/[^0-9]/g, "");
-          console.log(
-            "Original sahakariId:",
-            data.sahakariId,
-            "Cleaned:",
-            cleanId
-          );
+          let cleanId = String(data.sahakariId).replace(/[^0-9]/g, '');
+          console.log("Original sahakariId:", data.sahakariId, "Cleaned:", cleanId);
 
           // Get the network name from networkId
           console.log("Fetching network with ID:", cleanId);
           const networkRes = await fetch(`${API_BASE}/networks/${cleanId}`, {
             credentials: "include",
           });
-
+          
           console.log("Network response status:", networkRes.status);
 
           if (networkRes.ok) {
@@ -206,10 +159,7 @@ function AdminUsers() {
               console.error("Network data is null or has no name");
             }
           } else {
-            console.error(
-              "Failed to fetch network, status:",
-              networkRes.status
-            );
+            console.error("Failed to fetch network, status:", networkRes.status);
           }
         } else {
           console.error("Failed to fetch session, status:", res.status);
@@ -246,9 +196,7 @@ function AdminUsers() {
           (user) => user.sahakari === adminSahakari
         );
         setAllUsers(filteredBySahakari);
-        console.log(
-          `Loaded ${filteredBySahakari.length} users from ${adminSahakari}`
-        );
+        console.log(`Loaded ${filteredBySahakari.length} users from ${adminSahakari}`);
       } else {
         console.error("API did not return an array:", data);
         setAllUsers([]);
@@ -386,9 +334,7 @@ function AdminUsers() {
   if (!adminSahakari) {
     return (
       <div className="bg-white p-6 min-h-[calc(100vh-8.5rem)] flex items-center justify-center">
-        <p className="text-red-500">
-          Unable to load sahakari. Please login again.
-        </p>
+        <p className="text-red-500">Unable to load sahakari. Please login again.</p>
       </div>
     );
   }
@@ -414,33 +360,25 @@ function AdminUsers() {
           <div className="flex items-center gap-3">
             <button
               onClick={() => setActiveFilter("All")}
-              className={`font-medium py-3 px-6 rounded-full transition-colors text-base ${getButtonClass(
-                "All"
-              )}`}
+              className={`font-medium py-3 px-6 rounded-full transition-colors text-base ${getButtonClass("All")}`}
             >
               All
             </button>
             <button
               onClick={() => setActiveFilter("Pending")}
-              className={`font-medium py-3 px-6 rounded-full transition-colors text-base ${getButtonClass(
-                "Pending"
-              )}`}
+              className={`font-medium py-3 px-6 rounded-full transition-colors text-base ${getButtonClass("Pending")}`}
             >
               Pending
             </button>
             <button
               onClick={() => setActiveFilter("Staff")}
-              className={`font-medium py-3 px-6 rounded-full transition-colors text-base ${getButtonClass(
-                "Staff"
-              )}`}
+              className={`font-medium py-3 px-6 rounded-full transition-colors text-base ${getButtonClass("Staff")}`}
             >
               Staff
             </button>
             <button
               onClick={() => setActiveFilter("Members")}
-              className={`font-medium py-3 px-6 rounded-full transition-colors text-base ${getButtonClass(
-                "Members"
-              )}`}
+              className={`font-medium py-3 px-6 rounded-full transition-colors text-base ${getButtonClass("Members")}`}
             >
               Members
             </button>
@@ -462,27 +400,13 @@ function AdminUsers() {
             <table className="min-w-full text-left">
               <thead>
                 <tr className="bg-gray-50 border-b border-gray-200">
-                  <th className="py-4 px-3 text-sm font-semibold text-gray-600">
-                    ID
-                  </th>
-                  <th className="py-4 px-3 text-sm font-semibold text-gray-600">
-                    Name
-                  </th>
-                  <th className="py-4 px-3 text-sm font-semibold text-gray-600">
-                    Email
-                  </th>
-                  <th className="py-4 px-3 text-sm font-semibold text-gray-600">
-                    Phone
-                  </th>
-                  <th className="py-4 px-3 text-sm font-semibold text-gray-600">
-                    Role
-                  </th>
-                  <th className="py-4 px-3 text-sm font-semibold text-gray-600">
-                    Status
-                  </th>
-                  <th className="py-4 px-3 text-sm font-semibold text-gray-600 text-right">
-                    Action
-                  </th>
+                  <th className="py-4 px-3 text-sm font-semibold text-gray-600">ID</th>
+                  <th className="py-4 px-3 text-sm font-semibold text-gray-600">Name</th>
+                  <th className="py-4 px-3 text-sm font-semibold text-gray-600">Email</th>
+                  <th className="py-4 px-3 text-sm font-semibold text-gray-600">Phone</th>
+                  <th className="py-4 px-3 text-sm font-semibold text-gray-600">Role</th>
+                  <th className="py-4 px-3 text-sm font-semibold text-gray-600">Status</th>
+                  <th className="py-4 px-3 text-sm font-semibold text-gray-600 text-right">Action</th>
                 </tr>
               </thead>
 
@@ -492,19 +416,11 @@ function AdminUsers() {
                     key={user.id}
                     className="bg-white border-b border-gray-200 hover:bg-gray-50 transition-colors"
                   >
-                    <td className="py-4 px-3 text-gray-600 font-medium">
-                      {index + 1}
-                    </td>
-                    <td className="py-4 px-3 text-gray-800 font-bold">
-                      {user.name}
-                    </td>
-                    <td className="py-4 px-3 text-gray-700 truncate">
-                      {user.email}
-                    </td>
+                    <td className="py-4 px-3 text-gray-600 font-medium">{index + 1}</td>
+                    <td className="py-4 px-3 text-gray-800 font-bold">{user.name}</td>
+                    <td className="py-4 px-3 text-gray-700 truncate">{user.email}</td>
                     <td className="py-4 px-3 text-gray-700">{user.phone}</td>
-                    <td className="py-4 px-3 text-gray-700 capitalize">
-                      {user.role}
-                    </td>
+                    <td className="py-4 px-3 text-gray-700 capitalize">{user.role}</td>
                     <td className="py-4 px-3">
                       <span
                         className={`font-bold
@@ -570,9 +486,7 @@ function AdminUsers() {
 
         {!loading && filteredUsers.length === 0 && (
           <div className="text-center py-12">
-            <h3 className="text-lg font-semibold text-gray-500">
-              No users found
-            </h3>
+            <h3 className="text-lg font-semibold text-gray-500">No users found</h3>
             <p className="text-gray-400">
               Try adjusting your filters or search query.
             </p>
