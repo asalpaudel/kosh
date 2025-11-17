@@ -6,9 +6,10 @@ import React, { useState, useEffect } from "react";
  * @param {object} props.user - The user object to edit.
  * @param {function} props.onClose - Function to close the modal.
  * @param {function} props.onUserUpdated - Callback when user is successfully updated.
+ * @param {function} props.onUserDeleted - Callback when user is successfully deleted.
  * @param {string} props.apiBase - Base URL for API calls.
  */
-function EditUserForm({ user, onClose, onUserUpdated, apiBase }) {
+function EditUserForm({ user, onClose, onUserUpdated, onUserDeleted, apiBase }) {
   const [formData, setFormData] = useState({
     name: "",
     email: "",
@@ -32,9 +33,6 @@ function EditUserForm({ user, onClose, onUserUpdated, apiBase }) {
         role: user.role || "member",
         sahakari: user.sahakari || "",
         status: user.status || "Pending",
-        // --- THIS IS THE FIX ---
-        // Store the original password in the state.
-        // We will send this back to the backend.
         password: user.password || "",
       });
     }
@@ -56,14 +54,13 @@ function EditUserForm({ user, onClose, onUserUpdated, apiBase }) {
     setError(null);
 
     try {
-      // Send the entire formData state, which now includes
-      // all fields, including the original password.
       const response = await fetch(`${apiBase}/users/${user.id}`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify(formData),
+        credentials: "include",
       });
 
       if (!response.ok) {
@@ -90,6 +87,47 @@ function EditUserForm({ user, onClose, onUserUpdated, apiBase }) {
     } catch (err) {
       console.error("Error updating user:", err);
       setError(err.message || "Failed to update user. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!window.confirm(`Are you sure you want to delete user "${formData.name}"? This action cannot be undone.`)) {
+      return;
+    }
+
+    setLoading(true);
+    setError(null);
+
+    try {
+      const response = await fetch(`${apiBase}/users/${user.id}`, {
+        method: "DELETE",
+        credentials: "include",
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => null);
+        throw new Error(
+          errorData?.message || `Failed to delete user: ${response.statusText}`
+        );
+      }
+
+      console.log(`Successfully deleted user ${user.id}`);
+      
+      // Call the callback to update the parent component's state
+      if (onUserDeleted) {
+        onUserDeleted(user.id);
+      }
+      
+      // Show success message
+      alert(`User "${formData.name}" deleted successfully!`);
+      
+      // Close the modal
+      onClose();
+    } catch (err) {
+      console.error("Error deleting user:", err);
+      setError(err.message || "Failed to delete user. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -201,6 +239,18 @@ function EditUserForm({ user, onClose, onUserUpdated, apiBase }) {
           {loading ? "Saving..." : "Save Changes"}
         </button>
       </div>
+
+      {/* Delete Button - Separate row, only for non-Pending users */}
+      {formData.status !== "Pending" && (
+        <button
+          type="button"
+          onClick={handleDelete}
+          className="w-full bg-red-500 text-white font-semibold py-3 rounded-full hover:bg-red-600 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed mt-2"
+          disabled={loading}
+        >
+          {loading ? "Deleting..." : "Delete User"}
+        </button>
+      )}
     </form>
   );
 }
