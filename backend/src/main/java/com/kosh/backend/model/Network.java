@@ -19,12 +19,16 @@ public class Network {
     private Integer staffCount;
     private Integer userCount;
 
-    // ⭐ NEW FIELDS FOR PACKAGE MANAGEMENT
-    private String packageType; // "package1", "package2", or "package3"
+    // Package management fields
+    private String packageType; // "basic", "premium", or "custom"
     private Double packagePrice; // Total price of the package in रु
     
-    // ⭐ NEW FIELD FOR DOCUMENT
+    // Document field
     private String documentPath; // Stores the filename of uploaded document
+    
+    // ⭐ NEW FIELDS FOR LIMITS
+    private Integer adminLimit; // Maximum number of admins allowed
+    private Integer userLimit;  // Maximum number of users allowed
 
     // Getters & Setters
     public Long getId() { return id; }
@@ -60,6 +64,12 @@ public class Network {
     public String getDocumentPath() { return documentPath; }
     public void setDocumentPath(String documentPath) { this.documentPath = documentPath; }
 
+    public Integer getAdminLimit() { return adminLimit; }
+    public void setAdminLimit(Integer adminLimit) { this.adminLimit = adminLimit; }
+
+    public Integer getUserLimit() { return userLimit; }
+    public void setUserLimit(Integer userLimit) { this.userLimit = userLimit; }
+
     @Override
     public String toString() {
         return "Network{" +
@@ -74,6 +84,8 @@ public class Network {
                 ", packageType='" + packageType + '\'' +
                 ", packagePrice=" + packagePrice +
                 ", documentPath='" + documentPath + '\'' +
+                ", adminLimit=" + adminLimit +
+                ", userLimit=" + userLimit +
                 '}';
     }
 }
