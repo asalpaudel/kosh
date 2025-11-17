@@ -13,11 +13,18 @@ public class Network {
     private String registeredId;
     private String name;
     private String address;
-    private String createdAt; // keep as String for now
+    private String createdAt;
     private String phone;
 
-    private Integer staffCount; // Integer allows null
+    private Integer staffCount;
     private Integer userCount;
+
+    // ⭐ NEW FIELDS FOR PACKAGE MANAGEMENT
+    private String packageType; // "package1", "package2", or "package3"
+    private Double packagePrice; // Total price of the package in रु
+    
+    // ⭐ NEW FIELD FOR DOCUMENT
+    private String documentPath; // Stores the filename of uploaded document
 
     // Getters & Setters
     public Long getId() { return id; }
@@ -44,6 +51,15 @@ public class Network {
     public Integer getUserCount() { return userCount; }
     public void setUserCount(Integer userCount) { this.userCount = userCount; }
 
+    public String getPackageType() { return packageType; }
+    public void setPackageType(String packageType) { this.packageType = packageType; }
+
+    public Double getPackagePrice() { return packagePrice; }
+    public void setPackagePrice(Double packagePrice) { this.packagePrice = packagePrice; }
+
+    public String getDocumentPath() { return documentPath; }
+    public void setDocumentPath(String documentPath) { this.documentPath = documentPath; }
+
     @Override
     public String toString() {
         return "Network{" +
@@ -55,6 +71,9 @@ public class Network {
                 ", phone='" + phone + '\'' +
                 ", staffCount=" + staffCount +
                 ", userCount=" + userCount +
+                ", packageType='" + packageType + '\'' +
+                ", packagePrice=" + packagePrice +
+                ", documentPath='" + documentPath + '\'' +
                 '}';
     }
 }
