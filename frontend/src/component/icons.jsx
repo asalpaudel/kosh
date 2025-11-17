@@ -5,12 +5,9 @@ import {
   FiBell,
   FiBriefcase,
   FiCheck,
-  // FiCreditCard, --- No longer used
-  // FiDollarSign, --- No longer used
   FiEdit2,
   FiEye,
   FiFile,
-  // FiFileText, --- No longer used
   FiGrid,
   FiLogOut,
   FiMail,
@@ -24,13 +21,13 @@ import {
   FiUsers,
   FiX,
   FiFeather,
+  FiShield, 
+  FiMoon,   
 } from 'react-icons/fi';
 
-// --- NEW IMPORTS ---
-// We are adding icons from Font Awesome (fa) and Lucide (lu)
 import { FaPiggyBank, FaFileSignature } from 'react-icons/fa';
 import { LuFileClock } from 'react-icons/lu';
-import { FiDollarSign, FiCreditCard, FiFileText } from 'react-icons/fi'; // Keep old ones for other mappings if needed
+import { FiDollarSign, FiCreditCard, FiFileText } from 'react-icons/fi'; 
 
 // --- CUSTOM BRAND LOGO (Keep as-is) ---
 export const Logo = ({ className }) => (
@@ -40,7 +37,6 @@ export const Logo = ({ className }) => (
   </svg>
 );
 
-// --- MAPPED ICONS ---
 
 // Standard Icons (unchanged)
 export { FiSearch as SearchIcon } from 'react-icons/fi';
@@ -50,7 +46,7 @@ export { FiGrid as LayoutDashboardIcon } from 'react-icons/fi';
 export { FiUsers as UsersIcon } from 'react-icons/fi';
 export { FiMail as MailIcon } from 'react-icons/fi';
 export { FiBarChart2 as BarChartIcon } from 'react-icons/fi';
-export { FiFileText as FileTextIcon } from 'react-icons/fi'; // Note: FiFileText is still used in sidebars
+export { FiFileText as FileTextIcon } from 'react-icons/fi'; 
 export { FiPlusCircle as PlusCircleIcon } from 'react-icons/fi';
 export { FiLogOut as LogOutIcon } from 'react-icons/fi';
 export { FiEye as EyeIcon } from 'react-icons/fi';
@@ -68,24 +64,18 @@ export { FiActivity as ActivityIcon } from 'react-icons/fi';
 export { FiFeather as LeafIcon } from 'react-icons/fi';
 
 
-// --- UPDATED ICONS FOR 'PACKAGES' PAGE ---
+export { FiUser as UserIcon } from 'react-icons/fi';
+export { FiShield as ShieldIcon } from 'react-icons/fi';
+export { FiMoon as MoonIcon } from 'react-icons/fi';
 
-/** * For: Admin Sidebar "Packages" link
- * For: Admin Packages "Saving Account" card
- * Was: FiDollarSign
- * Now: FaPiggyBank
- */
+
+
+
 export { FaPiggyBank as PiggyBankIcon } from 'react-icons/fa';
 export { FaPiggyBank as CurrencyDollarIcon } from 'react-icons/fa';
 
-/** * For: Admin Packages "Loan" card
- * Was: FiCreditCard
- * Now: FaFileSignature (matches your loan image)
- */
+
 export { FaFileSignature as BanknotesIcon } from 'react-icons/fa';
 
-/** * For: Admin Packages "Fixed Deposit" card
- * Was: FiFileText
- * Now: LuFileClock (a file with a clock, for time-deposits)
- */
+
 export { LuFileClock as DocumentTextIcon } from 'react-icons/lu';
