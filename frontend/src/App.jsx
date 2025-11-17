@@ -9,6 +9,8 @@ import Report from "./pages/user/Report.jsx";
 import Statement from "./pages/user/Statement.jsx";
 import Login from "./pages/Login.jsx"; 
 import Signup from "./pages/Signup.jsx";
+import UserPackages from "./pages/user/Packages.jsx"; 
+
 
 // SUPERADMIN IMPORTS
 import SuperadminLayout from "./component/superadmin/Layout.jsx";
@@ -16,8 +18,8 @@ import SuperadminDashboard from "./pages/superadmin/Dashboard.jsx";
 import Analytics from "./pages/superadmin/Analytics.jsx";
 import History from "./pages/superadmin/History.jsx"; 
 import Networks from "./pages/superadmin/Networks.jsx";
-// comment ho yo
-// --- ADMIN IMPORTS (NEW) ---
+
+// ADMIN IMPORTS
 import AdminLayout from "./component/admin/Layout.jsx";
 import AdminDashboard from "./pages/admin/Dashboard.jsx";
 import AdminUsers from "./pages/admin/Users.jsx";
@@ -30,7 +32,6 @@ function App() {
     <>
       <BrowserRouter>
         <Routes>
-          {/* Public Routes */}
           <Route path="/" element={<Login />} />
           <Route path="/signup" element={<Signup />} />
 
@@ -40,9 +41,9 @@ function App() {
             <Route path="dashboard" element={<Dashboard />} />
             <Route path="report" element={<Report />} />
             <Route path="statement" element={<Statement />} />
+            <Route path="packages" element={<UserPackages />} />
           </Route>
 
-          {/* --- ADDED ADMIN ROUTES (NEW) --- */}
           <Route path="/admin" element={<AdminLayout />}>
             <Route index element={<AdminDashboard />} />
             <Route path="dashboard" element={<AdminDashboard />} />
