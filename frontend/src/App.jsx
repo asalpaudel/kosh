@@ -24,6 +24,7 @@ import AdminUsers from "./pages/admin/Users.jsx";
 import AdminHistory from "./pages/admin/History.jsx";
 import AdminTransactions from "./pages/admin/Transactions.jsx";
 import AdminPackages from "./pages/admin/Packages.jsx";
+import AdminSettings from "./pages/admin/Settings.jsx";
 
 function App() {
   return (
@@ -51,6 +52,7 @@ function App() {
             <Route path="packages" element={<AdminPackages />} />
             <Route path="history" element={<AdminHistory />} />
             <Route path="transactions" element={<AdminTransactions />} />
+            <Route path="settings" element={<AdminSettings />} />
           </Route>
 
           {/* Protected (nested) Superadmin Routes */}

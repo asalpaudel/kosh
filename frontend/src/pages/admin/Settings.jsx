@@ -2,10 +2,10 @@ import React, { useState } from "react";
 import { UserIcon, ShieldIcon, BellIcon, MoonIcon } from "../../component/icons";
 
 // Import tab components (we will create these next)
-import ProfileTab from "../../component/user/settings/ProfileTab";
-import SecurityTab from "../../component/user/settings/SecurityTab";
-import NotificationsTab from "../../component/user/settings/NotificationsTab";
-import AppearanceTab from "../../component/user/settings/AppearanceTab";
+import ProfileTab from "../../component/admin/settings/ProfileTab";
+import SecurityTab from "../../component/admin/settings/SecurityTab";
+import NotificationsTab from "../../component/admin/settings/NotificationsTab";
+import AppearanceTab from "../../component/admin/settings/AppearanceTab";
 
 const tabs = [
   { name: "Profile", icon: UserIcon },
@@ -14,7 +14,7 @@ const tabs = [
   { name: "Appearance", icon: MoonIcon },
 ];
 
-function Settings() {
+function AdminSettings() {
   const [activeTab, setActiveTab] = useState(tabs[0].name);
 
   const renderTabContent = () => {
@@ -75,4 +75,4 @@ function Settings() {
   );
 }
 
-export default Settings;
+export default AdminSettings;
