@@ -47,7 +47,9 @@ export default function AddNetworkForm({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
-  const selectedPackage = formData.packageType ? PACKAGES[formData.packageType] : null;
+  const selectedPackage = formData.packageType
+    ? PACKAGES[formData.packageType]
+    : null;
 
   // Calculate price based on package
   const calculatePrice = () => {
@@ -56,7 +58,10 @@ export default function AddNetworkForm({
     if (formData.packageType === "package3") {
       const admins = parseInt(formData.staffCount) || 0;
       const members = parseInt(formData.userCount) || 0;
-      return (admins * selectedPackage.pricePerAdmin) + (members * selectedPackage.pricePerMember);
+      return (
+        admins * selectedPackage.pricePerAdmin +
+        members * selectedPackage.pricePerMember
+      );
     }
 
     return selectedPackage.price;
@@ -64,15 +69,17 @@ export default function AddNetworkForm({
 
   const onChange = (e) => {
     const { name, value } = e.target;
-    
+
     // If package changes, reset counts
     if (name === "packageType") {
       const pkg = PACKAGES[value];
       setFormData((prev) => ({
         ...prev,
         packageType: value,
-        staffCount: value === "package1" ? "1" : value === "package2" ? "2" : "",
-        userCount: value === "package1" ? "15" : value === "package2" ? "30" : "",
+        staffCount:
+          value === "package1" ? "1" : value === "package2" ? "2" : "",
+        userCount:
+          value === "package1" ? "15" : value === "package2" ? "30" : "",
       }));
     } else {
       setFormData((prev) => ({
@@ -87,20 +94,25 @@ export default function AddNetworkForm({
     const file = e.target.files[0];
     if (file) {
       // Validate file type (optional)
-      const validTypes = ['application/pdf', 'image/jpeg', 'image/jpg', 'image/png'];
+      const validTypes = [
+        "application/pdf",
+        "image/jpeg",
+        "image/jpg",
+        "image/png",
+      ];
       if (!validTypes.includes(file.type)) {
-        setError('Please upload a valid document (PDF, JPG, or PNG)');
+        setError("Please upload a valid document (PDF, JPG, or PNG)");
         return;
       }
-      
+
       // Validate file size (max 5MB)
       if (file.size > 5 * 1024 * 1024) {
-        setError('File size should not exceed 5MB');
+        setError("File size should not exceed 5MB");
         return;
       }
-      
+
       setDocument(file);
-      setError('');
+      setError("");
     }
   };
 
@@ -117,11 +129,15 @@ export default function AddNetworkForm({
     // For package1 and package2, enforce limits
     if (formData.packageType !== "package3") {
       if (staffCount > selectedPackage.maxAdmins) {
-        setError(`Staff count cannot exceed ${selectedPackage.maxAdmins} for this package`);
+        setError(
+          `Staff count cannot exceed ${selectedPackage.maxAdmins} for this package`
+        );
         return false;
       }
       if (userCount > selectedPackage.maxMembers) {
-        setError(`User count cannot exceed ${selectedPackage.maxMembers} for this package`);
+        setError(
+          `User count cannot exceed ${selectedPackage.maxMembers} for this package`
+        );
         return false;
       }
     }
@@ -152,20 +168,20 @@ export default function AddNetworkForm({
     try {
       // Use FormData to handle file upload
       const formDataToSend = new FormData();
-      
-      formDataToSend.append('registeredId', formData.registeredId);
-      formDataToSend.append('name', formData.name);
-      formDataToSend.append('address', formData.address || '');
-      formDataToSend.append('createdAt', formData.createdAt || '');
-      formDataToSend.append('phone', formData.phone || '');
-      formDataToSend.append('packageType', formData.packageType);
-      formDataToSend.append('packagePrice', calculatePrice().toString());
-      formDataToSend.append('staffCount', formData.staffCount);
-      formDataToSend.append('userCount', formData.userCount);
-      
+
+      formDataToSend.append("registeredId", formData.registeredId);
+      formDataToSend.append("name", formData.name);
+      formDataToSend.append("address", formData.address || "");
+      formDataToSend.append("createdAt", formData.createdAt || "");
+      formDataToSend.append("phone", formData.phone || "");
+      formDataToSend.append("packageType", formData.packageType);
+      formDataToSend.append("packagePrice", calculatePrice().toString());
+      formDataToSend.append("staffCount", formData.staffCount);
+      formDataToSend.append("userCount", formData.userCount);
+
       // Append document if uploaded
       if (document) {
-        formDataToSend.append('document', document);
+        formDataToSend.append("document", document);
       }
 
       const url = `${apiBase}/networks`;
@@ -208,14 +224,14 @@ export default function AddNetworkForm({
     <form className="space-y-6" onSubmit={onSubmit}>
       {/* Basic Information */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <input
+        {/* <input
           name="registeredId"
           onChange={onChange}
           value={formData.registeredId}
           placeholder="Registered ID"
           className="w-full bg-gray-100 rounded-lg px-4 py-2 outline-none"
           required
-        />
+        /> */}
         <input
           name="name"
           onChange={onChange}
@@ -232,17 +248,17 @@ export default function AddNetworkForm({
           className="w-full bg-gray-100 rounded-lg px-4 py-2 outline-none"
         />
         <input
-          name="createdAt"
-          onChange={onChange}
-          value={formData.createdAt}
-          placeholder="Created At (e.g., 13-Nov-2025)"
-          className="w-full bg-gray-100 rounded-lg px-4 py-2 outline-none"
-        />
-        <input
           name="phone"
           onChange={onChange}
           value={formData.phone}
           placeholder="Phone"
+          className="w-full bg-gray-100 rounded-lg px-4 py-2 outline-none"
+        />
+        <input
+          name="createdAt"
+          onChange={onChange}
+          value={formData.createdAt}
+          placeholder="Created At (e.g., 13-Nov-2025)"
           className="w-full bg-gray-100 rounded-lg px-4 py-2 outline-none"
         />
       </div>
@@ -250,7 +266,7 @@ export default function AddNetworkForm({
       {/* Package Selection */}
       <div className="space-y-4">
         <h3 className="font-semibold text-lg text-gray-800">Select Package</h3>
-        
+
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {Object.entries(PACKAGES).map(([key, pkg]) => (
             <label
@@ -273,7 +289,7 @@ export default function AddNetworkForm({
               <div className="flex-1">
                 <h4 className="font-bold text-gray-800 mb-2">{pkg.name}</h4>
                 <p className="text-sm text-gray-600 mb-3">{pkg.description}</p>
-                
+
                 <div className="space-y-1 text-sm">
                   <p className="text-gray-700">
                     <span className="font-medium">Max Admins:</span>{" "}
@@ -307,7 +323,7 @@ export default function AddNetworkForm({
           <h3 className="font-semibold text-lg text-gray-800">
             Configure Capacity
           </h3>
-          
+
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -317,15 +333,20 @@ export default function AddNetworkForm({
                     (Max: {selectedPackage.maxAdmins})
                   </span>
                 )}
+                {isCustomPackage && (
+                  <span className="text-gray-500 ml-1">(Min: 2)</span>
+                )}
               </label>
               <input
                 type="number"
                 name="staffCount"
                 onChange={onChange}
                 value={formData.staffCount}
-                placeholder="Number of Admins"
+                placeholder={
+                  isCustomPackage ? "Minimum 2 admins" : "Number of Admins"
+                }
                 className="w-full bg-white rounded-lg px-4 py-2 outline-none border border-gray-300"
-                min="1"
+                min={isCustomPackage ? "2" : "1"}
                 max={!isCustomPackage ? selectedPackage.maxAdmins : undefined}
                 disabled={!isCustomPackage}
                 required
@@ -340,15 +361,20 @@ export default function AddNetworkForm({
                     (Max: {selectedPackage.maxMembers})
                   </span>
                 )}
+                {isCustomPackage && (
+                  <span className="text-gray-500 ml-1">(Min: 30)</span>
+                )}
               </label>
               <input
                 type="number"
                 name="userCount"
                 onChange={onChange}
                 value={formData.userCount}
-                placeholder="Number of Members"
+                placeholder={
+                  isCustomPackage ? "Minimum 30 members" : "Number of Members"
+                }
                 className="w-full bg-white rounded-lg px-4 py-2 outline-none border border-gray-300"
-                min="1"
+                min={isCustomPackage ? "30" : "1"}
                 max={!isCustomPackage ? selectedPackage.maxMembers : undefined}
                 disabled={!isCustomPackage}
                 required
@@ -360,7 +386,9 @@ export default function AddNetworkForm({
           {formData.packageType && (
             <div className="mt-4 p-4 bg-teal-50 rounded-lg border border-teal-200">
               <div className="flex justify-between items-center">
-                <span className="font-semibold text-gray-800">Total Price:</span>
+                <span className="font-semibold text-gray-800">
+                  Total Price:
+                </span>
                 <span className="text-2xl font-bold text-teal-600">
                   रु {calculatePrice().toLocaleString()}
                 </span>
@@ -368,12 +396,20 @@ export default function AddNetworkForm({
               {isCustomPackage && formData.staffCount && formData.userCount && (
                 <div className="mt-2 text-sm text-gray-600">
                   <p>
-                    {formData.staffCount} admin(s) × रु {selectedPackage.pricePerAdmin.toLocaleString()} = 
-                    रु {(parseInt(formData.staffCount) * selectedPackage.pricePerAdmin).toLocaleString()}
+                    {formData.staffCount} admin(s) × रु{" "}
+                    {selectedPackage.pricePerAdmin.toLocaleString()} = रु{" "}
+                    {(
+                      parseInt(formData.staffCount) *
+                      selectedPackage.pricePerAdmin
+                    ).toLocaleString()}
                   </p>
                   <p>
-                    {formData.userCount} member(s) × रु {selectedPackage.pricePerMember.toLocaleString()} = 
-                    रु {(parseInt(formData.userCount) * selectedPackage.pricePerMember).toLocaleString()}
+                    {formData.userCount} member(s) × रु{" "}
+                    {selectedPackage.pricePerMember.toLocaleString()} = रु{" "}
+                    {(
+                      parseInt(formData.userCount) *
+                      selectedPackage.pricePerMember
+                    ).toLocaleString()}
                   </p>
                 </div>
               )}
@@ -386,7 +422,9 @@ export default function AddNetworkForm({
       <div className="space-y-2">
         <label className="block text-sm font-medium text-gray-700">
           Upload Registration Document
-          <span className="text-gray-500 ml-1">(Optional - PDF, JPG, PNG - Max 5MB)</span>
+          <span className="text-gray-500 ml-1">
+            (Optional - PDF, JPG, PNG - Max 5MB)
+          </span>
         </label>
         <div className="relative">
           <input
@@ -397,8 +435,18 @@ export default function AddNetworkForm({
           />
           {document && (
             <div className="mt-2 flex items-center gap-2 text-sm text-gray-600">
-              <svg className="w-4 h-4 text-teal-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+              <svg
+                className="w-4 h-4 text-teal-600"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+                />
               </svg>
               <span>{document.name}</span>
               <button
