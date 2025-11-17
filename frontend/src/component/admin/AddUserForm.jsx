@@ -55,11 +55,20 @@ function AddUserForm({ onClose, onUserAdded, apiBase = "http://localhost:8080/ap
   });
 
   const [adminSahakari, setAdminSahakari] = useState(null);
+  const [networkData, setNetworkData] = useState(null);
+  const [currentUserCount, setCurrentUserCount] = useState(0);
   const [loadingSahakari, setLoadingSahakari] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
-  // ⭐ Fetch admin's sahakari from session
+  // Package definitions (must match backend)
+  const PACKAGES = {
+    package1: { maxMembers: 15 },
+    package2: { maxMembers: 30 },
+    package3: { maxMembers: null }, // Unlimited
+  };
+
+  // ⭐ Fetch admin's sahakari and capacity info from session
   useEffect(() => {
     const fetchAdminSahakari = async () => {
       try {
@@ -74,15 +83,29 @@ function AddUserForm({ onClose, onUserAdded, apiBase = "http://localhost:8080/ap
           // Clean the sahakariId
           let cleanId = String(data.sahakariId).replace(/[^0-9]/g, '');
           
-          // Get network name
+          // Get network details
           const networkRes = await fetch(`${apiBase}/networks/${cleanId}`, {
             credentials: "include",
           });
 
           if (networkRes.ok) {
-            const networkData = await networkRes.json();
-            setAdminSahakari(networkData.name);
-            console.log("Admin's Sahakari for form:", networkData.name);
+            const network = await networkRes.json();
+            setAdminSahakari(network.name);
+            setNetworkData(network);
+            console.log("Network data:", network);
+
+            // Get current user count for this sahakari
+            const usersRes = await fetch(`${apiBase}/users/network/${cleanId}`, {
+              credentials: "include",
+            });
+
+            if (usersRes.ok) {
+              const users = await usersRes.json();
+              // Count only members (not staff/admin)
+              const memberCount = users.filter(u => u.role === 'member').length;
+              setCurrentUserCount(memberCount);
+              console.log("Current member count:", memberCount);
+            }
           } else {
             setError("Failed to load sahakari information");
           }
@@ -100,6 +123,31 @@ function AddUserForm({ onClose, onUserAdded, apiBase = "http://localhost:8080/ap
     fetchAdminSahakari();
   }, [apiBase]);
 
+  // Check if capacity limit reached
+  const isCapacityReached = () => {
+    if (!networkData || !networkData.packageType) return false;
+    
+    const packageConfig = PACKAGES[networkData.packageType];
+    
+    // If unlimited (custom package), never reached
+    if (packageConfig.maxMembers === null) return false;
+    
+    // Check if current count >= max allowed
+    return currentUserCount >= packageConfig.maxMembers;
+  };
+
+  const getRemainingSlots = () => {
+    if (!networkData || !networkData.packageType) return 0;
+    
+    const packageConfig = PACKAGES[networkData.packageType];
+    
+    // If unlimited
+    if (packageConfig.maxMembers === null) return "Unlimited";
+    
+    const remaining = packageConfig.maxMembers - currentUserCount;
+    return remaining > 0 ? remaining : 0;
+  };
+
   const handleChange = (e) => {
     const { name, value, files } = e.target;
     setFormData((prev) => ({
@@ -116,6 +164,12 @@ function AddUserForm({ onClose, onUserAdded, apiBase = "http://localhost:8080/ap
       return;
     }
 
+    // Check capacity before submitting
+    if (isCapacityReached()) {
+      setError("Member capacity limit reached. Please upgrade your package to add more members.");
+      return;
+    }
+
     setSaving(true);
     setError("");
 
@@ -125,7 +179,7 @@ function AddUserForm({ onClose, onUserAdded, apiBase = "http://localhost:8080/ap
       form.append("email", formData.email);
       form.append("phone", formData.phone);
       form.append("role", formData.role);
-      form.append("sahakari", adminSahakari); // ⭐ Use admin's sahakari
+      form.append("sahakari", adminSahakari);
       form.append("password", formData.password);
       
       // Admin-created users are immediately Active
@@ -142,6 +196,7 @@ function AddUserForm({ onClose, onUserAdded, apiBase = "http://localhost:8080/ap
 
       const res = await fetch(`${apiBase}/users`, {
         method: "POST",
+        credentials: "include",
         body: form,
       });
 
@@ -200,6 +255,9 @@ function AddUserForm({ onClose, onUserAdded, apiBase = "http://localhost:8080/ap
     );
   }
 
+  const capacityReached = isCapacityReached();
+  const remainingSlots = getRemainingSlots();
+
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-5">
       <div className="flex justify-center">
@@ -221,6 +279,73 @@ function AddUserForm({ onClose, onUserAdded, apiBase = "http://localhost:8080/ap
             </p>
           </div>
 
+          {/* ⭐ Capacity Display */}
+          <div className={`border rounded-lg px-4 py-3 ${
+            capacityReached ? 'bg-red-50 border-red-300' : 'bg-blue-50 border-blue-200'
+          }`}>
+            <div className="flex justify-between items-center mb-2">
+              <span className={`text-sm font-semibold ${
+                capacityReached ? 'text-red-700' : 'text-blue-700'
+              }`}>
+                Member Capacity
+              </span>
+              <span className={`text-xs font-medium px-2 py-1 rounded-full ${
+                capacityReached ? 'bg-red-200 text-red-800' : 'bg-blue-200 text-blue-800'
+              }`}>
+                {networkData?.packageType === 'package1' ? 'Starter' : 
+                 networkData?.packageType === 'package2' ? 'Professional' : 'Custom'}
+              </span>
+            </div>
+            
+            <div className="flex items-baseline gap-2">
+              <span className={`text-2xl font-bold ${
+                capacityReached ? 'text-red-600' : 'text-blue-600'
+              }`}>
+                {currentUserCount}
+              </span>
+              <span className="text-gray-600">/</span>
+              <span className="text-lg font-semibold text-gray-700">
+                {networkData?.packageType && PACKAGES[networkData.packageType].maxMembers !== null
+                  ? PACKAGES[networkData.packageType].maxMembers
+                  : '∞'}
+              </span>
+              <span className="text-sm text-gray-600 ml-auto">
+                {remainingSlots === "Unlimited" ? (
+                  <span className="text-green-600 font-medium">Unlimited slots</span>
+                ) : (
+                  <span className={remainingSlots === 0 ? 'text-red-600 font-medium' : 'text-gray-600'}>
+                    {remainingSlots} slot{remainingSlots !== 1 ? 's' : ''} remaining
+                  </span>
+                )}
+              </span>
+            </div>
+
+            {/* Progress Bar */}
+            {networkData?.packageType && PACKAGES[networkData.packageType].maxMembers !== null && (
+              <div className="mt-3">
+                <div className="w-full bg-gray-200 rounded-full h-2">
+                  <div
+                    className={`h-2 rounded-full transition-all ${
+                      capacityReached ? 'bg-red-500' : 'bg-blue-500'
+                    }`}
+                    style={{
+                      width: `${Math.min(
+                        (currentUserCount / PACKAGES[networkData.packageType].maxMembers) * 100,
+                        100
+                      )}%`,
+                    }}
+                  ></div>
+                </div>
+              </div>
+            )}
+
+            {capacityReached && (
+              <div className="mt-3 text-xs text-red-700 font-medium">
+                ⚠️ Maximum capacity reached. Upgrade your package to add more members.
+              </div>
+            )}
+          </div>
+
           <div>
             <label className="block font-semibold mb-2">
               Full Name <span className="text-red-500">*</span>
@@ -233,6 +358,7 @@ function AddUserForm({ onClose, onUserAdded, apiBase = "http://localhost:8080/ap
               placeholder="Enter user's full name"
               className="w-full px-4 py-3 border border-gray-300 rounded-full focus:outline-none focus:border-black"
               required
+              disabled={capacityReached}
             />
           </div>
 
@@ -248,6 +374,7 @@ function AddUserForm({ onClose, onUserAdded, apiBase = "http://localhost:8080/ap
               placeholder="Enter user's email"
               className="w-full px-4 py-3 border border-gray-300 rounded-full focus:outline-none focus:border-black"
               required
+              disabled={capacityReached}
             />
           </div>
 
@@ -260,6 +387,7 @@ function AddUserForm({ onClose, onUserAdded, apiBase = "http://localhost:8080/ap
               onChange={handleChange}
               placeholder="98XXXXXXXX"
               className="w-full px-4 py-3 border border-gray-300 rounded-full focus:outline-none focus:border-black"
+              disabled={capacityReached}
             />
           </div>
 
@@ -275,6 +403,7 @@ function AddUserForm({ onClose, onUserAdded, apiBase = "http://localhost:8080/ap
               placeholder="Enter a temporary password"
               className="w-full px-4 py-3 border border-gray-300 rounded-full focus:outline-none focus:border-black"
               required
+              disabled={capacityReached}
             />
           </div>
         </>
@@ -346,7 +475,8 @@ function AddUserForm({ onClose, onUserAdded, apiBase = "http://localhost:8080/ap
           <button
             type="button"
             onClick={nextStep}
-            className="bg-black text-white font-semibold py-3 px-8 rounded-full hover:bg-gray-800 transition-colors"
+            disabled={capacityReached}
+            className="bg-black text-white font-semibold py-3 px-8 rounded-full hover:bg-gray-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             Next
           </button>
@@ -355,8 +485,8 @@ function AddUserForm({ onClose, onUserAdded, apiBase = "http://localhost:8080/ap
         {step === 2 ? (
           <button
             type="submit"
-            disabled={saving}
-            className="w-full bg-teal-500 text-white font-semibold py-3 rounded-full hover:bg-teal-600 transition-colors disabled:opacity-50"
+            disabled={saving || capacityReached}
+            className="w-full bg-teal-500 text-white font-semibold py-3 rounded-full hover:bg-teal-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {saving ? "Saving..." : "Add User"}
           </button>
