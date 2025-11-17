@@ -1,5 +1,8 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import NetworkDonutChart from '../../component/superadmin/NetworkDonutChart';
+
+const apiBase = "http://localhost:8080/api";
 
 const TotalPoolItem = ({ label, value }) => (
   <div className="flex justify-between items-center py-2">
@@ -8,44 +11,55 @@ const TotalPoolItem = ({ label, value }) => (
   </div>
 );
 
-const RecentTransactionItem = ({ name, date, amount, balance }) => (
+const RecentTransactionItem = ({ user, date, type, amount }) => (
   <div className="grid grid-cols-3 items-center py-3 border-b last:border-b-0">
     <div>
-      <p className="font-bold text-gray-900">{name}</p>
+      <p className="font-bold text-gray-900">{user}</p>
       <p className="text-sm text-gray-500">{date}</p>
     </div>
-    <span className="text-green-500 font-medium text-right">{amount}</span>
-    <span className="text-gray-900 font-medium text-right">{balance}</span>
+    <span className="text-gray-700 capitalize">{type}</span>
+    <span className="text-gray-900 font-medium text-right">{amount}</span>
   </div>
 );
 
 function AdminDashboard() {
   
-  const recentTransactions = [
-    { name: "Asal's acc credited", date: '13-Apr-2025', amount: 'Rs. 1,300.00', balance: 'Rs. 25,000.00' },
-    { name: 'Barshat Deposited', date: '1-Apr-2025', amount: 'Rs. 1,300.00', balance: 'Rs. 25,000.00' },
-    { name: 'Sidd Deposited', date: '1-Apr-2025', amount: 'Rs. 1,300.00', balance: 'Rs. 25,000.00' },
-    { name: 'Asal Deposited', date: '1-Apr-2025', amount: 'Rs. 1,300.00', balance: 'Rs. 25,000.00' },
-  ];
+  const [transactions, setTransactions] = useState([]);
+  const [loading, setLoading] = useState(false);
+
+  const loadTransactions = async () => {
+    setLoading(true);
+    try {
+      const res = await fetch(`${apiBase}/transactions`);
+      if (!res.ok) {
+        throw new Error(`Failed to fetch: ${res.status}`);
+      }
+      const data = await res.json();
+      setTransactions(Array.isArray(data) ? data : []);
+    } catch (err) {
+      console.error("Error loading transactions:", err);
+      setTransactions([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadTransactions();
+  }, []);
 
   return (
     <div className="bg-white p-6">
 
-      {/* --- TOP SECTION (MODIFIED) --- */}
-      {/* This grid has 3 columns total. The first card spans 2, the second spans 1. */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
         
-        {/* Card 1: Chart + Pool (Spans 2 columns) */}
         <div className="lg:col-span-2 bg-white p-8 rounded-2xl shadow-lg">
-          {/* Internal grid to place chart and list side-by-side */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
             
-            {/* Internal Left: Chart */}
             <div className="min-h-[300px]">
               <NetworkDonutChart />
             </div>
             
-            {/* Internal Right: List */}
             <div>
               <h3 className="text-xl font-bold text-gray-900 mb-4">Total Pool</h3>
               <div className="space-y-2">
@@ -59,7 +73,6 @@ function AdminDashboard() {
           </div>
         </div>
         
-        {/* Card 2: Active Users (Spans 1 column) */}
         <div className="lg:col-span-1 bg-white p-8 rounded-2xl shadow-lg">
           <h3 className="text-xl font-bold text-gray-900 mb-4">Active Users</h3>
           <div className="bg-gray-100 h-full min-h-[150px] rounded-lg flex items-center justify-center">
@@ -67,30 +80,48 @@ function AdminDashboard() {
           </div>
         </div>
       </div>
-      {/* --- END OF MODIFIED SECTION --- */}
 
 
-      {/* Bottom Section: Recent Transactions + Shortcuts (Unchanged) */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         
-        {/* Recent Overall Transactions */}
         <div className="lg:col-span-2 bg-white p-6 rounded-2xl shadow-lg">
           <h3 className="text-xl font-bold text-gray-900 mb-4">Recent Overall Transactions</h3>
-          {/* Header */}
+          
           <div className="grid grid-cols-3 items-center pb-3 border-b text-sm font-semibold text-gray-500">
             <span>Name</span>
+            <span>Type</span>
             <span className="text-right">Amount</span>
-            <span className="text-right">Balance</span>
           </div>
-          {/* List */}
+          
           <div>
-            {recentTransactions.map((tx, index) => (
-              <RecentTransactionItem key={index} {...tx} />
-            ))}
+            {loading ? (
+              <div className="text-center py-6 text-gray-500">Loading...</div>
+            ) : transactions.length > 0 ? (
+              transactions.slice().reverse().slice(0, 5).map((tx) => (
+                <RecentTransactionItem 
+                  key={tx.id} 
+                  user={tx.user} 
+                  date={tx.date}
+                  type={tx.type}
+                  amount={tx.amount}
+                />
+              ))
+            ) : (
+              <div className="text-center py-6 text-gray-500">No transactions found.</div>
+            )}
           </div>
+
+          <div className="mt-6 text-center">
+            <Link 
+              to="/admin/transactions" 
+              className="bg-teal-500 text-white font-bold py-2.5 px-6 rounded-full hover:bg-teal-600 transition-colors text-base"
+            >
+              View All Transactions
+            </Link>
+          </div>
+
         </div>
 
-        {/* Shortcuts */}
         <div className="bg-white p-6 rounded-2xl shadow-lg">
           <h3 className="text-xl font-bold text-gray-900 mb-4">Shortcuts</h3>
           <div className="space-y-3">

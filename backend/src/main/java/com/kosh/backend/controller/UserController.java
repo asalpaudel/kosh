@@ -73,11 +73,6 @@ public class UserController {
         return saved;
     }
 
-    @GetMapping
-    public List<User> getAllUsers() {
-        return repo.findAll();
-    }
-
 
     @GetMapping("/pending")
     public List<User> getPendingUsers(@RequestParam String sahakari) {
@@ -133,5 +128,16 @@ public class UserController {
     @DeleteMapping("/{id}")
     public void deleteUser(@PathVariable int id) {
         repo.deleteById(id);
+    }
+    @GetMapping
+    public List<User> getAllUsers(
+            @RequestParam(value = "search", required = false) String search) {
+        
+        if (search != null && !search.isEmpty()) {
+            System.out.println("Searching users for: " + search);
+            return repo.findByNameContainingIgnoreCase(search);
+        } else {
+            return repo.findAll();
+        }
     }
 }
