@@ -10,7 +10,6 @@ export default function AddUserForm({
     name: "",
     email: "",
     phone: "",
-    role: "member",
     sahakari: "",
     password: "",
     document: null,
@@ -55,7 +54,7 @@ export default function AddUserForm({
       form.append("name", formData.name);
       form.append("email", formData.email);
       form.append("phone", formData.phone);
-      form.append("role", formData.role);
+      form.append("role", "admin"); // ⭐ Always set role to admin
       form.append("sahakari", formData.sahakari);
       form.append("password", formData.password);
 
@@ -158,41 +157,23 @@ export default function AddUserForm({
         />
       </div>
 
-      {/* Role + Sahakari */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {/* Role */}
-        <div>
-          <label className="block font-semibold mb-2">Select Role</label>
-          <select
-            name="role"
-            value={formData.role}
-            onChange={handleChange}
-            className="w-full px-4 py-3 border border-gray-300 rounded-full focus:outline-none focus:border-black"
-          >
-            <option value="member">Member</option>
-            <option value="staff">Staff</option>
-            <option value="admin">Admin</option>
-          </select>
-        </div>
-
-        {/* Sahakari */}
-        <div>
-          <label className="block font-semibold mb-2">Select Sahakari</label>
-          <select
-            name="sahakari"
-            value={formData.sahakari}
-            onChange={handleChange}
-            className="w-full px-4 py-3 border border-gray-300 rounded-full focus:outline-none focus:border-black"
-            required
-          >
-            <option value="">Choose Sahakari</option>
-            {sahakariList.map((net) => (
-              <option key={net.id} value={net.name}>
-                {net.name}
-              </option>
-            ))}
-          </select>
-        </div>
+      {/* Sahakari - now full width */}
+      <div>
+        <label className="block font-semibold mb-2">Select Sahakari</label>
+        <select
+          name="sahakari"
+          value={formData.sahakari}
+          onChange={handleChange}
+          className="w-full px-4 py-3 border border-gray-300 rounded-full focus:outline-none focus:border-black"
+          required
+        >
+          <option value="">Choose Sahakari</option>
+          {sahakariList.map((net) => (
+            <option key={net.id} value={net.name}>
+              {net.name}
+            </option>
+          ))}
+        </select>
       </div>
 
       {/* Password */}
