@@ -2,21 +2,21 @@ import React, { useState } from "react";
 
 // Package definitions
 const PACKAGES = {
-  package1: {
+  basic: {
     name: "Starter Package",
     price: 5000,
     maxAdmins: 1,
     maxMembers: 15,
     description: "Perfect for small sahakaris",
   },
-  package2: {
+  premium: {
     name: "Professional Package",
     price: 10000,
     maxAdmins: 2,
     maxMembers: 30,
     description: "Ideal for growing sahakaris",
   },
-  package3: {
+  custom: {
     name: "Custom Package",
     price: null, // Will be calculated based on counts
     maxAdmins: null, // No limit
@@ -38,7 +38,7 @@ export default function AddNetworkForm({
     address: "",
     createdAt: "",
     phone: "",
-    packageType: "", // New field for package selection
+    packageType: "",
     staffCount: "",
     userCount: "",
   });
@@ -55,7 +55,7 @@ export default function AddNetworkForm({
   const calculatePrice = () => {
     if (!selectedPackage) return 0;
 
-    if (formData.packageType === "package3") {
+    if (formData.packageType === "custom") {
       const admins = parseInt(formData.staffCount) || 0;
       const members = parseInt(formData.userCount) || 0;
       return (
@@ -76,10 +76,8 @@ export default function AddNetworkForm({
       setFormData((prev) => ({
         ...prev,
         packageType: value,
-        staffCount:
-          value === "package1" ? "1" : value === "package2" ? "2" : "",
-        userCount:
-          value === "package1" ? "15" : value === "package2" ? "30" : "",
+        staffCount: value === "basic" ? "1" : value === "premium" ? "2" : "",
+        userCount: value === "basic" ? "15" : value === "premium" ? "30" : "",
       }));
     } else {
       setFormData((prev) => ({
@@ -126,8 +124,8 @@ export default function AddNetworkForm({
     const staffCount = parseInt(formData.staffCount) || 0;
     const userCount = parseInt(formData.userCount) || 0;
 
-    // For package1 and package2, enforce limits
-    if (formData.packageType !== "package3") {
+    // For basic and premium, enforce limits
+    if (formData.packageType !== "custom") {
       if (staffCount > selectedPackage.maxAdmins) {
         setError(
           `Staff count cannot exceed ${selectedPackage.maxAdmins} for this package`
@@ -179,6 +177,23 @@ export default function AddNetworkForm({
       formDataToSend.append("staffCount", formData.staffCount);
       formDataToSend.append("userCount", formData.userCount);
 
+      // ⭐ Add admin and user limits
+      let adminLimit, userLimit;
+      if (formData.packageType === "basic") {
+        adminLimit = 1;
+        userLimit = 15;
+      } else if (formData.packageType === "premium") {
+        adminLimit = 2;
+        userLimit = 30;
+      } else if (formData.packageType === "custom") {
+        // For custom, the limit is the count itself
+        adminLimit = parseInt(formData.staffCount) || 0;
+        userLimit = parseInt(formData.userCount) || 0;
+      }
+
+      formDataToSend.append("adminLimit", adminLimit.toString());
+      formDataToSend.append("userLimit", userLimit.toString());
+
       // Append document if uploaded
       if (document) {
         formDataToSend.append("document", document);
@@ -189,6 +204,8 @@ export default function AddNetworkForm({
       console.log("Submitting to:", url);
       console.log("Package Type:", formData.packageType);
       console.log("Package Price:", calculatePrice());
+      console.log("Admin Limit:", adminLimit);
+      console.log("User Limit:", userLimit);
       console.log("Document:", document?.name);
 
       const res = await fetch(url, {
@@ -218,20 +235,20 @@ export default function AddNetworkForm({
     }
   };
 
-  const isCustomPackage = formData.packageType === "package3";
+  const isCustomPackage = formData.packageType === "custom";
 
   return (
     <form className="space-y-6" onSubmit={onSubmit}>
       {/* Basic Information */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        {/* <input
+        <input
           name="registeredId"
           onChange={onChange}
           value={formData.registeredId}
           placeholder="Registered ID"
           className="w-full bg-gray-100 rounded-lg px-4 py-2 outline-none"
           required
-        /> */}
+        />
         <input
           name="name"
           onChange={onChange}

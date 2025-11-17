@@ -41,7 +41,11 @@ const Stepper = ({ currentStep }) => (
   </div>
 );
 
-function AddUserForm({ onClose, onUserAdded, apiBase = "http://localhost:8080/api" }) {
+function AddUserForm({
+  onClose,
+  onUserAdded,
+  apiBase = "http://localhost:8080/api",
+}) {
   const [step, setStep] = useState(1);
   const [formData, setFormData] = useState({
     name: "",
@@ -61,13 +65,6 @@ function AddUserForm({ onClose, onUserAdded, apiBase = "http://localhost:8080/ap
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
-  // Package definitions (must match backend)
-  const PACKAGES = {
-    package1: { maxMembers: 15 },
-    package2: { maxMembers: 30 },
-    package3: { maxMembers: null }, // Unlimited
-  };
-
   // ⭐ Fetch admin's sahakari and capacity info from session
   useEffect(() => {
     const fetchAdminSahakari = async () => {
@@ -79,10 +76,10 @@ function AddUserForm({ onClose, onUserAdded, apiBase = "http://localhost:8080/ap
 
         if (res.ok) {
           const data = await res.json();
-          
+
           // Clean the sahakariId
-          let cleanId = String(data.sahakariId).replace(/[^0-9]/g, '');
-          
+          let cleanId = String(data.sahakariId).replace(/[^0-9]/g, "");
+
           // Get network details
           const networkRes = await fetch(`${apiBase}/networks/${cleanId}`, {
             credentials: "include",
@@ -95,16 +92,21 @@ function AddUserForm({ onClose, onUserAdded, apiBase = "http://localhost:8080/ap
             console.log("Network data:", network);
 
             // Get current user count for this sahakari
-            const usersRes = await fetch(`${apiBase}/users/network/${cleanId}`, {
-              credentials: "include",
-            });
+            const usersRes = await fetch(
+              `${apiBase}/users/network/${cleanId}`,
+              {
+                credentials: "include",
+              }
+            );
 
             if (usersRes.ok) {
               const users = await usersRes.json();
-              // Count only members (not staff/admin)
-              const memberCount = users.filter(u => u.role === 'member').length;
+              // Count only ACTIVE members (not staff/admin)
+              const memberCount = users.filter(
+                (u) => u.role === "member" && u.status === "Active"
+              ).length;
               setCurrentUserCount(memberCount);
-              console.log("Current member count:", memberCount);
+              console.log("Current active member count:", memberCount);
             }
           } else {
             setError("Failed to load sahakari information");
@@ -125,26 +127,24 @@ function AddUserForm({ onClose, onUserAdded, apiBase = "http://localhost:8080/ap
 
   // Check if capacity limit reached
   const isCapacityReached = () => {
-    if (!networkData || !networkData.packageType) return false;
-    
-    const packageConfig = PACKAGES[networkData.packageType];
-    
-    // If unlimited (custom package), never reached
-    if (packageConfig.maxMembers === null) return false;
-    
+    if (!networkData || !networkData.userLimit) return false;
+
+    // If userLimit is null or 0, it's unlimited
+    if (networkData.userLimit === null || networkData.userLimit === 0)
+      return false;
+
     // Check if current count >= max allowed
-    return currentUserCount >= packageConfig.maxMembers;
+    return currentUserCount >= networkData.userLimit;
   };
 
   const getRemainingSlots = () => {
-    if (!networkData || !networkData.packageType) return 0;
-    
-    const packageConfig = PACKAGES[networkData.packageType];
-    
+    if (!networkData || !networkData.userLimit) return "Unlimited";
+
     // If unlimited
-    if (packageConfig.maxMembers === null) return "Unlimited";
-    
-    const remaining = packageConfig.maxMembers - currentUserCount;
+    if (networkData.userLimit === null || networkData.userLimit === 0)
+      return "Unlimited";
+
+    const remaining = networkData.userLimit - currentUserCount;
     return remaining > 0 ? remaining : 0;
   };
 
@@ -158,7 +158,7 @@ function AddUserForm({ onClose, onUserAdded, apiBase = "http://localhost:8080/ap
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
+
     if (!adminSahakari) {
       setError("Sahakari information not loaded. Please try again.");
       return;
@@ -166,7 +166,9 @@ function AddUserForm({ onClose, onUserAdded, apiBase = "http://localhost:8080/ap
 
     // Check capacity before submitting
     if (isCapacityReached()) {
-      setError("Member capacity limit reached. Please upgrade your package to add more members.");
+      setError(
+        "Member capacity limit reached. Please contact support to upgrade your package."
+      );
       return;
     }
 
@@ -181,7 +183,7 @@ function AddUserForm({ onClose, onUserAdded, apiBase = "http://localhost:8080/ap
       form.append("role", formData.role);
       form.append("sahakari", adminSahakari);
       form.append("password", formData.password);
-      
+
       // Admin-created users are immediately Active
       form.append("status", "Active");
 
@@ -201,8 +203,18 @@ function AddUserForm({ onClose, onUserAdded, apiBase = "http://localhost:8080/ap
       });
 
       if (!res.ok) {
-        const text = await res.text();
-        throw new Error(`HTTP ${res.status}: ${text}`);
+        const contentType = res.headers.get("content-type");
+        let errorMessage;
+
+        if (contentType && contentType.includes("application/json")) {
+          const errorData = await res.json();
+          errorMessage = errorData.error || `HTTP ${res.status}: Unknown error`;
+        } else {
+          const text = await res.text();
+          errorMessage = `HTTP ${res.status}: ${text}`;
+        }
+
+        throw new Error(errorMessage);
       }
 
       const saved = await res.json();
@@ -213,7 +225,7 @@ function AddUserForm({ onClose, onUserAdded, apiBase = "http://localhost:8080/ap
       onClose?.();
     } catch (err) {
       console.error("Error adding user:", err);
-      setError(`Failed to save: ${err.message}`);
+      setError(err.message || "Failed to save user");
     } finally {
       setSaving(false);
     }
@@ -250,7 +262,9 @@ function AddUserForm({ onClose, onUserAdded, apiBase = "http://localhost:8080/ap
   if (!adminSahakari) {
     return (
       <div className="flex justify-center items-center py-12">
-        <p className="text-red-500">Unable to load sahakari. Please try again.</p>
+        <p className="text-red-500">
+          Unable to load sahakari. Please try again.
+        </p>
       </div>
     );
   }
@@ -271,66 +285,93 @@ function AddUserForm({ onClose, onUserAdded, apiBase = "http://localhost:8080/ap
           <h3 className="text-lg font-semibold text-gray-700 -mb-2 text-center">
             User Details
           </h3>
-          
+
           {/* Show which Sahakari this user will be added to */}
           <div className="bg-teal-50 border border-teal-200 rounded-lg px-4 py-3">
             <p className="text-sm text-teal-700">
-              <span className="font-semibold">Adding user to:</span> {adminSahakari}
+              <span className="font-semibold">Adding user to:</span>{" "}
+              {adminSahakari}
             </p>
           </div>
 
           {/* ⭐ Capacity Display */}
-          <div className={`border rounded-lg px-4 py-3 ${
-            capacityReached ? 'bg-red-50 border-red-300' : 'bg-blue-50 border-blue-200'
-          }`}>
+          <div
+            className={`border rounded-lg px-4 py-3 ${
+              capacityReached
+                ? "bg-red-50 border-red-300"
+                : "bg-blue-50 border-blue-200"
+            }`}
+          >
             <div className="flex justify-between items-center mb-2">
-              <span className={`text-sm font-semibold ${
-                capacityReached ? 'text-red-700' : 'text-blue-700'
-              }`}>
+              <span
+                className={`text-sm font-semibold ${
+                  capacityReached ? "text-red-700" : "text-blue-700"
+                }`}
+              >
                 Member Capacity
               </span>
-              <span className={`text-xs font-medium px-2 py-1 rounded-full ${
-                capacityReached ? 'bg-red-200 text-red-800' : 'bg-blue-200 text-blue-800'
-              }`}>
-                {networkData?.packageType === 'package1' ? 'Starter' : 
-                 networkData?.packageType === 'package2' ? 'Professional' : 'Custom'}
+              <span
+                className={`text-xs font-medium px-2 py-1 rounded-full ${
+                  capacityReached
+                    ? "bg-red-200 text-red-800"
+                    : "bg-blue-200 text-blue-800"
+                }`}
+              >
+                {networkData?.packageType === "package1"
+                  ? "Starter"
+                  : networkData?.packageType === "package2"
+                  ? "Professional"
+                  : networkData?.packageType === "package3"
+                  ? "Enterprise"
+                  : "Custom"}
               </span>
             </div>
-            
+
             <div className="flex items-baseline gap-2">
-              <span className={`text-2xl font-bold ${
-                capacityReached ? 'text-red-600' : 'text-blue-600'
-              }`}>
+              <span
+                className={`text-2xl font-bold ${
+                  capacityReached ? "text-red-600" : "text-blue-600"
+                }`}
+              >
                 {currentUserCount}
               </span>
               <span className="text-gray-600">/</span>
               <span className="text-lg font-semibold text-gray-700">
-                {networkData?.packageType && PACKAGES[networkData.packageType].maxMembers !== null
-                  ? PACKAGES[networkData.packageType].maxMembers
-                  : '∞'}
+                {networkData?.userLimit && networkData.userLimit > 0
+                  ? networkData.userLimit
+                  : "∞"}
               </span>
               <span className="text-sm text-gray-600 ml-auto">
                 {remainingSlots === "Unlimited" ? (
-                  <span className="text-green-600 font-medium">Unlimited slots</span>
+                  <span className="text-green-600 font-medium">
+                    Unlimited slots
+                  </span>
                 ) : (
-                  <span className={remainingSlots === 0 ? 'text-red-600 font-medium' : 'text-gray-600'}>
-                    {remainingSlots} slot{remainingSlots !== 1 ? 's' : ''} remaining
+                  <span
+                    className={
+                      remainingSlots === 0
+                        ? "text-red-600 font-medium"
+                        : "text-gray-600"
+                    }
+                  >
+                    {remainingSlots} slot{remainingSlots !== 1 ? "s" : ""}{" "}
+                    remaining
                   </span>
                 )}
               </span>
             </div>
 
             {/* Progress Bar */}
-            {networkData?.packageType && PACKAGES[networkData.packageType].maxMembers !== null && (
+            {networkData?.userLimit && networkData.userLimit > 0 && (
               <div className="mt-3">
                 <div className="w-full bg-gray-200 rounded-full h-2">
                   <div
                     className={`h-2 rounded-full transition-all ${
-                      capacityReached ? 'bg-red-500' : 'bg-blue-500'
+                      capacityReached ? "bg-red-500" : "bg-blue-500"
                     }`}
                     style={{
                       width: `${Math.min(
-                        (currentUserCount / PACKAGES[networkData.packageType].maxMembers) * 100,
+                        (currentUserCount / networkData.userLimit) * 100,
                         100
                       )}%`,
                     }}
@@ -341,7 +382,8 @@ function AddUserForm({ onClose, onUserAdded, apiBase = "http://localhost:8080/ap
 
             {capacityReached && (
               <div className="mt-3 text-xs text-red-700 font-medium">
-                ⚠️ Maximum capacity reached. Upgrade your package to add more members.
+                ⚠️ Maximum capacity reached. Contact support to upgrade your
+                package.
               </div>
             )}
           </div>
