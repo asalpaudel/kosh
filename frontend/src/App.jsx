@@ -7,23 +7,23 @@ import Layout from "./component/user/Layout.jsx";
 import Dashboard from "./pages/user/Dashboard.jsx";
 import Report from "./pages/user/Report.jsx";
 import Statement from "./pages/user/Statement.jsx";
-import Login from "./pages/Login.jsx"; 
+import Settings from "./pages/user/Settings.jsx";
+import Login from "./pages/Login.jsx";
 import Signup from "./pages/Signup.jsx";
 
 // SUPERADMIN IMPORTS
 import SuperadminLayout from "./component/superadmin/Layout.jsx";
 import SuperadminDashboard from "./pages/superadmin/Dashboard.jsx";
 import Analytics from "./pages/superadmin/Analytics.jsx";
-import History from "./pages/superadmin/History.jsx"; 
+import History from "./pages/superadmin/History.jsx";
 import Networks from "./pages/superadmin/Networks.jsx";
-// comment ho yo
-// --- ADMIN IMPORTS (NEW) ---
+// ADMIN IMPORTS
 import AdminLayout from "./component/admin/Layout.jsx";
 import AdminDashboard from "./pages/admin/Dashboard.jsx";
 import AdminUsers from "./pages/admin/Users.jsx";
 import AdminHistory from "./pages/admin/History.jsx";
 import AdminTransactions from "./pages/admin/Transactions.jsx";
-import AdminPackages from "./pages/admin/Packages.jsx"; 
+import AdminPackages from "./pages/admin/Packages.jsx";
 
 function App() {
   return (
@@ -36,10 +36,11 @@ function App() {
 
           {/* Protected (nested) User Routes */}
           <Route path="/home" element={<Layout />}>
-            <Route index element={<Dashboard />} /> 
+            <Route index element={<Dashboard />} />
             <Route path="dashboard" element={<Dashboard />} />
             <Route path="report" element={<Report />} />
             <Route path="statement" element={<Statement />} />
+            <Route path="settings" element={<Settings />} /> {/* <-- ADDED */}
           </Route>
 
           {/* --- ADDED ADMIN ROUTES (NEW) --- */}
@@ -47,20 +48,19 @@ function App() {
             <Route index element={<AdminDashboard />} />
             <Route path="dashboard" element={<AdminDashboard />} />
             <Route path="users" element={<AdminUsers />} />
-            <Route path="packages" element={<AdminPackages />} /> 
+            <Route path="packages" element={<AdminPackages />} />
             <Route path="history" element={<AdminHistory />} />
             <Route path="transactions" element={<AdminTransactions />} />
           </Route>
 
           {/* Protected (nested) Superadmin Routes */}
           <Route path="/superadmin" element={<SuperadminLayout />}>
-            <Route index element={<SuperadminDashboard />} /> 
+            <Route index element={<SuperadminDashboard />} />
             <Route path="dashboard" element={<SuperadminDashboard />} />
             <Route path="analytics" element={<Analytics />} />
             <Route path="history" element={<History />} />
-            <Route path="networks" element={<Networks />} /> 
+            <Route path="networks" element={<Networks />} />
           </Route>
-          
         </Routes>
       </BrowserRouter>
     </>
