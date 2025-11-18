@@ -42,9 +42,7 @@ function App() {
             <Route path="report" element={<Report />} />
             <Route path="statement" element={<Statement />} />
             <Route path="packages" element={<UserPackages />} />
-            <Route
-              path="packages/apply/:type/:id"
-              element={<ApplyPackageForm />}
+            <Route path="packages/apply/:type/:id" element={<ApplyPackageForm />}
             />
           </Route>
 
