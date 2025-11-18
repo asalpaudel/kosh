@@ -10,12 +10,10 @@ import {
 } from "../../component/icons.jsx";
 import Modal from "../../component/superadmin/Modal.jsx";
 
-// Add Forms
 import AddFixedDepositForm from "../../component/admin/AddFixedDepositForm.jsx";
 import AddSavingAccountForm from "../../component/admin/AddSavingAccountForm.jsx";
 import AddLoanForm from "../../component/admin/AddLoanForm.jsx";
 
-// Edit Forms
 import EditFixedDepositForm from "../../component/admin/EditFixedDepositForm.jsx";
 import EditSavingAccountForm from "../../component/admin/EditSavingAccountForm.jsx";
 import EditLoanPackageForm from "../../component/admin/EditLoanPackageForm.jsx";
@@ -48,7 +46,6 @@ const PackageActions = ({ pkg, onView, onEdit, onDelete }) => (
   </div>
 );
 
-// View Package Modal Component
 const ViewPackageModal = ({ isOpen, onClose, packageData, packageType }) => {
   if (!packageData) return null;
 
@@ -57,7 +54,6 @@ const ViewPackageModal = ({ isOpen, onClose, packageData, packageType }) => {
       case "fixed-deposit":
         return (
           <div className="flex flex-col gap-5">
-            {/* Package Name */}
             <div>
               <label className="block font-semibold mb-2">Package Name</label>
               <div className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-full text-gray-900">
@@ -65,7 +61,6 @@ const ViewPackageModal = ({ isOpen, onClose, packageData, packageType }) => {
               </div>
             </div>
 
-            {/* Interest Rate and Min Duration in one row */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block font-semibold mb-2">
@@ -90,7 +85,7 @@ const ViewPackageModal = ({ isOpen, onClose, packageData, packageType }) => {
             <div>
               <label className="block font-semibold mb-2">Minimum Amount</label>
               <div className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-full text-gray-900">
-                ₹{packageData.minAmount?.toLocaleString()}
+                Rs. {packageData.minAmount?.toLocaleString()}
               </div>
             </div>
 
@@ -132,7 +127,7 @@ const ViewPackageModal = ({ isOpen, onClose, packageData, packageType }) => {
                   Minimum Balance
                 </label>
                 <div className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-full text-gray-900">
-                  ₹{packageData.minBalance?.toLocaleString()}
+                  Rs. {packageData.minBalance?.toLocaleString()}
                 </div>
               </div>
             </div>
@@ -184,7 +179,7 @@ const ViewPackageModal = ({ isOpen, onClose, packageData, packageType }) => {
             <div>
               <label className="block font-semibold mb-2">Maximum Amount</label>
               <div className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-full text-gray-900">
-                ₹{packageData.maxAmount?.toLocaleString()}
+                Rs. {packageData.maxAmount?.toLocaleString()}
               </div>
             </div>
 
