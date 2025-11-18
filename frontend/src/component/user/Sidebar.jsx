@@ -6,7 +6,8 @@ import {
   FileTextIcon,
   LogOutIcon,
   Logo,
-} from "../icons";
+  PiggyBankIcon, // --- ADD THIS IMPORT ---
+} from "../icons"; 
 
 function Sidebar() {
   const navLinkClass = ({ isActive }) =>
@@ -27,6 +28,12 @@ function Sidebar() {
         <NavLink to="/home/statement" className={navLinkClass}>
           <FileTextIcon className="text-gray-300 h-7 w-7 transition-all duration-200 hover:scale-110 hover:text-white" />
         </NavLink>
+
+        {/* --- ADD THIS NEW NAVLINK --- */}
+        <NavLink to="/home/packages" className={navLinkClass}>
+          <PiggyBankIcon className="text-gray-300 h-7 w-7 transition-all duration-200 hover:scale-110 hover:text-white" />
+        </NavLink>
+        
       </div>
 
       <NavLink to="/" className={navLinkClass}>
