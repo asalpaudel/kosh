@@ -1,55 +1,56 @@
 import React, { useState, useEffect } from "react";
+// --- NO LINK IMPORT NEEDED ---
 import {
-  PlusCircleIcon,
   DocumentTextIcon,
   CurrencyDollarIcon,
   BanknotesIcon,
   EyeIcon,
-  PencilIcon,
-  TrashIcon,
 } from "../../component/icons.jsx";
 import Modal from "../../component/superadmin/Modal.jsx";
-
-import AddFixedDepositForm from "../../component/admin/AddFixedDepositForm.jsx";
-import AddSavingAccountForm from "../../component/admin/AddSavingAccountForm.jsx";
-import AddLoanForm from "../../component/admin/AddLoanForm.jsx";
-
-import EditFixedDepositForm from "../../component/admin/EditFixedDepositForm.jsx";
-import EditSavingAccountForm from "../../component/admin/EditSavingAccountForm.jsx";
-import EditLoanPackageForm from "../../component/admin/EditLoanPackageForm.jsx";
+// --- IMPORT THE NEW FORM COMPONENT ---
+import ApplyPackageForm from "../../component/user/ApplyPackageForm.jsx";
 
 const apiBase = "http://localhost:8080/api";
 
-const PackageActions = ({ pkg, onView, onEdit, onDelete }) => (
+// A simplified action component for users (View only)
+const PackageActions = ({ pkg, onView }) => (
   <div className="flex items-center justify-end space-x-2">
     <button
       onClick={() => onView(pkg)}
       className="text-blue-500 hover:text-blue-700 p-1 rounded-full hover:bg-blue-100 transition-colors"
-      title="View Package"
+      title="View Package Details"
     >
       <EyeIcon className="w-5 h-5" />
-    </button>
-    <button
-      onClick={() => onEdit(pkg)}
-      className="text-yellow-500 hover:text-yellow-700 p-1 rounded-full hover:bg-yellow-100 transition-colors"
-      title="Edit Package"
-    >
-      <PencilIcon className="w-5 h-5" />
-    </button>
-    <button
-      onClick={() => onDelete(pkg.id)}
-      className="text-red-500 hover:text-red-700 p-1 rounded-full hover:bg-red-100 transition-colors"
-      title="Delete Package"
-    >
-      <TrashIcon className="w-5 h-5" />
     </button>
   </div>
 );
 
-const ViewPackageModal = ({ isOpen, onClose, packageData, packageType }) => {
+// --- MODIFICATION IS HERE: ADD onApplyClick PROP ---
+const ViewPackageModal = ({
+  isOpen,
+  onClose,
+  packageData,
+  packageType,
+  onApplyClick,
+}) => {
   if (!packageData) return null;
 
+  // This function decides the text for the "Apply" button
+  const getApplyText = () => {
+    switch (packageType) {
+      case "fixed-deposit":
+        return "Apply for this Fixed Deposit";
+      case "saving-account":
+        return "Open this Savings Account";
+      case "loan-package":
+        return "Apply for this Loan";
+      default:
+        return "Apply Now";
+    }
+  };
+
   const renderContent = () => {
+    // ... (This switch statement is UNCHANGED) ...
     switch (packageType) {
       case "fixed-deposit":
         return (
@@ -60,7 +61,6 @@ const ViewPackageModal = ({ isOpen, onClose, packageData, packageType }) => {
                 {packageData.name}
               </div>
             </div>
-
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block font-semibold mb-2">
@@ -70,7 +70,6 @@ const ViewPackageModal = ({ isOpen, onClose, packageData, packageType }) => {
                   {packageData.interestRate}%
                 </div>
               </div>
-
               <div>
                 <label className="block font-semibold mb-2">
                   Minimum Duration (months)
@@ -80,16 +79,12 @@ const ViewPackageModal = ({ isOpen, onClose, packageData, packageType }) => {
                 </div>
               </div>
             </div>
-
-            {/* Minimum Amount */}
             <div>
               <label className="block font-semibold mb-2">Minimum Amount</label>
               <div className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-full text-gray-900">
                 Rs. {packageData.minAmount?.toLocaleString()}
               </div>
             </div>
-
-            {/* Description */}
             {packageData.description && (
               <div>
                 <label className="block font-semibold mb-2">Description</label>
@@ -103,15 +98,12 @@ const ViewPackageModal = ({ isOpen, onClose, packageData, packageType }) => {
       case "saving-account":
         return (
           <div className="flex flex-col gap-5">
-            {/* Package Name */}
             <div>
               <label className="block font-semibold mb-2">Package Name</label>
               <div className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-full text-gray-900">
                 {packageData.name}
               </div>
             </div>
-
-            {/* Interest Rate and Min Balance in one row */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block font-semibold mb-2">
@@ -121,7 +113,6 @@ const ViewPackageModal = ({ isOpen, onClose, packageData, packageType }) => {
                   {packageData.interestRate}%
                 </div>
               </div>
-
               <div>
                 <label className="block font-semibold mb-2">
                   Minimum Balance
@@ -131,8 +122,6 @@ const ViewPackageModal = ({ isOpen, onClose, packageData, packageType }) => {
                 </div>
               </div>
             </div>
-
-            {/* Description */}
             {packageData.description && (
               <div>
                 <label className="block font-semibold mb-2">Description</label>
@@ -146,15 +135,12 @@ const ViewPackageModal = ({ isOpen, onClose, packageData, packageType }) => {
       case "loan-package":
         return (
           <div className="flex flex-col gap-5">
-            {/* Package Name */}
             <div>
               <label className="block font-semibold mb-2">Package Name</label>
               <div className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-full text-gray-900">
                 {packageData.name}
               </div>
             </div>
-
-            {/* Interest Rate and Max Duration in one row */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block font-semibold mb-2">
@@ -164,7 +150,6 @@ const ViewPackageModal = ({ isOpen, onClose, packageData, packageType }) => {
                   {packageData.interestRate}%
                 </div>
               </div>
-
               <div>
                 <label className="block font-semibold mb-2">
                   Maximum Duration (months)
@@ -174,16 +159,12 @@ const ViewPackageModal = ({ isOpen, onClose, packageData, packageType }) => {
                 </div>
               </div>
             </div>
-
-            {/* Maximum Amount */}
             <div>
               <label className="block font-semibold mb-2">Maximum Amount</label>
               <div className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-full text-gray-900">
                 Rs. {packageData.maxAmount?.toLocaleString()}
               </div>
             </div>
-
-            {/* Description */}
             {packageData.description && (
               <div>
                 <label className="block font-semibold mb-2">Description</label>
@@ -207,11 +188,24 @@ const ViewPackageModal = ({ isOpen, onClose, packageData, packageType }) => {
       size="xl"
     >
       {renderContent()}
+
+      {/* --- THIS SECTION IS MODIFIED --- */}
+      <div className="mt-6 pt-6 border-t border-gray-200 flex justify-end">
+        <button
+          type="button"
+          onClick={onApplyClick} // Use the prop here
+          className="bg-teal-500 text-white font-bold py-3 px-8 rounded-full hover:bg-teal-600 transition-colors text-base"
+        >
+          {getApplyText()}
+        </button>
+      </div>
+      {/* --- END OF MODIFICATION --- */}
     </Modal>
   );
 };
 
-function AdminPackages() {
+// Main component
+function UserPackages() {
   const [selectedNetworkId, setSelectedNetworkId] = useState(null);
   const [fixedDeposits, setFixedDeposits] = useState([]);
   const [savingAccounts, setSavingAccounts] = useState([]);
@@ -219,37 +213,25 @@ function AdminPackages() {
   const [loading, setLoading] = useState(false);
   const [sessionLoading, setSessionLoading] = useState(true);
 
-  // Add modals
-  const [isAddFixedDepositModalOpen, setIsAddFixedDepositModalOpen] =
-    useState(false);
-  const [isAddSavingAccountModalOpen, setIsAddSavingAccountModalOpen] =
-    useState(false);
-  const [isAddLoanModalOpen, setIsAddLoanModalOpen] = useState(false);
-
-  // Edit modals
-  const [isEditFixedDepositModalOpen, setIsEditFixedDepositModalOpen] =
-    useState(false);
-  const [isEditSavingAccountModalOpen, setIsEditSavingAccountModalOpen] =
-    useState(false);
-  const [isEditLoanModalOpen, setIsEditLoanModalOpen] = useState(false);
-
-  // View modal
+  // View modal state
   const [viewPackageModalOpen, setViewPackageModalOpen] = useState(false);
   const [currentPackageToView, setCurrentPackageToView] = useState(null);
   const [currentPackageType, setCurrentPackageType] = useState(null);
 
-  // Current package for editing
-  const [currentEditPackage, setCurrentEditPackage] = useState(null);
+  // --- ADD STATE FOR THE APPLY MODAL ---
+  const [isApplyModalOpen, setIsApplyModalOpen] = useState(false);
+  const [currentPackageToApply, setCurrentPackageToApply] = useState(null);
+  // (we can reuse currentPackageType for the apply modal)
 
-  // Fetch session sahakariId
+  // ... (useEffect for fetchSession is UNCHANGED) ...
   useEffect(() => {
     const fetchSession = async () => {
       try {
         const response = await fetch(`${apiBase}/session`, {
           method: "GET",
-          credentials: "include", // Important: Include cookies for session
+          credentials: "include",
         });
-        
+
         if (response.ok) {
           const data = await response.json();
           setSelectedNetworkId(data.sahakariId);
@@ -266,7 +248,13 @@ function AdminPackages() {
     fetchSession();
   }, []);
 
-  // Fetch all finance data
+  // ... (useEffect for fetchData is UNCHANGED) ...
+  useEffect(() => {
+    if (selectedNetworkId) {
+      fetchData();
+    }
+  }, [selectedNetworkId]);
+
   const fetchData = async () => {
     if (!selectedNetworkId) return;
     setLoading(true);
@@ -293,65 +281,28 @@ function AdminPackages() {
     }
   };
 
-  useEffect(() => {
-    if (selectedNetworkId) {
-      fetchData();
-    }
-  }, [selectedNetworkId]);
-
-  // Delete handler
-  const handleDeletePackage = async (id, type) => {
-    const confirm = window.confirm(`Delete this ${type} package?`);
-    if (!confirm) return;
-
-    let url = `${apiBase}/finance/${type}/${id}`;
-    await fetch(url, { 
-      method: "DELETE",
-      credentials: "include",
-    });
-    fetchData();
-  };
-
-  // View handler
+  // View handler (UNMODIFIED)
   const handleViewPackage = (pkg, type) => {
     setCurrentPackageToView(pkg);
     setCurrentPackageType(type);
     setViewPackageModalOpen(true);
   };
 
-  // Edit handlers
-  const handleEditFixedDeposit = (pkg) => {
-    setCurrentEditPackage(pkg);
-    setIsEditFixedDepositModalOpen(true);
+  // --- ADD HANDLER FOR APPLY BUTTON CLICK ---
+  const handleApplyClick = () => {
+    // 1. Set data for the new modal
+    setCurrentPackageToApply(currentPackageToView);
+    // (currentPackageType is already set)
+
+    // 2. Close the current (view) modal
+    setViewPackageModalOpen(false);
+    setCurrentPackageToView(null);
+
+    // 3. Open the new (apply) modal
+    setIsApplyModalOpen(true);
   };
 
-  const handleEditSavingAccount = (pkg) => {
-    setCurrentEditPackage(pkg);
-    setIsEditSavingAccountModalOpen(true);
-  };
-
-  const handleEditLoan = (pkg) => {
-    setCurrentEditPackage(pkg);
-    setIsEditLoanModalOpen(true);
-  };
-
-  // Handle form completion
-  const handleAdded = () => {
-    fetchData();
-    setIsAddFixedDepositModalOpen(false);
-    setIsAddSavingAccountModalOpen(false);
-    setIsAddLoanModalOpen(false);
-  };
-
-  const handleUpdated = () => {
-    fetchData();
-    setIsEditFixedDepositModalOpen(false);
-    setIsEditSavingAccountModalOpen(false);
-    setIsEditLoanModalOpen(false);
-    setCurrentEditPackage(null);
-  };
-
-  // Show loading state while fetching session
+  // ... (sessionLoading and selectedNetworkId checks are UNCHANGED) ...
   if (sessionLoading) {
     return (
       <div className="bg-white p-6 min-h-[calc(100vh-8.5rem)] rounded-lg shadow-md flex items-center justify-center">
@@ -360,12 +311,11 @@ function AdminPackages() {
     );
   }
 
-  // Show error if no network ID
   if (!selectedNetworkId) {
     return (
       <div className="bg-white p-6 min-h-[calc(100vh-8.5rem)] rounded-lg shadow-md flex items-center justify-center">
         <p className="text-center text-red-500">
-          Unable to load session. Please login again.
+          Unable to load packages. Please try logging in again.
         </p>
       </div>
     );
@@ -375,22 +325,24 @@ function AdminPackages() {
     <>
       <div className="bg-white p-6 min-h-[calc(100vh-8.5rem)] rounded-lg shadow-md">
         {loading ? (
-          <p className="text-center text-gray-500">Loading...</p>
+          <p className="text-center text-gray-500">Loading packages...</p>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {/* Fixed Deposits */}
             <div className="border border-gray-200 rounded-lg p-4 shadow-lg">
+              {/* ... (Header is unchanged) ... */}
               <h3 className="text-lg font-semibold text-gray-700 mb-3 flex items-center gap-2">
                 <DocumentTextIcon className="w-5 h-5 text-teal-500" />
                 Fixed Deposits
               </h3>
               <div className="border-t border-gray-200 mt-2">
                 <table className="w-full mt-3 text-left">
+                  {/* ... (Table head is unchanged) ... */}
                   <thead>
                     <tr className="text-gray-600 text-sm">
                       <th className="py-2 px-2 font-medium">Package Name</th>
                       <th className="py-2 px-2 text-right font-medium">
-                        Action
+                        View
                       </th>
                     </tr>
                   </thead>
@@ -409,10 +361,6 @@ function AdminPackages() {
                               pkg={pkg}
                               onView={() =>
                                 handleViewPackage(pkg, "fixed-deposit")
-                              }
-                              onEdit={() => handleEditFixedDeposit(pkg)}
-                              onDelete={() =>
-                                handleDeletePackage(pkg.id, "fixed-deposits")
                               }
                             />
                           </td>
@@ -435,17 +383,19 @@ function AdminPackages() {
 
             {/* Saving Accounts */}
             <div className="border border-gray-200 rounded-lg p-4 shadow-lg">
+              {/* ... (Header is unchanged) ... */}
               <h3 className="text-lg font-semibold text-gray-700 mb-3 flex items-center gap-2">
                 <CurrencyDollarIcon className="w-5 h-5 text-teal-500" />
                 Saving Accounts
               </h3>
               <div className="border-t border-gray-200 mt-2">
                 <table className="w-full mt-3 text-left">
+                  {/* ... (Table head is unchanged) ... */}
                   <thead>
                     <tr className="text-gray-600 text-sm">
                       <th className="py-2 px-2 font-medium">Package Name</th>
                       <th className="py-2 px-2 text-right font-medium">
-                        Action
+                        View
                       </th>
                     </tr>
                   </thead>
@@ -464,10 +414,6 @@ function AdminPackages() {
                               pkg={pkg}
                               onView={() =>
                                 handleViewPackage(pkg, "saving-account")
-                              }
-                              onEdit={() => handleEditSavingAccount(pkg)}
-                              onDelete={() =>
-                                handleDeletePackage(pkg.id, "saving-accounts")
                               }
                             />
                           </td>
@@ -490,17 +436,19 @@ function AdminPackages() {
 
             {/* Loan Packages */}
             <div className="border border-gray-200 rounded-lg p-4 shadow-lg">
+              {/* ... (Header is unchanged) ... */}
               <h3 className="text-lg font-semibold text-gray-700 mb-3 flex items-center gap-2">
                 <BanknotesIcon className="w-5 h-5 text-teal-500" />
                 Loan Packages
               </h3>
               <div className="border-t border-gray-200 mt-2">
                 <table className="w-full mt-3 text-left">
+                  {/* ... (Table head is unchanged) ... */}
                   <thead>
                     <tr className="text-gray-600 text-sm">
                       <th className="py-2 px-2 font-medium">Package Name</th>
                       <th className="py-2 px-2 text-right font-medium">
-                        Action
+                        View
                       </th>
                     </tr>
                   </thead>
@@ -519,10 +467,6 @@ function AdminPackages() {
                               pkg={pkg}
                               onView={() =>
                                 handleViewPackage(pkg, "loan-package")
-                              }
-                              onEdit={() => handleEditLoan(pkg)}
-                              onDelete={() =>
-                                handleDeletePackage(pkg.id, "loan-packages")
                               }
                             />
                           </td>
@@ -546,140 +490,6 @@ function AdminPackages() {
         )}
       </div>
 
-      {/* Floating Add Buttons */}
-      <div className="group fixed z-20 bottom-10 right-10 flex flex-col items-center gap-3">
-        <div className="flex flex-col items-center gap-3 opacity-0 scale-90 translate-y-4 group-hover:opacity-100 group-hover:scale-100 group-hover:translate-y-0 pointer-events-none group-hover:pointer-events-auto transition-all duration-200 ease-in-out">
-          <button
-            title="Add Loan Package"
-            className="relative flex items-center justify-center w-14 h-14 bg-white rounded-full text-teal-500 shadow-lg hover:bg-gray-100 hover:scale-105 transition-all"
-            onClick={() => setIsAddLoanModalOpen(true)}
-          >
-            <BanknotesIcon className="w-7 h-7" />
-          </button>
-
-          <button
-            title="Add Saving Account Package"
-            className="relative flex items-center justify-center w-14 h-14 bg-white rounded-full text-teal-500 shadow-lg hover:bg-gray-100 hover:scale-105 transition-all"
-            onClick={() => setIsAddSavingAccountModalOpen(true)}
-          >
-            <CurrencyDollarIcon className="w-7 h-7" />
-          </button>
-
-          <button
-            title="Add Fixed Deposit Package"
-            className="relative flex items-center justify-center w-14 h-14 bg-white rounded-full text-teal-500 shadow-lg hover:bg-gray-100 hover:scale-105 transition-all"
-            onClick={() => setIsAddFixedDepositModalOpen(true)}
-          >
-            <DocumentTextIcon className="w-7 h-7" />
-          </button>
-        </div>
-
-        <button
-          title="Add"
-          className="fab-button bg-teal-500 rounded-full p-4 text-white shadow-lg hover:bg-teal-600 transition-all"
-        >
-          <PlusCircleIcon className="w-10 h-10 fab-icon" />
-        </button>
-      </div>
-
-      {/* Add Modals */}
-      <Modal
-        isOpen={isAddFixedDepositModalOpen}
-        onClose={() => setIsAddFixedDepositModalOpen(false)}
-        title="Add New Fixed Deposit Package"
-        size="2xl"
-      >
-        <AddFixedDepositForm
-          onAdded={handleAdded}
-          networkId={selectedNetworkId}
-        />
-      </Modal>
-
-      <Modal
-        isOpen={isAddSavingAccountModalOpen}
-        onClose={() => setIsAddSavingAccountModalOpen(false)}
-        title="Add New Saving Account Package"
-        size="2xl"
-      >
-        <AddSavingAccountForm
-          onAdded={handleAdded}
-          networkId={selectedNetworkId}
-        />
-      </Modal>
-
-      <Modal
-        isOpen={isAddLoanModalOpen}
-        onClose={() => setIsAddLoanModalOpen(false)}
-        title="Add New Loan Package"
-        size="2xl"
-      >
-        <AddLoanForm onAdded={handleAdded} networkId={selectedNetworkId} />
-      </Modal>
-
-      {/* Edit Modals */}
-      <Modal
-        isOpen={isEditFixedDepositModalOpen}
-        onClose={() => {
-          setIsEditFixedDepositModalOpen(false);
-          setCurrentEditPackage(null);
-        }}
-        title="Edit Fixed Deposit Package"
-        size="2xl"
-      >
-        {currentEditPackage && (
-          <EditFixedDepositForm
-            initialData={currentEditPackage}
-            onClose={() => {
-              setIsEditFixedDepositModalOpen(false);
-              setCurrentEditPackage(null);
-            }}
-            onUpdated={handleUpdated}
-          />
-        )}
-      </Modal>
-
-      <Modal
-        isOpen={isEditSavingAccountModalOpen}
-        onClose={() => {
-          setIsEditSavingAccountModalOpen(false);
-          setCurrentEditPackage(null);
-        }}
-        title="Edit Saving Account Package"
-        size="2xl"
-      >
-        {currentEditPackage && (
-          <EditSavingAccountForm
-            initialData={currentEditPackage}
-            onClose={() => {
-              setIsEditSavingAccountModalOpen(false);
-              setCurrentEditPackage(null);
-            }}
-            onUpdated={handleUpdated}
-          />
-        )}
-      </Modal>
-
-      <Modal
-        isOpen={isEditLoanModalOpen}
-        onClose={() => {
-          setIsEditLoanModalOpen(false);
-          setCurrentEditPackage(null);
-        }}
-        title="Edit Loan Package"
-        size="2xl"
-      >
-        {currentEditPackage && (
-          <EditLoanPackageForm
-            initialData={currentEditPackage}
-            onClose={() => {
-              setIsEditLoanModalOpen(false);
-              setCurrentEditPackage(null);
-            }}
-            onUpdated={handleUpdated}
-          />
-        )}
-      </Modal>
-
       {/* View Modal */}
       <ViewPackageModal
         isOpen={viewPackageModalOpen}
@@ -690,9 +500,35 @@ function AdminPackages() {
         }}
         packageData={currentPackageToView}
         packageType={currentPackageType}
+        onApplyClick={handleApplyClick} // --- PASS THE HANDLER HERE ---
       />
+
+      {/* --- ADD THE NEW APPLY MODAL --- */}
+      <Modal
+        isOpen={isApplyModalOpen}
+        onClose={() => {
+          setIsApplyModalOpen(false);
+          setCurrentPackageToApply(null);
+          setCurrentPackageType(null);
+        }}
+        title="Package Application Form" // Title for the modal window
+        size="2xl" // Use "2xl" for a wider form
+      >
+        {/* Render the form component only when the modal is open */}
+        {currentPackageToApply && (
+          <ApplyPackageForm
+            packageData={currentPackageToApply}
+            packageType={currentPackageType}
+            onClose={() => {
+              setIsApplyModalOpen(false);
+              setCurrentPackageToApply(null);
+              setCurrentPackageType(null);
+            }}
+          />
+        )}
+      </Modal>
     </>
   );
 }
 
-export default AdminPackages;
+export default UserPackages;
