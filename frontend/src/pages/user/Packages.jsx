@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+// --- NO LINK IMPORT NEEDED ---
 import {
   DocumentTextIcon,
   CurrencyDollarIcon,
@@ -6,6 +7,8 @@ import {
   EyeIcon,
 } from "../../component/icons.jsx";
 import Modal from "../../component/superadmin/Modal.jsx";
+// --- IMPORT THE NEW FORM COMPONENT ---
+import ApplyPackageForm from "../../component/user/ApplyPackageForm.jsx";
 
 const apiBase = "http://localhost:8080/api";
 
@@ -22,11 +25,32 @@ const PackageActions = ({ pkg, onView }) => (
   </div>
 );
 
-// This is the *exact* same View modal from the admin page, as it's read-only.
-const ViewPackageModal = ({ isOpen, onClose, packageData, packageType }) => {
+// --- MODIFICATION IS HERE: ADD onApplyClick PROP ---
+const ViewPackageModal = ({
+  isOpen,
+  onClose,
+  packageData,
+  packageType,
+  onApplyClick,
+}) => {
   if (!packageData) return null;
 
+  // This function decides the text for the "Apply" button
+  const getApplyText = () => {
+    switch (packageType) {
+      case "fixed-deposit":
+        return "Apply for this Fixed Deposit";
+      case "saving-account":
+        return "Open this Savings Account";
+      case "loan-package":
+        return "Apply for this Loan";
+      default:
+        return "Apply Now";
+    }
+  };
+
   const renderContent = () => {
+    // ... (This switch statement is UNCHANGED) ...
     switch (packageType) {
       case "fixed-deposit":
         return (
@@ -58,7 +82,7 @@ const ViewPackageModal = ({ isOpen, onClose, packageData, packageType }) => {
             <div>
               <label className="block font-semibold mb-2">Minimum Amount</label>
               <div className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-full text-gray-900">
-                ₹{packageData.minAmount?.toLocaleString()}
+                Rs. {packageData.minAmount?.toLocaleString()}
               </div>
             </div>
             {packageData.description && (
@@ -94,7 +118,7 @@ const ViewPackageModal = ({ isOpen, onClose, packageData, packageType }) => {
                   Minimum Balance
                 </label>
                 <div className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-full text-gray-900">
-                  ₹{packageData.minBalance?.toLocaleString()}
+                  Rs. {packageData.minBalance?.toLocaleString()}
                 </div>
               </div>
             </div>
@@ -138,7 +162,7 @@ const ViewPackageModal = ({ isOpen, onClose, packageData, packageType }) => {
             <div>
               <label className="block font-semibold mb-2">Maximum Amount</label>
               <div className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-full text-gray-900">
-                ₹{packageData.maxAmount?.toLocaleString()}
+                Rs. {packageData.maxAmount?.toLocaleString()}
               </div>
             </div>
             {packageData.description && (
@@ -164,6 +188,18 @@ const ViewPackageModal = ({ isOpen, onClose, packageData, packageType }) => {
       size="xl"
     >
       {renderContent()}
+
+      {/* --- THIS SECTION IS MODIFIED --- */}
+      <div className="mt-6 pt-6 border-t border-gray-200 flex justify-end">
+        <button
+          type="button"
+          onClick={onApplyClick} // Use the prop here
+          className="bg-teal-500 text-white font-bold py-3 px-8 rounded-full hover:bg-teal-600 transition-colors text-base"
+        >
+          {getApplyText()}
+        </button>
+      </div>
+      {/* --- END OF MODIFICATION --- */}
     </Modal>
   );
 };
@@ -182,15 +218,20 @@ function UserPackages() {
   const [currentPackageToView, setCurrentPackageToView] = useState(null);
   const [currentPackageType, setCurrentPackageType] = useState(null);
 
-  // Fetch user's sahakariId from their session
+  // --- ADD STATE FOR THE APPLY MODAL ---
+  const [isApplyModalOpen, setIsApplyModalOpen] = useState(false);
+  const [currentPackageToApply, setCurrentPackageToApply] = useState(null);
+  // (we can reuse currentPackageType for the apply modal)
+
+  // ... (useEffect for fetchSession is UNCHANGED) ...
   useEffect(() => {
     const fetchSession = async () => {
       try {
         const response = await fetch(`${apiBase}/session`, {
           method: "GET",
-          credentials: "include", 
+          credentials: "include",
         });
-        
+
         if (response.ok) {
           const data = await response.json();
           setSelectedNetworkId(data.sahakariId);
@@ -207,7 +248,13 @@ function UserPackages() {
     fetchSession();
   }, []);
 
-  // Fetch packages for the user's sahakari
+  // ... (useEffect for fetchData is UNCHANGED) ...
+  useEffect(() => {
+    if (selectedNetworkId) {
+      fetchData();
+    }
+  }, [selectedNetworkId]);
+
   const fetchData = async () => {
     if (!selectedNetworkId) return;
     setLoading(true);
@@ -234,20 +281,28 @@ function UserPackages() {
     }
   };
 
-  useEffect(() => {
-    if (selectedNetworkId) {
-      fetchData();
-    }
-  }, [selectedNetworkId]);
-
-  // View handler
+  // View handler (UNMODIFIED)
   const handleViewPackage = (pkg, type) => {
     setCurrentPackageToView(pkg);
     setCurrentPackageType(type);
     setViewPackageModalOpen(true);
   };
 
-  // Show loading state while fetching session
+  // --- ADD HANDLER FOR APPLY BUTTON CLICK ---
+  const handleApplyClick = () => {
+    // 1. Set data for the new modal
+    setCurrentPackageToApply(currentPackageToView);
+    // (currentPackageType is already set)
+
+    // 2. Close the current (view) modal
+    setViewPackageModalOpen(false);
+    setCurrentPackageToView(null);
+
+    // 3. Open the new (apply) modal
+    setIsApplyModalOpen(true);
+  };
+
+  // ... (sessionLoading and selectedNetworkId checks are UNCHANGED) ...
   if (sessionLoading) {
     return (
       <div className="bg-white p-6 min-h-[calc(100vh-8.5rem)] rounded-lg shadow-md flex items-center justify-center">
@@ -256,7 +311,6 @@ function UserPackages() {
     );
   }
 
-  // Show error if no network ID
   if (!selectedNetworkId) {
     return (
       <div className="bg-white p-6 min-h-[calc(100vh-8.5rem)] rounded-lg shadow-md flex items-center justify-center">
@@ -274,15 +328,16 @@ function UserPackages() {
           <p className="text-center text-gray-500">Loading packages...</p>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            
             {/* Fixed Deposits */}
             <div className="border border-gray-200 rounded-lg p-4 shadow-lg">
+              {/* ... (Header is unchanged) ... */}
               <h3 className="text-lg font-semibold text-gray-700 mb-3 flex items-center gap-2">
                 <DocumentTextIcon className="w-5 h-5 text-teal-500" />
                 Fixed Deposits
               </h3>
               <div className="border-t border-gray-200 mt-2">
                 <table className="w-full mt-3 text-left">
+                  {/* ... (Table head is unchanged) ... */}
                   <thead>
                     <tr className="text-gray-600 text-sm">
                       <th className="py-2 px-2 font-medium">Package Name</th>
@@ -328,12 +383,14 @@ function UserPackages() {
 
             {/* Saving Accounts */}
             <div className="border border-gray-200 rounded-lg p-4 shadow-lg">
+              {/* ... (Header is unchanged) ... */}
               <h3 className="text-lg font-semibold text-gray-700 mb-3 flex items-center gap-2">
                 <CurrencyDollarIcon className="w-5 h-5 text-teal-500" />
                 Saving Accounts
               </h3>
               <div className="border-t border-gray-200 mt-2">
                 <table className="w-full mt-3 text-left">
+                  {/* ... (Table head is unchanged) ... */}
                   <thead>
                     <tr className="text-gray-600 text-sm">
                       <th className="py-2 px-2 font-medium">Package Name</th>
@@ -379,12 +436,14 @@ function UserPackages() {
 
             {/* Loan Packages */}
             <div className="border border-gray-200 rounded-lg p-4 shadow-lg">
+              {/* ... (Header is unchanged) ... */}
               <h3 className="text-lg font-semibold text-gray-700 mb-3 flex items-center gap-2">
                 <BanknotesIcon className="w-5 h-5 text-teal-500" />
                 Loan Packages
               </h3>
               <div className="border-t border-gray-200 mt-2">
                 <table className="w-full mt-3 text-left">
+                  {/* ... (Table head is unchanged) ... */}
                   <thead>
                     <tr className="text-gray-600 text-sm">
                       <th className="py-2 px-2 font-medium">Package Name</th>
@@ -441,7 +500,33 @@ function UserPackages() {
         }}
         packageData={currentPackageToView}
         packageType={currentPackageType}
+        onApplyClick={handleApplyClick} // --- PASS THE HANDLER HERE ---
       />
+
+      {/* --- ADD THE NEW APPLY MODAL --- */}
+      <Modal
+        isOpen={isApplyModalOpen}
+        onClose={() => {
+          setIsApplyModalOpen(false);
+          setCurrentPackageToApply(null);
+          setCurrentPackageType(null);
+        }}
+        title="Package Application Form" // Title for the modal window
+        size="2xl" // Use "2xl" for a wider form
+      >
+        {/* Render the form component only when the modal is open */}
+        {currentPackageToApply && (
+          <ApplyPackageForm
+            packageData={currentPackageToApply}
+            packageType={currentPackageType}
+            onClose={() => {
+              setIsApplyModalOpen(false);
+              setCurrentPackageToApply(null);
+              setCurrentPackageType(null);
+            }}
+          />
+        )}
+      </Modal>
     </>
   );
 }
