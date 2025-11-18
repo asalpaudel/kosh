@@ -5,12 +5,9 @@ import {
   FiBell,
   FiBriefcase,
   FiCheck,
-  // FiCreditCard, --- No longer used
-  // FiDollarSign, --- No longer used
   FiEdit2,
   FiEye,
   FiFile,
-  // FiFileText, --- No longer used
   FiGrid,
   FiLogOut,
   FiMail,
@@ -24,15 +21,13 @@ import {
   FiUsers,
   FiX,
   FiFeather,
+  FiCalendar,
 } from 'react-icons/fi';
 
-// --- NEW IMPORTS ---
-// We are adding icons from Font Awesome (fa) and Lucide (lu)
 import { FaPiggyBank, FaFileSignature } from 'react-icons/fa';
 import { LuFileClock } from 'react-icons/lu';
-import { FiDollarSign, FiCreditCard, FiFileText } from 'react-icons/fi'; // Keep old ones for other mappings if needed
+import { FiDollarSign, FiCreditCard, FiFileText } from 'react-icons/fi';
 
-// --- CUSTOM BRAND LOGO (Keep as-is) ---
 export const Logo = ({ className }) => (
   <svg width="30" height="30" viewBox="0 0 189 235" fill="none" xmlns="http://www.w3.org/2000/svg" className={className}>
   <path d="M54.6339 159.688C54.6339 161.055 54.1681 162.387 53.3071 163.458L34.2955 187.171L10.7546 218.031L10.7559 218.032C7.2741 222.599 0 220.129 0 214.383V96.8369C0.000311621 72.7101 19.0853 52.9297 43.1379 52.1278L45.3102 52.0548V44.7339C45.3102 20.0281 65.2876 0 89.9309 0H147.257C151.983 0 154.788 5.18751 152.382 9.12569L152.134 9.50256L118.563 56.6098C117.547 58.0358 115.964 58.9419 114.233 59.1005L113.885 59.1227L54.6339 61.097V159.688ZM9.32374 204.521L26.9658 181.394L27.0009 181.349L45.3102 158.51V61.4074L43.4475 61.47C24.4209 62.1044 9.32405 77.7516 9.32374 96.8369V204.521ZM54.6339 51.7444L111.932 49.834L140.786 9.34738H89.9309C70.437 9.34738 54.6339 25.1905 54.6339 44.7339V51.7444Z" fill="#3EEFB1"/>
@@ -40,9 +35,6 @@ export const Logo = ({ className }) => (
   </svg>
 );
 
-// --- MAPPED ICONS ---
-
-// Standard Icons (unchanged)
 export { FiSearch as SearchIcon } from 'react-icons/fi';
 export { FiBell as BellIcon } from 'react-icons/fi';
 export { FiSettings as SettingsIcon } from 'react-icons/fi';
@@ -50,7 +42,7 @@ export { FiGrid as LayoutDashboardIcon } from 'react-icons/fi';
 export { FiUsers as UsersIcon } from 'react-icons/fi';
 export { FiMail as MailIcon } from 'react-icons/fi';
 export { FiBarChart2 as BarChartIcon } from 'react-icons/fi';
-export { FiFileText as FileTextIcon } from 'react-icons/fi'; // Note: FiFileText is still used in sidebars
+export { FiFileText as FileTextIcon } from 'react-icons/fi';
 export { FiPlusCircle as PlusCircleIcon } from 'react-icons/fi';
 export { FiLogOut as LogOutIcon } from 'react-icons/fi';
 export { FiEye as EyeIcon } from 'react-icons/fi';
@@ -66,26 +58,11 @@ export { FiX as XIcon } from 'react-icons/fi';
 export { FiUserPlus as UserPlusIcon } from 'react-icons/fi';
 export { FiActivity as ActivityIcon } from 'react-icons/fi';
 export { FiFeather as LeafIcon } from 'react-icons/fi';
+export { FiCalendar as CalendarIcon } from 'react-icons/fi';
 
-
-// --- UPDATED ICONS FOR 'PACKAGES' PAGE ---
-
-/** * For: Admin Sidebar "Packages" link
- * For: Admin Packages "Saving Account" card
- * Was: FiDollarSign
- * Now: FaPiggyBank
- */
 export { FaPiggyBank as PiggyBankIcon } from 'react-icons/fa';
 export { FaPiggyBank as CurrencyDollarIcon } from 'react-icons/fa';
 
-/** * For: Admin Packages "Loan" card
- * Was: FiCreditCard
- * Now: FaFileSignature (matches your loan image)
- */
 export { FaFileSignature as BanknotesIcon } from 'react-icons/fa';
 
-/** * For: Admin Packages "Fixed Deposit" card
- * Was: FiFileText
- * Now: LuFileClock (a file with a clock, for time-deposits)
- */
 export { LuFileClock as DocumentTextIcon } from 'react-icons/lu';
