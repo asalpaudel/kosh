@@ -95,9 +95,11 @@ public class AuthController {
 
         session.setAttribute("userEmail", user.getEmail());
         session.setAttribute("sahakariId", networkId);
+        session.setAttribute("userRole", user.getRole());
 
         System.out.println("User logged in: " + user.getEmail());
         System.out.println("Session sahakariId set to: " + session.getAttribute("sahakariId"));
+        System.out.println("Session userRole set to: " + session.getAttribute("userRole"));
         System.out.println("Session ID: " + session.getId());
 
         return new LoginResponse(
