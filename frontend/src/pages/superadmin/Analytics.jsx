@@ -1,36 +1,65 @@
-import React from 'react';
-import AnalyticsChart from '../../component/superadmin/AnalyticsChart';
+import React, { useEffect, useState } from "react";
+import AnalyticsChart from "../../component/superadmin/AnalyticsChart";
 
-// Component for "Total Pool" and "Active Networks" items
-const InfoItem = ({ label, value, color }) => (
+// Progress bar component
+const InfoItem = ({ label, value, color, percentage }) => (
   <div>
     <div className="flex justify-between items-center mb-1">
       <span className="text-sm font-medium text-gray-300">{label}</span>
       <span className="text-sm font-bold text-white">{value}</span>
     </div>
-    <div className="w-full bg-gray-700 rounded-full h-1.5">
+    <div className="w-full bg-gray-700 rounded-full h-2">
       <div
-        className={`${color} h-1.5 rounded-full`}
-        // Simple percentage logic, adjust as needed
-        style={{ width: `${Math.random() * 80 + 20}%` }} 
+        className={`${color} h-2 rounded-full transition-all duration-500`}
+        style={{ width: `${percentage}%` }}
       ></div>
     </div>
   </div>
 );
 
-// "Total Pool" Card Component
-const TotalPool = () => (
-  <div className="bg-black text-white p-6 rounded-xl shadow-lg h-full">
-    <h3 className="text-lg font-bold mb-6">Total Pool</h3>
-    <div className="space-y-5">
-      <InfoItem label="Total Saving" value="1300 Cr." color="bg-blue-500" />
-      <InfoItem label="Total Credit" value="25 Cr." color="bg-teal-400" />
-      <InfoItem label="Total Reserve" value="1325 Cr." color="bg-green-500" />
-    </div>
-  </div>
-);
+// Total Revenue Card
+const TotalRevenue = () => {
+  const [totals, setTotals] = useState({ basic: 0, premium: 0, custom: 0 });
 
-// "Active Networks" Card Component
+  useEffect(() => {
+    fetch("http://localhost:8080/api/analytics/total-revenue", {
+      credentials: "include",
+    })
+      .then((res) => res.json())
+      .then((data) => setTotals(data))
+      .catch((err) => console.error(err));
+  }, []);
+
+  const totalSum = totals.basic + totals.premium + totals.custom;
+
+  return (
+    <div className="bg-black text-white p-6 rounded-xl shadow-lg h-full">
+      <h3 className="text-lg font-bold mb-6">Total Revenue</h3>
+      <div className="space-y-5">
+        <InfoItem
+          label="Basic Revenue"
+          value={`$ ${totals.basic}`}
+          color="bg-blue-500"
+          percentage={totalSum ? (totals.basic / totalSum) * 100 : 0}
+        />
+        <InfoItem
+          label="Premium Revenue"
+          value={`$ ${totals.premium}`}
+          color="bg-green-500"
+          percentage={totalSum ? (totals.premium / totalSum) * 100 : 0}
+        />
+        <InfoItem
+          label="Custom Revenue"
+          value={`$ ${totals.custom}`}
+          color="bg-yellow-500"
+          percentage={totalSum ? (totals.custom / totalSum) * 100 : 0}
+        />
+      </div>
+    </div>
+  );
+};
+
+// Active Networks Card
 const ActiveNetworks = () => (
   <div className="bg-black text-white p-6 rounded-xl shadow-lg h-full">
     <h3 className="text-lg font-bold mb-6">Active Networks</h3>
@@ -43,35 +72,31 @@ const ActiveNetworks = () => (
   </div>
 );
 
+// Main Analytics Page
 function Analytics() {
   return (
-    <div className="bg-gray-50 p-4">
+    <div className="bg-gray-50 p-4 min-h-screen">
       <div className="container mx-auto py-6">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          
-          {/* Main Content Area (Chart + Summary) */}
+          {/* Left/Main Content */}
           <div className="lg:col-span-2 flex flex-col gap-6">
-            
-            {/* Main Bar Chart */}
             <div className="bg-white p-8 rounded-2xl shadow-lg">
               <AnalyticsChart />
             </div>
-            
-            {/* Summary Text Box */}
             <div className="bg-white p-8 rounded-2xl shadow-lg">
               <h2 className="text-2xl font-bold mb-4">Summary</h2>
               <p className="text-gray-600 leading-relaxed">
-                Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.
+                Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do
+                eiusmod tempor incididunt ut labore et dolore magna aliqua.
               </p>
             </div>
           </div>
 
-          {/* Right Sidebar (Pools + Networks) */}
+          {/* Right Sidebar */}
           <div className="lg:col-span-1 flex flex-col gap-6">
-            <TotalPool />
+            <TotalRevenue />
             <ActiveNetworks />
           </div>
-
         </div>
       </div>
     </div>
