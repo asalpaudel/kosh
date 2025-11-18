@@ -4,7 +4,7 @@ import Modal from "../../component/superadmin/Modal.jsx";
 import AddTransactionForm from "../../component/admin/AddTransactionForm.jsx";
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import html2canvas from 'html2canvas';
+import html2canvas from 'html2canvas-pro';
 
 const API_BASE = "http://localhost:8080/api";
 
