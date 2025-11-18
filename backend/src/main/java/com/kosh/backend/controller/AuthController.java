@@ -53,7 +53,7 @@ public class AuthController {
         }
     }
 
-   @PostMapping("/login")
+   @PostMapping("p")
     public LoginResponse login(@RequestBody LoginRequest req, HttpSession session) {
 
         User user = repo.findByEmail(req.email);
