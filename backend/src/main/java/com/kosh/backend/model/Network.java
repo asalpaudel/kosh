@@ -15,16 +15,24 @@ public class Network {
     private String address;
     private String createdAt;
     private String phone;
+    private String panNumber; // ⭐ Added PAN Number field
 
     private Integer staffCount;
     private Integer userCount;
 
-    // ⭐ NEW FIELDS FOR PACKAGE MANAGEMENT
-    private String packageType; // "package1", "package2", or "package3"
+    // Package management fields
+    private String packageType; // "basic", "premium", or "custom"
     private Double packagePrice; // Total price of the package in रु
     
-    // ⭐ NEW FIELD FOR DOCUMENT
+    // Document field
     private String documentPath; // Stores the filename of uploaded document
+    
+    // ⭐ Logo field
+    private String logoPath; // Stores the filename of uploaded logo
+    
+    // Limits
+    private Integer adminLimit; // Maximum number of admins allowed
+    private Integer userLimit;  // Maximum number of users allowed
 
     // Getters & Setters
     public Long getId() { return id; }
@@ -45,6 +53,9 @@ public class Network {
     public String getPhone() { return phone; }
     public void setPhone(String phone) { this.phone = phone; }
 
+    public String getPanNumber() { return panNumber; }
+    public void setPanNumber(String panNumber) { this.panNumber = panNumber; }
+
     public Integer getStaffCount() { return staffCount; }
     public void setStaffCount(Integer staffCount) { this.staffCount = staffCount; }
 
@@ -60,6 +71,15 @@ public class Network {
     public String getDocumentPath() { return documentPath; }
     public void setDocumentPath(String documentPath) { this.documentPath = documentPath; }
 
+    public String getLogoPath() { return logoPath; }
+    public void setLogoPath(String logoPath) { this.logoPath = logoPath; }
+
+    public Integer getAdminLimit() { return adminLimit; }
+    public void setAdminLimit(Integer adminLimit) { this.adminLimit = adminLimit; }
+
+    public Integer getUserLimit() { return userLimit; }
+    public void setUserLimit(Integer userLimit) { this.userLimit = userLimit; }
+
     @Override
     public String toString() {
         return "Network{" +
@@ -69,11 +89,15 @@ public class Network {
                 ", address='" + address + '\'' +
                 ", createdAt='" + createdAt + '\'' +
                 ", phone='" + phone + '\'' +
+                ", panNumber='" + panNumber + '\'' +
                 ", staffCount=" + staffCount +
                 ", userCount=" + userCount +
                 ", packageType='" + packageType + '\'' +
                 ", packagePrice=" + packagePrice +
                 ", documentPath='" + documentPath + '\'' +
+                ", logoPath='" + logoPath + '\'' +
+                ", adminLimit=" + adminLimit +
+                ", userLimit=" + userLimit +
                 '}';
     }
 }

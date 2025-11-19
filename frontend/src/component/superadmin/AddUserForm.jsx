@@ -10,7 +10,6 @@ export default function AddUserForm({
     name: "",
     email: "",
     phone: "",
-    role: "member",
     sahakari: "",
     password: "",
     document: null,
@@ -55,12 +54,10 @@ export default function AddUserForm({
       form.append("name", formData.name);
       form.append("email", formData.email);
       form.append("phone", formData.phone);
-      form.append("role", formData.role);
+      form.append("role", "admin"); // Always set role to admin
       form.append("sahakari", formData.sahakari);
       form.append("password", formData.password);
-
-      // ⭐⭐⭐ CRITICAL: Set status to Active for admin-created users
-      form.append("status", "Active");
+      form.append("status", "Active"); // Set status to Active for admin-created users
 
       if (formData.document) {
         form.append("document", formData.document);
@@ -84,8 +81,19 @@ export default function AddUserForm({
       });
 
       if (!res.ok) {
-        const text = await res.text();
-        throw new Error(`HTTP ${res.status}: ${text}`);
+        // Try to parse JSON error response
+        let errorMessage;
+        const contentType = res.headers.get("content-type");
+        
+        if (contentType && contentType.includes("application/json")) {
+          const errorData = await res.json();
+          errorMessage = errorData.error || `HTTP ${res.status}: Unknown error`;
+        } else {
+          const text = await res.text();
+          errorMessage = `HTTP ${res.status}: ${text}`;
+        }
+        
+        throw new Error(errorMessage);
       }
 
       const saved = await res.json();
@@ -105,11 +113,27 @@ export default function AddUserForm({
       onClose?.();
     } catch (err) {
       console.error("Error adding user:", err);
-      setError(`Failed to save: ${err.message}`);
+      
+      // Display user-friendly error message
+      let displayError = err.message;
+      
+      // Check if it's an admin limit error
+      if (err.message.includes("admin limit")) {
+        displayError = err.message;
+      } else if (err.message.includes("Network not found")) {
+        displayError = "The selected sahakari network was not found.";
+      }
+      
+      setError(displayError);
     } finally {
       setSaving(false);
     }
   };
+
+  // Get selected network info to show admin limit
+  const selectedNetwork = sahakariList.find(
+    (net) => net.name === formData.sahakari
+  );
 
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-5">
@@ -158,41 +182,39 @@ export default function AddUserForm({
         />
       </div>
 
-      {/* Role + Sahakari */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {/* Role */}
-        <div>
-          <label className="block font-semibold mb-2">Select Role</label>
-          <select
-            name="role"
-            value={formData.role}
-            onChange={handleChange}
-            className="w-full px-4 py-3 border border-gray-300 rounded-full focus:outline-none focus:border-black"
-          >
-            <option value="member">Member</option>
-            <option value="staff">Staff</option>
-            <option value="admin">Admin</option>
-          </select>
-        </div>
-
-        {/* Sahakari */}
-        <div>
-          <label className="block font-semibold mb-2">Select Sahakari</label>
-          <select
-            name="sahakari"
-            value={formData.sahakari}
-            onChange={handleChange}
-            className="w-full px-4 py-3 border border-gray-300 rounded-full focus:outline-none focus:border-black"
-            required
-          >
-            <option value="">Choose Sahakari</option>
-            {sahakariList.map((net) => (
-              <option key={net.id} value={net.name}>
-                {net.name}
-              </option>
-            ))}
-          </select>
-        </div>
+      {/* Sahakari */}
+      <div>
+        <label className="block font-semibold mb-2">Select Sahakari</label>
+        <select
+          name="sahakari"
+          value={formData.sahakari}
+          onChange={handleChange}
+          className="w-full px-4 py-3 border border-gray-300 rounded-full focus:outline-none focus:border-black"
+          required
+        >
+          <option value="">Choose Sahakari</option>
+          {sahakariList.map((net) => (
+            <option key={net.id} value={net.name}>
+              {net.name} (Admin Limit: {net.adminLimit || "N/A"})
+            </option>
+          ))}
+        </select>
+        
+        {/* Show network info when selected */}
+        {selectedNetwork && (
+          <div className="mt-2 p-3 bg-blue-50 border border-blue-200 rounded-lg text-sm">
+            <p className="font-semibold text-blue-900">
+              {selectedNetwork.name}
+            </p>
+            <p className="text-blue-700">
+              Admin Limit: {selectedNetwork.adminLimit || "Unlimited"} | 
+              User Limit: {selectedNetwork.userLimit || "Unlimited"}
+            </p>
+            <p className="text-blue-600">
+              Package: {selectedNetwork.packageType}
+            </p>
+          </div>
+        )}
       </div>
 
       {/* Password */}
@@ -223,15 +245,20 @@ export default function AddUserForm({
         />
       </div>
 
-      {error && <p className="text-sm text-red-600">{error}</p>}
+      {/* Error Message */}
+      {error && (
+        <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
+          <p className="text-sm text-red-700 font-medium">{error}</p>
+        </div>
+      )}
 
       {/* Submit */}
       <button
         type="submit"
         disabled={saving}
-        className="w-full bg-teal-500 text-white font-semibold py-3 rounded-full hover:bg-teal-600 transition-colors mt-4"
+        className="w-full bg-teal-500 text-white font-semibold py-3 rounded-full hover:bg-teal-600 transition-colors mt-4 disabled:opacity-50 disabled:cursor-not-allowed"
       >
-        {saving ? "Saving..." : "Add User"}
+        {saving ? "Saving..." : "Add Admin"}
       </button>
     </form>
   );

@@ -10,6 +10,8 @@ import Statement from "./pages/user/Statement.jsx";
 import Settings from "./pages/user/Settings.jsx";
 import Login from "./pages/Login.jsx";
 import Signup from "./pages/Signup.jsx";
+import UserPackages from "./pages/user/Packages.jsx";
+import ApplyPackageForm from "./component/user/ApplyPackageForm.jsx";
 
 // SUPERADMIN IMPORTS
 import SuperadminLayout from "./component/superadmin/Layout.jsx";
@@ -31,11 +33,10 @@ function App() {
     <>
       <BrowserRouter>
         <Routes>
-          {/* Public Routes */}
           <Route path="/" element={<Login />} />
           <Route path="/signup" element={<Signup />} />
 
-          {/* Protected (nested) User Routes */}
+          {/* User Routes */}
           <Route path="/home" element={<Layout />}>
             <Route index element={<Dashboard />} />
             <Route path="dashboard" element={<Dashboard />} />
@@ -44,7 +45,7 @@ function App() {
             <Route path="settings" element={<Settings />} /> {/* <-- ADDED */}
           </Route>
 
-          {/* --- ADDED ADMIN ROUTES (NEW) --- */}
+          {/* Admin Routes */}
           <Route path="/admin" element={<AdminLayout />}>
             <Route index element={<AdminDashboard />} />
             <Route path="dashboard" element={<AdminDashboard />} />
@@ -55,7 +56,7 @@ function App() {
             <Route path="settings" element={<AdminSettings />} />
           </Route>
 
-          {/* Protected (nested) Superadmin Routes */}
+          {/* Superadmin Routes */}
           <Route path="/superadmin" element={<SuperadminLayout />}>
             <Route index element={<SuperadminDashboard />} />
             <Route path="dashboard" element={<SuperadminDashboard />} />

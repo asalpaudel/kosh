@@ -65,7 +65,7 @@ const Stepper = ({ currentStep }) => (
       >
         3
       </div>
-      <span className="text-xs font-semibold mt-1">Document</span>
+      <span className="text-xs font-semibold mt-1">Documents</span>
     </div>
   </div>
 );
@@ -87,7 +87,9 @@ export default function Signup() {
     sahakari: "",
     password: "",
     confirm: "",
-    document: null,
+    document1: null,
+    document2: null,
+    document3: null,
   });
 
   // Load sahakari list from database
@@ -128,8 +130,7 @@ export default function Signup() {
     setLoading(true);
 
     // Final validation
-    const { name, email, password, confirm, sahakari, phone, status } =
-      formData;
+    const { name, email, password, confirm, sahakari } = formData;
     if (!name || !email || !password || !confirm || !sahakari) {
       setError("Please fill in all required fields.");
       setLoading(false);
@@ -151,8 +152,15 @@ export default function Signup() {
       submitData.append("sahakari", formData.sahakari);
       submitData.append("password", formData.password);
 
-      if (formData.document) {
-        submitData.append("document", formData.document);
+      // Append all three documents
+      if (formData.document1) {
+        submitData.append("document1", formData.document1);
+      }
+      if (formData.document2) {
+        submitData.append("document2", formData.document2);
+      }
+      if (formData.document3) {
+        submitData.append("document3", formData.document3);
       }
 
       console.log("Submitting signup data...");
@@ -442,25 +450,69 @@ export default function Signup() {
             {step === 3 && (
               <>
                 <h3 className="text-lg font-semibold text-gray-700 -mb-2 text-center">
-                  Verification Document
+                  Verification Documents
                 </h3>
-                {/* Document Upload */}
+                
+                {/* Document 1 */}
                 <div>
                   <label className="block font-semibold mb-2">
-                    Upload Document (PDF / Image)
+                    Document 1 (PDF / Image)
                   </label>
                   <input
                     type="file"
-                    name="document"
+                    name="document1"
                     accept=".pdf, .png, .jpg, .jpeg"
                     onChange={handleChange}
                     className="w-full border border-gray-300 rounded-full px-4 py-2 text-gray-700 file:mr-3 file:py-2 file:px-4 file:rounded-full file:border-0 file:bg-[#00FFB2] file:text-black file:font-semibold hover:file:bg-[#00e6a0] transition"
                   />
-                  <p className="text-xs text-gray-500 mt-2 px-2">
-                    e.g., A copy of your citizenship or other identifying
-                    document.
-                  </p>
+                  {formData.document1 && (
+                    <p className="text-xs text-green-600 mt-1 px-2">
+                      ✓ {formData.document1.name}
+                    </p>
+                  )}
                 </div>
+
+                {/* Document 2 */}
+                <div>
+                  <label className="block font-semibold mb-2">
+                    Document 2 (PDF / Image)
+                  </label>
+                  <input
+                    type="file"
+                    name="document2"
+                    accept=".pdf, .png, .jpg, .jpeg"
+                    onChange={handleChange}
+                    className="w-full border border-gray-300 rounded-full px-4 py-2 text-gray-700 file:mr-3 file:py-2 file:px-4 file:rounded-full file:border-0 file:bg-[#00FFB2] file:text-black file:font-semibold hover:file:bg-[#00e6a0] transition"
+                  />
+                  {formData.document2 && (
+                    <p className="text-xs text-green-600 mt-1 px-2">
+                      ✓ {formData.document2.name}
+                    </p>
+                  )}
+                </div>
+
+                {/* Document 3 */}
+                <div>
+                  <label className="block font-semibold mb-2">
+                    Document 3 (PDF / Image)
+                  </label>
+                  <input
+                    type="file"
+                    name="document3"
+                    accept=".pdf, .png, .jpg, .jpeg"
+                    onChange={handleChange}
+                    className="w-full border border-gray-300 rounded-full px-4 py-2 text-gray-700 file:mr-3 file:py-2 file:px-4 file:rounded-full file:border-0 file:bg-[#00FFB2] file:text-black file:font-semibold hover:file:bg-[#00e6a0] transition"
+                  />
+                  {formData.document3 && (
+                    <p className="text-xs text-green-600 mt-1 px-2">
+                      ✓ {formData.document3.name}
+                    </p>
+                  )}
+                </div>
+
+                <p className="text-xs text-gray-500 px-2">
+                  Please upload verification documents such as citizenship, ID card, or other identifying documents.
+                </p>
               </>
             )}
 
