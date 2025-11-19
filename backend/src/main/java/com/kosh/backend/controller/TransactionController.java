@@ -8,18 +8,15 @@ import java.util.UUID;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus; 
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.CrossOrigin;
-import org.springframework.web.bind.annotation.GetMapping; 
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 
 import com.kosh.backend.model.Transaction;
 import com.kosh.backend.model.User;
 import com.kosh.backend.repository.TransactionRepository; 
 import com.kosh.backend.repository.UserRepository;
+import com.kosh.backend.util.SessionUtil;
+import jakarta.servlet.http.HttpSession;
 
 @RestController
 @RequestMapping("/api/transactions")
@@ -32,7 +29,6 @@ public class TransactionController {
     @Autowired
     private UserRepository userRepo; 
 
-    // ... (TransactionRequest class is unchanged) ...
     public static class TransactionRequest {
         private Integer userId;
         private String userName; 
@@ -49,46 +45,59 @@ public class TransactionController {
         public void setAmountValue(Double amountValue) { this.amountValue = amountValue; }
     }
 
-
     @GetMapping
-    public ResponseEntity<List<Transaction>> getAllTransactions() {
+    public ResponseEntity<?> getAllTransactions(HttpSession session) {
+        // Only admin can view transactions
+        if (!SessionUtil.isAdmin(session)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body("Only admin can view transactions");
+        }
+
         List<Transaction> transactions = repo.findAll();
         return ResponseEntity.ok(transactions);
     }
 
     @PostMapping
-    public ResponseEntity<Transaction> createTransaction(@RequestBody TransactionRequest req) {
+    public ResponseEntity<?> createTransaction(
+            @RequestBody TransactionRequest req,
+            HttpSession session) {
+        
+        // Only admin can create transactions
+        if (!SessionUtil.isAdmin(session)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body("Only admin can create transactions");
+        }
+
         try {
             System.out.println("=== POST /api/transactions ===");
-            System.out.println("Received request for UserID: " + req.getUserId() + " for amount: " + req.getAmountValue());
+            System.out.println("Admin: " + SessionUtil.getUserEmail(session));
+            System.out.println("Transaction for UserID: " + req.getUserId() + " amount: " + req.getAmountValue());
 
             User user = userRepo.findById(req.getUserId())
                     .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
 
+            // Verify user belongs to admin's sahakari
+            Long adminSahakariId = SessionUtil.getSahakariId(session);
+            // You'll need to add logic to verify user's sahakari matches admin's
+
             Double currentBalance = user.getBalance() != null ? user.getBalance() : 0.0;
-            
             Double txAmount = req.getAmountValue();
             String txType = req.getType();
 
             if ("Deposit".equals(txType) || "Interest Added".equals(txType) || "Loan Payment".equals(txType)) {
-
                 user.setBalance(currentBalance + txAmount);
             } else if ("Withdrawal".equals(txType)) {
-
                 if (currentBalance < txAmount) {
-
-                    throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Insufficient funds. Balance: " + currentBalance);
+                    throw new ResponseStatusException(HttpStatus.BAD_REQUEST, 
+                            "Insufficient funds. Balance: " + currentBalance);
                 }
                 user.setBalance(currentBalance - txAmount);
-            } else {
-                System.out.println("Transaction type '" + txType + "' does not affect balance.");
             }
 
             userRepo.save(user);
             System.out.println("User balance updated. New balance: " + user.getBalance());
 
             Transaction newTransaction = new Transaction();
-            
             newTransaction.setTransactionId(UUID.randomUUID().toString());            
             newTransaction.setDate(LocalDate.now().toString());
             newTransaction.setUserId(req.getUserId());
@@ -96,16 +105,14 @@ public class TransactionController {
             newTransaction.setType(txType);
             
             String formattedAmount = String.format(new Locale("en", "NP"), "Rs. %.2f", txAmount);
-            
             newTransaction.setAmount(formattedAmount); 
 
             Transaction saved = repo.save(newTransaction);
             
-            System.out.println("SUCCESS: Saved Transaction log with ID: " + saved.getId() + " (TxID: " + saved.getTransactionId() + ")");
+            System.out.println("SUCCESS: Transaction created by admin: " + SessionUtil.getUserEmail(session));
             return ResponseEntity.ok(saved);
 
         } catch (ResponseStatusException e) {
-            System.out.println("ERROR in createTransaction: " + e.getMessage());
             return ResponseEntity.status(e.getStatusCode()).body(null); 
         } catch (Exception e) {
             System.out.println("ERROR in createTransaction: " + e.getMessage());
