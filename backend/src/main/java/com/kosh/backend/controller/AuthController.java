@@ -1,20 +1,22 @@
 package com.kosh.backend.controller;
 
 import java.util.HashMap;
+import java.util.Map;
 
-import org.springframework.web.bind.annotation.*;
-import com.kosh.backend.model.User;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
 import com.kosh.backend.model.Network;
-import com.kosh.backend.repository.UserRepository;
+import com.kosh.backend.model.User;
 import com.kosh.backend.repository.NetworkRepository;
+import com.kosh.backend.repository.UserRepository;
 
 import jakarta.servlet.http.HttpSession;
-import java.util.Map;
-import java.util.HashMap;
 
 @RestController
 @RequestMapping("/api/auth")
-//@CrossOrigin(origins = "http://localhost:5173", allowCredentials = "true")
 public class AuthController {
 
     private final UserRepository repo;
@@ -36,7 +38,7 @@ public class AuthController {
         public String role;
         public int userId;
         public Long networkId;
-        public String status;  // ⭐ ADDED: To send user status to frontend
+        public String status;
 
         public LoginResponse(boolean success, String message, String role, int userId, Long networkId) {
             this.success = success;
@@ -46,7 +48,6 @@ public class AuthController {
             this.networkId = networkId;
         }
 
-        // ⭐ ADDED: Constructor with status parameter
         public LoginResponse(boolean success, String message, String role, int userId, Long networkId, String status) {
             this.success = success;
             this.message = message;
@@ -100,10 +101,9 @@ public class AuthController {
         session.setAttribute("userEmail", user.getEmail());
         session.setAttribute("sahakariId", networkId);
         session.setAttribute("userRole", user.getRole());
+        session.setAttribute("userName", user.getName()); 
 
         System.out.println("User logged in: " + user.getEmail());
-        System.out.println("Session sahakariId set to: " + session.getAttribute("sahakariId"));
-        System.out.println("Session userRole set to: " + session.getAttribute("userRole"));
         System.out.println("Session ID: " + session.getId());
 
         return new LoginResponse(

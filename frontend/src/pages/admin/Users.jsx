@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from "react";
-import { useLocation } from "react-router-dom"; // Added for Global Search
+import { useLocation } from "react-router-dom";
 import {
   SearchIcon,
   PencilIcon,
@@ -92,7 +92,6 @@ const UserDetails = ({
       </div>
     </div>
 
-    {/* Action Buttons - Only show for non-admin users */}
     {item.role !== "admin" && (
       <div className="flex items-center justify-end gap-3 mt-6 pt-6 border-t border-gray-200">
         <button
@@ -131,28 +130,24 @@ function AdminUsers() {
   const [activeFilter, setActiveFilter] = useState("All");
   const [searchQuery, setSearchQuery] = useState("");
 
-  // --- NEW: Hook to handle incoming search/actions from Global Search ---
+  // hook to handle incoming search
   const location = useLocation();
 
   useEffect(() => {
     if (location.state) {
-      // 1. Handle Search Query (User selection from search)
       if (location.state.searchQuery) {
         setSearchQuery(location.state.searchQuery);
       }
       
-      // 2. Handle "Add User" Action from search
       if (location.state.action === 'openAddUser') {
         setIsAddUserModalOpen(true);
       }
 
-      // Clean up state to prevent reopening on refresh
       window.history.replaceState({}, document.title);
     }
   }, [location]);
   // ---------------------------------------------------------------------
 
-  // ⭐ Fetch admin's sahakari from session
   useEffect(() => {
     const fetchSession = async () => {
       try {
@@ -169,10 +164,8 @@ function AdminUsers() {
             return;
           }
 
-          // Clean the sahakariId
           let cleanId = String(data.sahakariId).replace(/[^0-9]/g, '');
 
-          // Get the network name from networkId
           const networkRes = await fetch(`${API_BASE}/networks/${cleanId}`, {
             credentials: "include",
           });
@@ -211,7 +204,6 @@ function AdminUsers() {
       const data = await res.json();
 
       if (Array.isArray(data)) {
-        // ⭐ Filter users by admin's sahakari
         const filteredBySahakari = data.filter(
           (user) => user.sahakari === adminSahakari
         );
@@ -227,7 +219,6 @@ function AdminUsers() {
     }
   };
 
-  // Load users when adminSahakari is available
   useEffect(() => {
     if (adminSahakari) {
       loadUsers();
@@ -284,7 +275,7 @@ function AdminUsers() {
 
   const handleEdit = (user) => {
     setCurrentUserToEdit(user);
-    setViewModalItem(null); // Close view modal
+    setViewModalItem(null); 
     setIsEditModalOpen(true);
   };
 
@@ -341,7 +332,6 @@ function AdminUsers() {
       : "bg-gray-200 text-gray-700 hover:bg-gray-300";
   };
 
-  // Show loading while fetching session
   if (sessionLoading) {
     return (
       <div className="bg-white p-6 min-h-[calc(100vh-8.5rem)] flex items-center justify-center">
@@ -350,7 +340,6 @@ function AdminUsers() {
     );
   }
 
-  // Show error if no sahakari found
   if (!adminSahakari) {
     return (
       <div className="bg-white p-6 min-h-[calc(100vh-8.5rem)] flex items-center justify-center">
@@ -362,7 +351,6 @@ function AdminUsers() {
   return (
     <>
       <div className="bg-white p-6 min-h-[calc(100vh-8.5rem)]">
-        {/* Search and Filter Bar */}
         <div className="flex flex-wrap items-center justify-between mb-8 gap-4">
           <div className="relative flex-grow sm:flex-grow-0">
             <span className="absolute inset-y-0 left-0 flex items-center pl-4">
@@ -405,7 +393,6 @@ function AdminUsers() {
           </div>
         </div>
 
-        {/* Loading State */}
         {loading && (
           <div className="text-center py-12">
             <h3 className="text-lg font-semibold text-gray-500">
@@ -414,7 +401,6 @@ function AdminUsers() {
           </div>
         )}
 
-        {/* Table */}
         {!loading && (
           <div className="w-full overflow-x-auto">
             <table className="min-w-full text-left">
@@ -469,7 +455,6 @@ function AdminUsers() {
         )}
       </div>
 
-      {/* Floating Action Button */}
       <div className="group fixed z-20 bottom-10 right-10 flex flex-col items-center gap-3">
         <div className="flex flex-col items-center gap-3 opacity-0 scale-90 translate-y-4 group-hover:opacity-100 group-hover:scale-100 group-hover:translate-y-0 pointer-events-none group-hover:pointer-events-auto transition-all duration-200 ease-in-out">
           <button
@@ -492,7 +477,6 @@ function AdminUsers() {
         </button>
       </div>
 
-      {/* Modals */}
       <Modal
         isOpen={!!viewModalItem}
         onClose={handleCloseViewModal}

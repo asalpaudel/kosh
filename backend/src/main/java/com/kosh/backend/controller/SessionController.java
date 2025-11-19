@@ -20,14 +20,11 @@ public class SessionController {
     @GetMapping("/api/session")
     public ResponseEntity<Map<String, Object>> getSession(HttpSession session) {
         System.out.println("Session ID: " + session.getId());
-        System.out.println("Session Max Inactive Interval: " + session.getMaxInactiveInterval() + " seconds");
         
         Map<String, Object> sessionData = new HashMap<>();
         
-        // Get user email
         String userEmail = (String) session.getAttribute("userEmail");
         
-        // If no userEmail, session is invalid or expired
         if (userEmail == null) {
             sessionData.put("error", "Session expired or invalid");
             sessionData.put("expired", true);
@@ -36,7 +33,9 @@ public class SessionController {
         
         sessionData.put("userEmail", userEmail);
         
-        // Get sahakariId
+        String userName = (String) session.getAttribute("userName");
+        sessionData.put("userName", userName);
+
         Object sahakariIdObj = session.getAttribute("sahakariId");
         Long sahakariId;
 
@@ -50,15 +49,11 @@ public class SessionController {
 
         sessionData.put("sahakariId", sahakariId);
         
-        // Get user role
         String userRole = (String) session.getAttribute("userRole");
         sessionData.put("userRole", userRole);
         
-        // Add session timeout info
-        sessionData.put("maxInactiveInterval", session.getMaxInactiveInterval()); // in seconds
+        sessionData.put("maxInactiveInterval", session.getMaxInactiveInterval());
         sessionData.put("expired", false);
-        
-        System.out.println("Session valid - userEmail: " + userEmail);
         
         return ResponseEntity.ok(sessionData);
     }

@@ -49,9 +49,6 @@ public class UserController {
         System.out.println("User: " + name + ", " + email);
         System.out.println("Role: " + role + ", Sahakari: " + sahakari);
 
-        // ---------------------------------------------------------
-        // ⭐ FIND NETWORK FIRST
-        // ---------------------------------------------------------
         Network network = networkRepo.findAll().stream()
                 .filter(n -> sahakari.equalsIgnoreCase(n.getName()))
                 .findFirst()
@@ -62,13 +59,9 @@ public class UserController {
                     .body(Map.of("error", "Network not found: " + sahakari));
         }
 
-        // ---------------------------------------------------------
-        // ⭐ MEMBER LIMIT VALIDATION (Using DB userLimit field)
-        // ---------------------------------------------------------
         if ("member".equalsIgnoreCase(role)) {
             Integer maxMembers = network.getUserLimit();
 
-            // Only check limit if userLimit is set (not null and not 0)
             if (maxMembers != null && maxMembers > 0) {
                 long currentMembers = repo.findAll().stream()
                         .filter(u -> "member".equalsIgnoreCase(u.getRole()))
@@ -89,9 +82,6 @@ public class UserController {
             }
         }
 
-        // ---------------------------------------------------------
-        // ⭐ ADMIN LIMIT VALIDATION (unchanged)
-        // ---------------------------------------------------------
         if ("admin".equalsIgnoreCase(role)) {
             long currentAdminCount = repo.findAll().stream()
                     .filter(u -> "admin".equalsIgnoreCase(u.getRole()))
@@ -107,9 +97,6 @@ public class UserController {
             }
         }
 
-        // ---------------------------------------------------------
-        // ⭐ CREATE USER
-        // ---------------------------------------------------------
         User user = new User();
         user.setName(name);
         user.setEmail(email);
@@ -128,9 +115,20 @@ public class UserController {
         return ResponseEntity.ok(saved);
     }
 
-    // ---------------------------------------------------------
-    // REST OF ENDPOINTS
-    // ---------------------------------------------------------
+    @GetMapping("/network/{networkId}")
+    public ResponseEntity<?> getUsersByNetworkId(@PathVariable Long networkId) {
+        Network network = networkRepo.findById(networkId).orElse(null);
+        
+        if (network == null) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Network not found"));
+        }
+
+        List<User> users = repo.findAll().stream()
+                .filter(u -> network.getName().equals(u.getSahakari()))
+                .collect(Collectors.toList());
+
+        return ResponseEntity.ok(users);
+    }
 
     @GetMapping("/pending")
     public List<User> getPendingUsers(@RequestParam String sahakari) {
@@ -158,7 +156,6 @@ public class UserController {
         boolean isMemberChangingSahakari = "member".equalsIgnoreCase(updatedUser.getRole()) &&
                 !existingUser.getSahakari().equals(updatedUser.getSahakari());
 
-        // Check admin limit
         if (isBecomingAdmin || isAdminChangingSahakari) {
             String targetSahakari = updatedUser.getSahakari();
             Network network = networkRepo.findAll().stream()
@@ -184,7 +181,6 @@ public class UserController {
             }
         }
 
-        // Check member limit
         if (isBecomingMember || isMemberChangingSahakari) {
             String targetSahakari = updatedUser.getSahakari();
             Network network = networkRepo.findAll().stream()
@@ -242,7 +238,6 @@ public class UserController {
                     .body(Map.of("error", "Network not found"));
         }
 
-        // Check admin limit for admin users
         if ("admin".equalsIgnoreCase(user.getRole())) {
             long currentAdminCount = repo.findAll().stream()
                     .filter(u -> u.getId() != id)
@@ -257,7 +252,6 @@ public class UserController {
             }
         }
 
-        // Check member limit for member users
         if ("member".equalsIgnoreCase(user.getRole())) {
             Integer maxMembers = network.getUserLimit();
 
