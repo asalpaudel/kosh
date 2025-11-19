@@ -22,6 +22,8 @@ import {
   FiX,
   FiFeather,
   FiCalendar,
+  FiMoon,
+  FiShield,
 } from 'react-icons/fi';
 
 import { FaPiggyBank, FaFileSignature } from 'react-icons/fa';
@@ -66,3 +68,6 @@ export { FaPiggyBank as CurrencyDollarIcon } from 'react-icons/fa';
 export { FaFileSignature as BanknotesIcon } from 'react-icons/fa';
 
 export { LuFileClock as DocumentTextIcon } from 'react-icons/lu';
+export { FiMoon as MoonIcon } from 'react-icons/fi'; 
+export { FiShield as ShieldIcon } from 'react-icons/fi'; 
+export { FiUser as UserIcon } from 'react-icons/fi';     

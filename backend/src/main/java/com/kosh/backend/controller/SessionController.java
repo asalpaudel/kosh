@@ -14,7 +14,7 @@ import jakarta.servlet.http.HttpSession;
 @RestController
 public class SessionController {
 
-    @Value("${server.servlet.session.timeout:30m}")
+    @Value("${server.servlet.session.timeout:1m}")
     private String sessionTimeout;
 
     @GetMapping("/api/session")

@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect } from "react";
+import { useLocation } from "react-router-dom"; // Added for Global Search
 import {
   SearchIcon,
   PencilIcon,
@@ -130,55 +131,58 @@ function AdminUsers() {
   const [activeFilter, setActiveFilter] = useState("All");
   const [searchQuery, setSearchQuery] = useState("");
 
+  // --- NEW: Hook to handle incoming search/actions from Global Search ---
+  const location = useLocation();
+
+  useEffect(() => {
+    if (location.state) {
+      // 1. Handle Search Query (User selection from search)
+      if (location.state.searchQuery) {
+        setSearchQuery(location.state.searchQuery);
+      }
+      
+      // 2. Handle "Add User" Action from search
+      if (location.state.action === 'openAddUser') {
+        setIsAddUserModalOpen(true);
+      }
+
+      // Clean up state to prevent reopening on refresh
+      window.history.replaceState({}, document.title);
+    }
+  }, [location]);
+  // ---------------------------------------------------------------------
+
   // ⭐ Fetch admin's sahakari from session
   useEffect(() => {
     const fetchSession = async () => {
       try {
-        console.log("Fetching session...");
         const res = await fetch(`${API_BASE}/session`, {
           method: "GET",
           credentials: "include",
         });
 
-        console.log("Session response status:", res.status);
-
         if (res.ok) {
           const data = await res.json();
-          console.log("Session data:", data);
 
           if (!data.sahakariId) {
-            console.error("No sahakariId in session data");
             setSessionLoading(false);
             return;
           }
 
-          // Clean the sahakariId - remove any non-numeric characters
+          // Clean the sahakariId
           let cleanId = String(data.sahakariId).replace(/[^0-9]/g, '');
-          console.log("Original sahakariId:", data.sahakariId, "Cleaned:", cleanId);
 
           // Get the network name from networkId
-          console.log("Fetching network with ID:", cleanId);
           const networkRes = await fetch(`${API_BASE}/networks/${cleanId}`, {
             credentials: "include",
           });
           
-          console.log("Network response status:", networkRes.status);
-
           if (networkRes.ok) {
             const networkData = await networkRes.json();
-            console.log("Network data:", networkData);
-
             if (networkData && networkData.name) {
               setAdminSahakari(networkData.name);
-              console.log("✅ Admin's Sahakari set to:", networkData.name);
-            } else {
-              console.error("Network data is null or has no name");
             }
-          } else {
-            console.error("Failed to fetch network, status:", networkRes.status);
           }
-        } else {
-          console.error("Failed to fetch session, status:", res.status);
         }
       } catch (e) {
         console.error("Error fetching session:", e);
@@ -201,7 +205,7 @@ function AdminUsers() {
       });
 
       if (!res.ok) {
-        throw new Error(`Failed to fetch: ${res.status} ${res.statusText}`);
+        throw new Error(`Failed to fetch: ${res.status}`);
       }
 
       const data = await res.json();
@@ -212,9 +216,7 @@ function AdminUsers() {
           (user) => user.sahakari === adminSahakari
         );
         setAllUsers(filteredBySahakari);
-        console.log(`Loaded ${filteredBySahakari.length} users from ${adminSahakari}`);
       } else {
-        console.error("API did not return an array:", data);
         setAllUsers([]);
       }
     } catch (e) {
@@ -248,7 +250,6 @@ function AdminUsers() {
       });
 
       if (res.ok) {
-        console.log(`User ${userId} approved`);
         alert("User approved successfully!");
         handleCloseViewModal();
         await loadUsers();
@@ -269,7 +270,6 @@ function AdminUsers() {
       });
 
       if (res.ok) {
-        console.log(`User ${userId} rejected`);
         alert("User rejected successfully!");
         handleCloseViewModal();
         await loadUsers();
@@ -283,7 +283,6 @@ function AdminUsers() {
   };
 
   const handleEdit = (user) => {
-    console.log(`Editing user ${user.id}`);
     setCurrentUserToEdit(user);
     setViewModalItem(null); // Close view modal
     setIsEditModalOpen(true);

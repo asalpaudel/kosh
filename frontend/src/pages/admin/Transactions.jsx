@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { SearchIcon, PlusCircleIcon, CheckIcon, DocumentIcon, Logo, CalendarIcon, XIcon } from "../../component/icons.jsx";
+import { useLocation } from 'react-router-dom';
+import { SearchIcon, PlusCircleIcon, CheckIcon, DocumentIcon, Logo, CalendarIcon } from "../../component/icons.jsx";
 import Modal from "../../component/superadmin/Modal.jsx";
 import AddTransactionForm from "../../component/admin/AddTransactionForm.jsx";
 import jsPDF from 'jspdf';
@@ -8,14 +9,12 @@ import html2canvas from 'html2canvas-pro';
 
 const API_BASE = "http://localhost:8080/api";
 
-// --- Voucher Modal Component ---
 const TransactionVoucher = ({ transaction, onClose, onStatusUpdate }) => {
   const voucherRef = useRef(null);
   if (!transaction) return null;
 
   const isFrozen = transaction.status === "Frozen" || transaction.status === "Disputed";
 
-  // Mock History Data (In real app, this comes from backend)
   const mockHistory = [
     { action: "Created", by: "Admin", time: new Date(transaction.date).toLocaleTimeString() },
     ...(isFrozen ? [{ action: "Frozen (Dispute)", by: "Superadmin", time: new Date().toLocaleTimeString() }] : [])
@@ -25,16 +24,14 @@ const TransactionVoucher = ({ transaction, onClose, onStatusUpdate }) => {
     if (!voucherRef.current) return;
 
     try {
-      // Capture the specific voucher element
       const canvas = await html2canvas(voucherRef.current, {
-        scale: 2, // Higher scale for better quality
+        scale: 2,
         backgroundColor: "#ffffff",
       });
 
       const imgData = canvas.toDataURL('image/png');
       const pdf = new jsPDF('p', 'mm', 'a4');
       
-      // Calculate dimensions to fit A4
       const pdfWidth = pdf.internal.pageSize.getWidth();
       const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
 
@@ -48,15 +45,12 @@ const TransactionVoucher = ({ transaction, onClose, onStatusUpdate }) => {
 
   return (
     <div className="flex flex-col gap-6">
-      
-      {/* --- Voucher Paper Design --- */}
       <div ref={voucherRef} id="printable-voucher" className="bg-white p-8 border border-gray-200 shadow-sm rounded-lg text-gray-800 flex flex-col gap-6 relative overflow-hidden">
         
         <div className="absolute -right-10 -top-10 opacity-5 pointer-events-none">
           <Logo className="w-64 h-64 text-gray-900" />
         </div>
 
-        {/* Header */}
         <div className="flex justify-between items-start border-b-2 border-gray-800 pb-4">
           <div className="flex items-center gap-3">
              <Logo className="w-12 h-12 text-teal-600" />
@@ -71,7 +65,6 @@ const TransactionVoucher = ({ transaction, onClose, onStatusUpdate }) => {
           </div>
         </div>
 
-        {/* Date & Txn Info */}
         <div className="grid grid-cols-2 gap-8 text-sm">
           <div>
             <p className="text-gray-500 text-xs uppercase font-bold">Transaction Date</p>
@@ -83,7 +76,6 @@ const TransactionVoucher = ({ transaction, onClose, onStatusUpdate }) => {
           </div>
         </div>
 
-        {/* Details with New Reference Fields */}
         <div className="bg-gray-50 p-4 rounded-lg border border-gray-100">
           <div className="grid grid-cols-2 gap-4">
             <div>
@@ -99,7 +91,6 @@ const TransactionVoucher = ({ transaction, onClose, onStatusUpdate }) => {
             </div>
           </div>
 
-          {/* Cheque / Bank Info Block */}
           {transaction.details?.paymentMethod && (
              <div className="mt-4 pt-4 border-t border-gray-200 grid grid-cols-3 gap-4 text-sm">
                 <div>
@@ -122,7 +113,6 @@ const TransactionVoucher = ({ transaction, onClose, onStatusUpdate }) => {
           )}
         </div>
 
-        {/* Amount Section */}
         <div className="flex justify-between items-center py-4 border-t border-b border-gray-100">
           <span className="text-gray-600 font-medium">Total Amount</span>
           <span className={`text-3xl font-bold ${
@@ -132,7 +122,6 @@ const TransactionVoucher = ({ transaction, onClose, onStatusUpdate }) => {
           </span>
         </div>
 
-        {/* Narration */}
         <div>
            <p className="text-gray-500 text-xs uppercase font-bold mb-1">Narration / Remarks</p>
            <p className="text-gray-700 italic bg-gray-50 p-3 rounded border border-gray-100 min-h-[60px]">
@@ -140,7 +129,6 @@ const TransactionVoucher = ({ transaction, onClose, onStatusUpdate }) => {
            </p>
         </div>
 
-        {/* Status History */}
         <div>
            <p className="text-gray-500 text-xs uppercase font-bold mb-2">Status History</p>
            <div className="text-xs space-y-1 border-l-2 border-gray-200 pl-3">
@@ -152,7 +140,6 @@ const TransactionVoucher = ({ transaction, onClose, onStatusUpdate }) => {
            </div>
         </div>
 
-        {/* Footer / Status */}
         <div className="flex justify-between items-end mt-4 pt-4">
            <div>
              <p className="text-gray-500 text-xs uppercase font-bold mb-1">Current Status</p>
@@ -171,7 +158,6 @@ const TransactionVoucher = ({ transaction, onClose, onStatusUpdate }) => {
         </div>
       </div>
 
-      {/* Action Bar */}
       <div className="flex justify-between items-center bg-gray-50 p-4 rounded-xl border border-gray-200">
         <div>
            {isFrozen ? (
@@ -211,10 +197,11 @@ function AdminTransactions() {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [selectedTransaction, setSelectedTransaction] = useState(null);
   
-  // Date Filtering States
-  const [dateFilter, setDateFilter] = useState("all"); // 'all', 'today', 'week', 'month', 'custom'
+  const [dateFilter, setDateFilter] = useState("all");
   const [fromDate, setFromDate] = useState("");
   const [toDate, setToDate] = useState("");
+
+  const location = useLocation();
 
   const loadTransactions = async () => {
     setLoading(true);
@@ -236,31 +223,42 @@ function AdminTransactions() {
     loadTransactions();
   }, []);
 
-  // Handle Date Filter Toggle Click
+  useEffect(() => {
+    if (location.state) {
+        if (location.state.openTransactionId && transactions.length > 0) {
+            const targetTxn = transactions.find(t => t.id == location.state.openTransactionId);
+            if (targetTxn) {
+                setSelectedTransaction(targetTxn);
+                window.history.replaceState({}, document.title);
+            }
+        }
+        
+        if (location.state.action === 'openAddTxn') {
+            setIsAddModalOpen(true);
+            window.history.replaceState({}, document.title);
+        }
+    }
+  }, [location, transactions]);
+
   const handleFilterClick = (filter) => {
     setDateFilter(filter);
-    // Clear custom dates when a preset is selected
     if (filter !== 'custom') {
       setFromDate("");
       setToDate("");
     }
   };
 
-  // Handle Custom Date Change
   const handleDateChange = (type, val) => {
     if (type === 'from') setFromDate(val);
     if (type === 'to') setToDate(val);
-    // Automatically switch to 'custom' mode if user picks a date
     setDateFilter('custom');
   };
 
-  // 🔍 Enhanced Filtering Logic
   const filteredTransactions = useMemo(() => {
     let data = transactions;
     const today = new Date();
     const todayStr = today.toISOString().split('T')[0];
 
-    // 1. Date Logic
     if (dateFilter === "today") {
        data = data.filter(t => t.date && t.date.startsWith(todayStr));
     } else if (dateFilter === "week") {
@@ -277,7 +275,6 @@ function AdminTransactions() {
        });
     }
 
-    // 2. Search Logic
     const query = searchQuery.toLowerCase();
     if (query) {
        data = data.filter(log => 
@@ -296,11 +293,9 @@ function AdminTransactions() {
   const handleExportList = () => {
     const doc = new jsPDF();
     
-    // Title
     doc.setFontSize(18);
     doc.text("Transaction Report", 14, 22);
     
-    // Filter Info
     doc.setFontSize(11);
     doc.setTextColor(100);
     let filterText = `Filter: ${dateFilter.toUpperCase()}`;
@@ -308,10 +303,8 @@ function AdminTransactions() {
     if(searchQuery) filterText += ` | Search: "${searchQuery}"`;
     doc.text(filterText, 14, 30);
 
-    // Table Columns
     const tableColumn = ["Date", "Voucher", "User / Head", "Type", "Method", "Amount", "Status"];
     
-    // Map Data
     const tableRows = filteredTransactions.map(t => [
       t.date ? new Date(t.date).toLocaleDateString() : '-',
       t.voucherId || '-',
@@ -327,7 +320,7 @@ function AdminTransactions() {
       body: tableRows,
       startY: 40,
       theme: 'grid',
-      headStyles: { fillColor: [13, 148, 136] }, // Teal header
+      headStyles: { fillColor: [13, 148, 136] },
       styles: { fontSize: 9 },
     });
 
@@ -347,10 +340,8 @@ function AdminTransactions() {
   return (
     <div className="bg-white p-6 min-h-[calc(100vh-8.5rem)]"> 
       
-      {/* Header & Tools */}
       <div className="flex flex-col xl:flex-row items-start xl:items-center justify-between mb-8 gap-4">
         
-        {/* Left: Search Input */}
         <div className="relative flex-grow-0 w-full xl:w-80">
           <span className="absolute inset-y-0 left-0 flex items-center pl-4">
             <SearchIcon className="h-5 w-5 text-gray-400" />
@@ -364,10 +355,8 @@ function AdminTransactions() {
           />
         </div>
 
-        {/* Right Group: Filters + Date + Export */}
         <div className="flex flex-wrap items-center gap-4 w-full xl:w-auto justify-end">
           
-          {/* Filter Toggles */}
           <div className="flex items-center gap-2 bg-gray-100 p-1.5 rounded-full overflow-x-auto">
             {['all', 'today', 'week', 'month'].map(filter => (
               <button
@@ -384,9 +373,7 @@ function AdminTransactions() {
             ))}
           </div>
           
-          {/* 📅 Custom Date Range Picker */}
           <div className={`flex items-center gap-2 bg-gray-100 p-1.5 rounded-full transition-all ${dateFilter === 'custom' ? 'ring-2 ring-teal-500 bg-teal-50' : ''}`}>
-             {/* From Date */}
              <div className="flex items-center px-3 gap-2 border-r border-gray-300 relative">
                <span className="text-xs font-bold text-gray-500 uppercase">From</span>
                <div className="relative">
@@ -399,7 +386,6 @@ function AdminTransactions() {
                  <CalendarIcon className="w-4 h-4 text-teal-600 absolute right-0 top-1/2 -translate-y-1/2 pointer-events-none" />
                </div>
              </div>
-             {/* To Date */}
              <div className="flex items-center px-3 gap-2 relative">
                <span className="text-xs font-bold text-gray-500 uppercase">To</span>
                <div className="relative">
@@ -414,7 +400,6 @@ function AdminTransactions() {
              </div>
           </div>
 
-          {/* Export Button */}
           <button 
              onClick={handleExportList}
              className="bg-teal-500 text-white font-bold py-3 px-6 rounded-full hover:bg-teal-600 transition-all text-base whitespace-nowrap shadow-md flex items-center gap-2"
@@ -425,7 +410,6 @@ function AdminTransactions() {
         </div>
       </div>
 
-      {/* Table */}
       <div className="w-full overflow-x-auto rounded-lg border border-gray-100">
         <table className="min-w-full text-left">
           <thead className="bg-gray-50 text-gray-500">
@@ -479,7 +463,6 @@ function AdminTransactions() {
         </table>
       </div>
 
-      {/* FAB */}
       <div className="group fixed z-20 bottom-10 right-10 flex flex-col items-center gap-3">
         <button title="New Transaction" onClick={() => setIsAddModalOpen(true)} className="fab-button bg-teal-500 rounded-full p-4 text-white shadow-lg hover:bg-teal-600 transition-all">
           <PlusCircleIcon className="w-10 h-10 fab-icon" />
