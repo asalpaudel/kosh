@@ -1,67 +1,74 @@
-import React, { useState, useEffect } from "react";
-import AccountSummary from "../../component/user/AccountSummary";
-import FinancialChart from "../../component/user/FinancialChart";
-import TransactionsList from "../../component/user/TransactionsList";
-import LoanAd from "../../component/user/LoanAd";
+import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import AccountSummary from '../../component/user/AccountSummary';
+import FinancialChart from '../../component/user/FinancialChart';
+import TransactionsList from '../../component/user/TransactionsList';
+import LoanAd from '../../component/user/LoanAd';
 
 const apiBase = "http://localhost:8080/api";
 
 function Dashboard() {
+  const navigate = useNavigate();
   const [sessionData, setSessionData] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // Fetch session data
   useEffect(() => {
     const fetchSession = async () => {
       try {
         const response = await fetch(`${apiBase}/session`, {
           method: "GET",
-          credentials: "include", // Important: Include cookies for session
+          credentials: "include",
         });
 
         if (response.ok) {
           const data = await response.json();
           console.log("Session data:", data);
+          
+          // Check if session has error (no userEmail)
+          if (data.error) {
+            console.error("Session error:", data.error);
+            navigate('/');
+            return;
+          }
+          
           setSessionData(data);
 
           // If user doesn't have sahakariId, redirect to login
           if (!data.sahakariId && data.userRole !== "superadmin") {
             console.error("No sahakariId found in session");
-            window.location.href = "/";
+            navigate('/');
           }
+        } else if (response.status === 401) {
+          console.error("Unauthorized - no session");
+          navigate('/');
         } else {
           console.error("Failed to fetch session data");
-          window.location.href = "/";
+          navigate('/');
         }
       } catch (error) {
         console.error("Error fetching session:", error);
-        window.location.href = "/";
+        navigate('/');
       } finally {
         setLoading(false);
       }
     };
 
     fetchSession();
-  }, []);
+  }, [navigate]);
 
-  // Show loading state while fetching session
   if (loading) {
     return (
       <div className="min-h-screen bg-white flex items-center justify-center">
-        <p className="text-center text-gray-500">Loading session...</p>
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-teal-500 mx-auto mb-4"></div>
+          <p className="text-gray-500">Loading session...</p>
+        </div>
       </div>
     );
   }
 
-  // Show error if no session data
-  if (!sessionData?.sahakariId) {
-    return (
-      <div className="min-h-screen bg-white flex items-center justify-center">
-        <p className="text-center text-red-500">
-          Unable to load session. Please login again.
-        </p>
-      </div>
-    );
+  if (!sessionData?.userEmail) {
+    return null; // Will redirect via useEffect
   }
 
   return (

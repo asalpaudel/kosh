@@ -1,15 +1,66 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { SearchIcon } from '../../component/icons';
 import jsPDF from 'jspdf';
-import autoTable from 'jspdf-autotable'; 
+import autoTable from 'jspdf-autotable';
+
+const apiBase = "http://localhost:8080/api";
 
 function Statement() {
+  const navigate = useNavigate();
+  const [sessionData, setSessionData] = useState(null);
+  const [loading, setLoading] = useState(true);
+
   const transactions = Array(12).fill({
     date: '13-Apr-2025',
     description: 'Internet Expenses for the month',
     amount: '-Rs. 1,300.00',
     balance: 'Rs. 25,000.00',
   });
+
+  useEffect(() => {
+    const fetchSession = async () => {
+      try {
+        const response = await fetch(`${apiBase}/session`, {
+          method: "GET",
+          credentials: "include",
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          console.log("Session data:", data);
+          
+          // Check if session has error (no userEmail)
+          if (data.error) {
+            console.error("Session error:", data.error);
+            navigate('/');
+            return;
+          }
+          
+          setSessionData(data);
+
+          // If user doesn't have sahakariId, redirect to login
+          if (!data.sahakariId && data.userRole !== "superadmin") {
+            console.error("No sahakariId found in session");
+            navigate('/');
+          }
+        } else if (response.status === 401) {
+          console.error("Unauthorized - no session");
+          navigate('/');
+        } else {
+          console.error("Failed to fetch session data");
+          navigate('/');
+        }
+      } catch (error) {
+        console.error("Error fetching session:", error);
+        navigate('/');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchSession();
+  }, [navigate]);
 
   const handleExport = () => {
     const doc = new jsPDF();
@@ -33,6 +84,21 @@ function Statement() {
 
     doc.save('transaction-statement.pdf');
   };
+
+  if (loading) {
+    return (
+      <div className="bg-gray-50 p-6 rounded-2xl shadow-lg flex items-center justify-center min-h-[calc(100vh-8.5rem)]">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-teal-500 mx-auto mb-4"></div>
+          <p className="text-gray-500">Loading session...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!sessionData?.userEmail) {
+    return null; // Will redirect via useEffect
+  }
 
   return (
     <div className="bg-gray-50 p-6 rounded-2xl shadow-lg">
