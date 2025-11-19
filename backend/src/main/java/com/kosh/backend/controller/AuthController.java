@@ -1,5 +1,7 @@
 package com.kosh.backend.controller;
 
+import java.util.HashMap;
+
 import org.springframework.web.bind.annotation.*;
 import com.kosh.backend.model.User;
 import com.kosh.backend.model.Network;
@@ -7,6 +9,8 @@ import com.kosh.backend.repository.UserRepository;
 import com.kosh.backend.repository.NetworkRepository;
 
 import jakarta.servlet.http.HttpSession;
+import java.util.Map;
+import java.util.HashMap;
 
 @RestController
 @RequestMapping("/api/auth")
@@ -53,7 +57,7 @@ public class AuthController {
         }
     }
 
-   @PostMapping("p")
+   @PostMapping("/login")
     public LoginResponse login(@RequestBody LoginRequest req, HttpSession session) {
 
         User user = repo.findByEmail(req.email);
@@ -108,5 +112,16 @@ public class AuthController {
                 user.getRole(),
                 user.getId(),
                 networkId);
+    }
+
+    @PostMapping("/logout")
+    public Map<String, String> logout(HttpSession session) {
+        session.invalidate();
+        System.out.println("User logged out, session invalidated");
+        
+        Map<String, String> response = new HashMap<>();
+        response.put("success", "true");
+        response.put("message", "Logged out successfully");
+        return response;
     }
 }
