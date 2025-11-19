@@ -1,20 +1,15 @@
 import React, { useState, useMemo, useEffect } from "react";
 import {
   SearchIcon,
-  EyeIcon,
   PencilIcon,
   TrashIcon,
   PlusCircleIcon,
   UserCircleIcon,
   DocumentIcon,
-  CheckIcon,
-  XIcon,
-  UserPlusIcon,
 } from "../../component/icons.jsx";
 
 import Modal from "../../component/superadmin/Modal.jsx";
 import AddUserForm from "../../component/admin/AddUserForm.jsx";
-import AddStaffForm from "../../component/admin/AddStaffForm.jsx";
 import EditUserForm from "../../component/admin/EditUserForm.jsx";
 
 const API_BASE = "http://localhost:8080/api";
@@ -44,6 +39,7 @@ const UserDetails = ({
   handleApprove,
   handleDeny,
   handleEdit,
+  handleDelete,
 }) => (
   <div className="flex flex-col">
     <div className="flex flex-col sm:flex-row gap-6 sm:gap-8">
@@ -95,7 +91,28 @@ const UserDetails = ({
       </div>
     </div>
 
-
+    {/* Action Buttons - Only show for non-admin users */}
+    {item.role !== "admin" && (
+      <div className="flex items-center justify-end gap-3 mt-6 pt-6 border-t border-gray-200">
+        <button
+          onClick={() => handleEdit(item)}
+          className="flex items-center gap-2 px-4 py-2 bg-teal-500 text-white rounded-lg hover:bg-teal-600 transition-colors"
+        >
+          <PencilIcon className="w-5 h-5" />
+          <span className="font-medium">Edit</span>
+        </button>
+        
+        {item.status !== "Pending" && (
+          <button
+            onClick={() => handleDelete(item.id)}
+            className="flex items-center gap-2 px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors"
+          >
+            <TrashIcon className="w-5 h-5" />
+            <span className="font-medium">Delete</span>
+          </button>
+        )}
+      </div>
+    )}
   </div>
 );
 
@@ -107,7 +124,6 @@ function AdminUsers() {
 
   const [viewModalItem, setViewModalItem] = useState(null);
   const [isAddUserModalOpen, setIsAddUserModalOpen] = useState(false);
-  const [isAddStaffModalOpen, setIsAddStaffModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [currentUserToEdit, setCurrentUserToEdit] = useState(null);
 
@@ -216,8 +232,13 @@ function AdminUsers() {
     }
   }, [adminSahakari]);
 
-  const handleViewClick = (item) => setViewModalItem(item);
-  const handleCloseViewModal = () => setViewModalItem(null);
+  const handleRowClick = (user) => {
+    setViewModalItem(user);
+  };
+
+  const handleCloseViewModal = () => {
+    setViewModalItem(null);
+  };
 
   const handleApprove = async (userId) => {
     try {
@@ -229,6 +250,7 @@ function AdminUsers() {
       if (res.ok) {
         console.log(`User ${userId} approved`);
         alert("User approved successfully!");
+        handleCloseViewModal();
         await loadUsers();
       } else {
         alert("Failed to approve user");
@@ -249,6 +271,7 @@ function AdminUsers() {
       if (res.ok) {
         console.log(`User ${userId} rejected`);
         alert("User rejected successfully!");
+        handleCloseViewModal();
         await loadUsers();
       } else {
         alert("Failed to reject user");
@@ -262,6 +285,7 @@ function AdminUsers() {
   const handleEdit = (user) => {
     console.log(`Editing user ${user.id}`);
     setCurrentUserToEdit(user);
+    setViewModalItem(null); // Close view modal
     setIsEditModalOpen(true);
   };
 
@@ -274,6 +298,7 @@ function AdminUsers() {
         credentials: "include",
       });
       setAllUsers((prev) => prev.filter((u) => u.id !== userId));
+      handleCloseViewModal();
       alert("User deleted successfully!");
     } catch (e) {
       console.error("Delete failed:", e);
@@ -283,10 +308,6 @@ function AdminUsers() {
 
   const handleUserAddSuccess = (savedUser) => {
     setAllUsers((prev) => [...prev, savedUser]);
-  };
-
-  const handleStaffAddSuccess = (savedStaff) => {
-    setAllUsers((prev) => [...prev, savedStaff]);
   };
 
   const handleUserEditSuccess = (savedUser) => {
@@ -300,7 +321,7 @@ function AdminUsers() {
       .filter((user) => {
         if (activeFilter === "All") return true;
         if (activeFilter === "Pending") return user.status === "Pending";
-        if (activeFilter === "Staff") return user.role === "staff";
+        if (activeFilter === "Admin") return user.role === "admin";
         if (activeFilter === "Members") return user.role === "member";
         return true;
       })
@@ -371,10 +392,10 @@ function AdminUsers() {
               Pending
             </button>
             <button
-              onClick={() => setActiveFilter("Staff")}
-              className={`font-medium py-3 px-6 rounded-full transition-colors text-base ${getButtonClass("Staff")}`}
+              onClick={() => setActiveFilter("Admin")}
+              className={`font-medium py-3 px-6 rounded-full transition-colors text-base ${getButtonClass("Admin")}`}
             >
-              Staff
+              Admin
             </button>
             <button
               onClick={() => setActiveFilter("Members")}
@@ -406,7 +427,6 @@ function AdminUsers() {
                   <th className="py-4 px-3 text-sm font-semibold text-gray-600">Phone</th>
                   <th className="py-4 px-3 text-sm font-semibold text-gray-600">Role</th>
                   <th className="py-4 px-3 text-sm font-semibold text-gray-600">Status</th>
-                  <th className="py-4 px-3 text-sm font-semibold text-gray-600 text-right">Action</th>
                 </tr>
               </thead>
 
@@ -414,7 +434,8 @@ function AdminUsers() {
                 {filteredUsers.map((user, index) => (
                   <tr
                     key={user.id}
-                    className="bg-white border-b border-gray-200 hover:bg-gray-50 transition-colors"
+                    onClick={() => handleRowClick(user)}
+                    className="bg-white border-b border-gray-200 hover:bg-gray-50 transition-colors cursor-pointer"
                   >
                     <td className="py-4 px-3 text-gray-600 font-medium">{index + 1}</td>
                     <td className="py-4 px-3 text-gray-800 font-bold">{user.name}</td>
@@ -431,51 +452,6 @@ function AdminUsers() {
                       >
                         {user.status ?? "Active"}
                       </span>
-                    </td>
-
-                    <td className="py-4 px-3">
-                      {user.status === "Pending" ? (
-                        <div className="flex items-center justify-end space-x-3">
-                          <button
-                            onClick={() => handleViewClick(user)}
-                            className="text-blue-500 hover:text-blue-700"
-                            title="View"
-                          >
-                            <EyeIcon className="w-5 h-5" />
-                          </button>
-                          <button
-                            onClick={() => handleEdit(user)}
-                            className="text-yellow-500 hover:text-yellow-700"
-                            title="Edit"
-                          >
-                            <PencilIcon className="w-5 h-5" />
-                          </button>
-                        </div>
-                      ) : (
-                        <div className="flex items-center justify-end space-x-3">
-                          <button
-                            onClick={() => handleViewClick(user)}
-                            className="text-blue-500 hover:text-blue-700"
-                            title="View"
-                          >
-                            <EyeIcon className="w-5 h-5" />
-                          </button>
-                          <button
-                            onClick={() => handleEdit(user)}
-                            className="text-yellow-500 hover:text-yellow-700"
-                            title="Edit"
-                          >
-                            <PencilIcon className="w-5 h-5" />
-                          </button>
-                          <button
-                            onClick={() => handleDelete(user.id)}
-                            className="text-red-500 hover:text-red-700"
-                            title="Delete"
-                          >
-                            <TrashIcon className="w-5 h-5" />
-                          </button>
-                        </div>
-                      )}
                     </td>
                   </tr>
                 ))}
@@ -497,17 +473,6 @@ function AdminUsers() {
       {/* Floating Action Button */}
       <div className="group fixed z-20 bottom-10 right-10 flex flex-col items-center gap-3">
         <div className="flex flex-col items-center gap-3 opacity-0 scale-90 translate-y-4 group-hover:opacity-100 group-hover:scale-100 group-hover:translate-y-0 pointer-events-none group-hover:pointer-events-auto transition-all duration-200 ease-in-out">
-          <button
-            title="Add Staff"
-            className="relative flex items-center justify-center w-14 h-14 bg-white rounded-full text-teal-500 shadow-lg hover:bg-gray-100 hover:scale-105 transition-all"
-            onClick={() => setIsAddStaffModalOpen(true)}
-          >
-            <UserPlusIcon className="w-7 h-7" />
-            <span className="absolute right-full mr-4 px-3 py-1.5 bg-black text-white text-xs font-semibold rounded-md whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity delay-150 pointer-events-none">
-              Add Staff
-            </span>
-          </button>
-
           <button
             title="Add User"
             className="relative flex items-center justify-center w-14 h-14 bg-white rounded-full text-teal-500 shadow-lg hover:bg-gray-100 hover:scale-105 transition-all"
@@ -542,6 +507,7 @@ function AdminUsers() {
             handleApprove={handleApprove}
             handleDeny={handleDeny}
             handleEdit={handleEdit}
+            handleDelete={handleDelete}
           />
         )}
       </Modal>
@@ -555,19 +521,6 @@ function AdminUsers() {
         <AddUserForm
           onClose={() => setIsAddUserModalOpen(false)}
           onUserAdded={handleUserAddSuccess}
-          apiBase={API_BASE}
-        />
-      </Modal>
-
-      <Modal
-        isOpen={isAddStaffModalOpen}
-        onClose={() => setIsAddStaffModalOpen(false)}
-        title="Add New Staff"
-        size="2xl"
-      >
-        <AddStaffForm
-          onClose={() => setIsAddStaffModalOpen(false)}
-          onStaffAdded={handleStaffAddSuccess}
           apiBase={API_BASE}
         />
       </Modal>

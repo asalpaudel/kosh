@@ -158,13 +158,13 @@ function Networks() {
     try {
       setLoading(true);
       const res = await fetch(`${API_BASE}/networks`);
-  
+
       if (!res.ok) {
         throw new Error(`Failed to fetch: ${res.status} ${res.statusText}`);
       }
-  
+
       const data = await res.json();
-  
+
       if (Array.isArray(data)) {
         setNetworks(data);
       } else {
@@ -178,20 +178,19 @@ function Networks() {
       setLoading(false);
     }
   };
-  
 
   // Load users
   const loadUsers = async () => {
     try {
       setLoading(true);
       const res = await fetch(`${API_BASE}/users`);
-  
+
       if (!res.ok) {
         throw new Error(`Failed to fetch: ${res.status} ${res.statusText}`);
       }
-  
+
       const data = await res.json();
-  
+
       if (Array.isArray(data)) {
         setUsers(data);
       } else {
@@ -205,7 +204,6 @@ function Networks() {
       setLoading(false);
     }
   };
-  
 
   useEffect(() => {
     loadNetworks();
@@ -257,7 +255,6 @@ function Networks() {
       console.error("Delete failed:", e);
     }
   };
-  
 
   const deleteUser = async (id) => {
     if (!window.confirm("Delete this user?")) return;
@@ -268,7 +265,6 @@ function Networks() {
       console.error("Delete failed:", e);
     }
   };
-  
 
   return (
     <>
@@ -341,9 +337,7 @@ function Networks() {
                   key={network.id}
                   className="grid grid-cols-7 gap-4 items-center bg-white p-4 rounded-lg hover:bg-gray-50 transition-colors"
                 >
-                  <span className="text-gray-600 font-medium">
-                    {index + 1}
-                  </span>
+                  <span className="text-gray-600 font-medium">{index + 1}</span>
                   <span className="text-gray-600 font-medium">
                     {network.registeredId}
                   </span>
@@ -459,13 +453,13 @@ function Networks() {
         >
           {/* Add User */}
           <button
-            title="Add User"
+            title="Add Admin"
             className="relative flex items-center justify-center w-14 h-14 bg-white rounded-full text-teal-500 shadow-lg hover:bg-gray-100 hover:scale-105 transition-all"
             onClick={() => setIsAddUserModalOpen(true)}
           >
             <UserCircleIcon className="w-7 h-7" />
             <span className="absolute right-full mr-4 px-3 py-1.5 bg-black text-white text-xs font-semibold rounded-md whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity delay-150 pointer-events-none">
-              Add User
+              Add Admin
             </span>
           </button>
 
@@ -543,7 +537,7 @@ function Networks() {
       <Modal
         isOpen={isAddUserModalOpen}
         onClose={() => setIsAddUserModalOpen(false)}
-        title="Add New User"
+        title="Add New Admin"
         size="2xl"
       >
         <AddUserForm
