@@ -6,28 +6,35 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
 
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
 import com.kosh.backend.model.Network;
 import com.kosh.backend.repository.NetworkRepository;
-import com.kosh.backend.util.SessionUtil;
-import jakarta.servlet.http.HttpSession;
 
 @RestController
 @RequestMapping("/api/networks")
 public class NetworkController {
 
     private final NetworkRepository repo;
+
+    // Define upload directory (make sure this directory exists)
     private static final String UPLOAD_DIR = "uploads/network-documents/";
 
     public NetworkController(NetworkRepository repo) {
         this.repo = repo;
+        // Create upload directory if it doesn't exist
         try {
             Files.createDirectories(Paths.get(UPLOAD_DIR));
             System.out.println("Upload directory created/verified: " + UPLOAD_DIR);
@@ -50,18 +57,14 @@ public class NetworkController {
             @RequestParam("userCount") String userCount,
             @RequestParam("adminLimit") String adminLimit,
             @RequestParam("userLimit") String userLimit,
-            @RequestParam(value = "document", required = false) MultipartFile document,
-            HttpSession session) {
-
-        // Only superadmin can create networks
-        if (!SessionUtil.isSuperadmin(session)) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                    .body(Map.of("error", "Only superadmin can create networks"));
-        }
+            @RequestParam(value = "document", required = false) MultipartFile document) {
 
         try {
-            System.out.println("POST /api/networks hit by: " + SessionUtil.getUserEmail(session));
+            System.out.println("POST /api/networks hit!");
             System.out.println("Creating network: " + name);
+            System.out.println("Package: " + packageType + " - Price: रु" + packagePrice);
+            System.out.println("Staff Count: " + staffCount + ", User Count: " + userCount);
+            System.out.println("Received Admin Limit: " + adminLimit + ", User Limit: " + userLimit);
 
             Network network = new Network();
             network.setRegisteredId(registeredId);
@@ -71,47 +74,69 @@ public class NetworkController {
             network.setPhone(phone);
             network.setPackageType(packageType);
 
+            // Parse packagePrice safely
             try {
                 network.setPackagePrice(Double.parseDouble(packagePrice));
             } catch (NumberFormatException e) {
-                return ResponseEntity.badRequest().body(Map.of("error", "Invalid package price format"));
+                return ResponseEntity.badRequest().body("Invalid package price format");
             }
 
+            // Parse staffCount and userCount safely
             try {
                 network.setStaffCount(Integer.parseInt(staffCount));
                 network.setUserCount(Integer.parseInt(userCount));
             } catch (NumberFormatException e) {
-                return ResponseEntity.badRequest().body(Map.of("error", "Invalid staff or user count format"));
+                return ResponseEntity.badRequest().body("Invalid staff or user count format");
             }
 
+            // ⭐ Parse and SET adminLimit and userLimit safely
             try {
                 int parsedAdminLimit = Integer.parseInt(adminLimit);
                 int parsedUserLimit = Integer.parseInt(userLimit);
                 network.setAdminLimit(parsedAdminLimit);
                 network.setUserLimit(parsedUserLimit);
+                System.out.println("Limits set - Admin: " + parsedAdminLimit + ", User: " + parsedUserLimit);
             } catch (NumberFormatException e) {
-                return ResponseEntity.badRequest().body(Map.of("error", "Invalid admin or user limit format"));
+                System.err.println("Error parsing limits: " + e.getMessage());
+                return ResponseEntity.badRequest().body("Invalid admin or user limit format");
             }
 
+            // Handle document upload
             if (document != null && !document.isEmpty()) {
                 String originalFilename = document.getOriginalFilename();
+                System.out.println("Document received: " + originalFilename);
+
+                // Validate file
                 if (originalFilename == null || originalFilename.isEmpty()) {
-                    return ResponseEntity.badRequest().body(Map.of("error", "Invalid file name"));
+                    return ResponseEntity.badRequest().body("Invalid file name");
                 }
 
+                // Get file extension
                 String fileExtension = "";
                 int dotIndex = originalFilename.lastIndexOf(".");
                 if (dotIndex > 0) {
                     fileExtension = originalFilename.substring(dotIndex);
                 }
 
+                // Generate unique filename
                 String uniqueFilename = UUID.randomUUID().toString() + fileExtension;
+
+                // Save file to disk
                 Path uploadPath = Paths.get(UPLOAD_DIR + uniqueFilename);
                 Files.copy(document.getInputStream(), uploadPath, StandardCopyOption.REPLACE_EXISTING);
 
                 network.setDocumentPath(uniqueFilename);
                 System.out.println("Document uploaded successfully: " + uniqueFilename);
+            } else {
+                System.out.println("No document uploaded");
             }
+
+            // Verify all values before saving
+            System.out.println("About to save network with:");
+            System.out.println("  - Admin Limit: " + network.getAdminLimit());
+            System.out.println("  - User Limit: " + network.getUserLimit());
+            System.out.println("  - Staff Count: " + network.getStaffCount());
+            System.out.println("  - User Count: " + network.getUserCount());
 
             Network saved = repo.save(network);
             System.out.println("Network saved with ID: " + saved.getId());
@@ -120,32 +145,24 @@ public class NetworkController {
 
         } catch (IOException e) {
             System.err.println("Error saving file: " + e.getMessage());
-            return ResponseEntity.badRequest().body(Map.of("error", "Error uploading document: " + e.getMessage()));
+            e.printStackTrace();
+            return ResponseEntity.badRequest().body("Error uploading document: " + e.getMessage());
         } catch (Exception e) {
             System.err.println("Error creating network: " + e.getMessage());
-            return ResponseEntity.badRequest().body(Map.of("error", "Error creating network: " + e.getMessage()));
+            e.printStackTrace();
+            return ResponseEntity.badRequest().body("Error creating network: " + e.getMessage());
         }
     }
 
     @GetMapping
-    public ResponseEntity<?> getAllNetworks(HttpSession session) {
-        // Only superadmin can view all networks
-        if (!SessionUtil.isSuperadmin(session)) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                    .body(Map.of("error", "Only superadmin can view networks"));
-        }
-
-        System.out.println("GET /api/networks by: " + SessionUtil.getUserEmail(session));
-        return ResponseEntity.ok(repo.findAll());
+    public List<Network> getAllNetworks() {
+        System.out.println("GET /api/networks hit!");
+        return repo.findAll();
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<?> getNetworkById(@PathVariable Long id, HttpSession session) {
-        if (!SessionUtil.isSuperadmin(session)) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                    .body(Map.of("error", "Only superadmin can view network details"));
-        }
-
+    public ResponseEntity<?> getNetworkById(@PathVariable Long id) {
+        System.out.println("GET /api/networks/" + id + " hit!");
         return repo.findById(id)
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
@@ -154,13 +171,9 @@ public class NetworkController {
     @PutMapping("/{id}")
     public ResponseEntity<?> updateNetwork(
             @PathVariable Long id,
-            @RequestBody Network updatedNetwork,
-            HttpSession session) {
+            @RequestBody Network updatedNetwork) {
 
-        if (!SessionUtil.isSuperadmin(session)) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                    .body(Map.of("error", "Only superadmin can update networks"));
-        }
+        System.out.println("PUT /api/networks/" + id + " hit!");
 
         return repo.findById(id)
                 .map(existing -> {
@@ -175,37 +188,48 @@ public class NetworkController {
                     existing.setUserCount(updatedNetwork.getUserCount());
                     existing.setAdminLimit(updatedNetwork.getAdminLimit());
                     existing.setUserLimit(updatedNetwork.getUserLimit());
+                    // Note: Document is not updated here (would need separate endpoint for that)
 
                     Network saved = repo.save(existing);
                     System.out.println("Network updated with ID: " + saved.getId());
                     return ResponseEntity.ok(saved);
                 })
-                .orElseGet(() -> ResponseEntity.notFound().build());
+                .orElseGet(() -> {
+                    System.out.println("Network not found with ID: " + id);
+                    return ResponseEntity.notFound().build();
+                });
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<?> deleteNetwork(@PathVariable Long id, HttpSession session) {
-        if (!SessionUtil.isSuperadmin(session)) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                    .body(Map.of("error", "Only superadmin can delete networks"));
-        }
+    public ResponseEntity<?> deleteNetwork(@PathVariable Long id) {
+        System.out.println("DELETE /api/networks/" + id + " hit!");
 
         try {
+            // Find the network first to get document path
             Network network = repo.findById(id).orElse(null);
 
             if (network == null) {
+                System.out.println("Network not found with ID: " + id);
                 return ResponseEntity.notFound().build();
             }
 
+            // Delete associated document file if it exists
             if (network.getDocumentPath() != null && !network.getDocumentPath().isEmpty()) {
                 try {
                     Path filePath = Paths.get(UPLOAD_DIR + network.getDocumentPath());
-                    Files.deleteIfExists(filePath);
+                    boolean deleted = Files.deleteIfExists(filePath);
+                    if (deleted) {
+                        System.out.println("Document file deleted: " + network.getDocumentPath());
+                    } else {
+                        System.out.println("Document file not found: " + network.getDocumentPath());
+                    }
                 } catch (IOException e) {
                     System.err.println("Error deleting document file: " + e.getMessage());
+                    e.printStackTrace();
                 }
             }
 
+            // Delete the network from database
             repo.deleteById(id);
             System.out.println("Network deleted with ID: " + id);
 
@@ -213,7 +237,8 @@ public class NetworkController {
 
         } catch (Exception e) {
             System.err.println("Error deleting network: " + e.getMessage());
-            return ResponseEntity.badRequest().body(Map.of("error", "Error deleting network: " + e.getMessage()));
+            e.printStackTrace();
+            return ResponseEntity.badRequest().body("Error deleting network: " + e.getMessage());
         }
     }
 }

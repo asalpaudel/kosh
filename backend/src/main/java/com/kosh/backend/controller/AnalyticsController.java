@@ -1,11 +1,7 @@
 package com.kosh.backend.controller;
 
 import com.kosh.backend.repository.NetworkRepository;
-import com.kosh.backend.util.SessionUtil;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-import jakarta.servlet.http.HttpSession;
 
 import java.util.*;
 
@@ -20,14 +16,9 @@ public class AnalyticsController {
         this.networkRepository = networkRepository;
     }
 
+    // Monthly revenue per type
     @GetMapping("/monthly-revenue")
-    public ResponseEntity<?> getMonthlyRevenue(HttpSession session) {
-        // Only superadmin can view analytics
-        if (!SessionUtil.isSuperadmin(session)) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                    .body(Map.of("error", "Only superadmin can view analytics"));
-        }
-
+    public List<Map<String, Object>> getMonthlyRevenue() {
         List<Object[]> result = networkRepository.getMonthlyRevenueByType();
         List<Map<String, Object>> response = new ArrayList<>();
 
@@ -40,19 +31,15 @@ public class AnalyticsController {
             response.add(map);
         }
 
-        return ResponseEntity.ok(response);
+        return response;
     }
 
+    // Total revenue by type (for percentages)
     @GetMapping("/total-revenue")
-    public ResponseEntity<?> getTotalRevenue(HttpSession session) {
-        // Only superadmin can view analytics
-        if (!SessionUtil.isSuperadmin(session)) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                    .body(Map.of("error", "Only superadmin can view analytics"));
-        }
-
+    public Map<String, Double> getTotalRevenue() {
         List<Object[]> result = networkRepository.getTotalRevenueByType();
         Map<String, Double> totals = new HashMap<>();
+        // Initialize all keys to 0
         totals.put("basic", 0.0);
         totals.put("premium", 0.0);
         totals.put("custom", 0.0);
@@ -64,7 +51,7 @@ public class AnalyticsController {
                 totals.put(key, value.doubleValue());
             }
         }
-        
-        return ResponseEntity.ok(totals);
+        return totals;
     }
+
 }

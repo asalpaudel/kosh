@@ -4,7 +4,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -22,9 +21,6 @@ import com.kosh.backend.model.Network;
 import com.kosh.backend.model.User;
 import com.kosh.backend.repository.NetworkRepository;
 import com.kosh.backend.repository.UserRepository;
-import com.kosh.backend.util.SessionUtil;
-
-import jakarta.servlet.http.HttpSession;
 
 @RestController
 @RequestMapping("/api/users")
@@ -136,26 +132,12 @@ public class UserController {
     // REST OF ENDPOINTS
     // ---------------------------------------------------------
 
-@GetMapping("/pending")
-public ResponseEntity<?> getPendingUsers(
-        @RequestParam String sahakari,
-        HttpSession session) {
-    
-    if (!SessionUtil.isAdmin(session)) {
-        return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                .body(Map.of("error", "Only admin can view pending users"));
+    @GetMapping("/pending")
+    public List<User> getPendingUsers(@RequestParam String sahakari) {
+        return repo.findAll().stream()
+                .filter(u -> "Pending".equals(u.getStatus()) && sahakari.equals(u.getSahakari()))
+                .collect(Collectors.toList());
     }
-    
-    // Verify admin can only see their own sahakari's users
-    Long adminSahakariId = SessionUtil.getSahakariId(session);
-    // Add verification logic
-    
-    List<User> users = repo.findAll().stream()
-            .filter(u -> "Pending".equals(u.getStatus()) && sahakari.equals(u.getSahakari()))
-            .collect(Collectors.toList());
-    
-    return ResponseEntity.ok(users);
-}
 
     @GetMapping("/{id}")
     public User getUserById(@PathVariable int id) {
