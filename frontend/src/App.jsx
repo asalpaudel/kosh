@@ -42,7 +42,8 @@ function App() {
             <Route path="dashboard" element={<Dashboard />} />
             <Route path="report" element={<Report />} />
             <Route path="statement" element={<Statement />} />
-            <Route path="settings" element={<Settings />} /> {/* <-- ADDED */}
+            <Route path="settings" element={<Settings />} /> 
+            <Route path="packages" element={<UserPackages />} />
           </Route>
 
           {/* Admin Routes */}

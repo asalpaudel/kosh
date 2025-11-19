@@ -6,6 +6,27 @@ import GlobalSearch from './GlobalSearch';
 function Header({ pageName }) {
   const navigate = useNavigate();
   const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [userName, setUserName] = useState(""); 
+
+  useEffect(() => {
+    const fetchSessionUser = async () => {
+      try {
+        const response = await fetch("http://localhost:8080/api/session", {
+          method: "GET",
+          credentials: "include",
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          setUserName(data.userName || "Admin");
+        }
+      } catch (error) {
+        console.error("Failed to load session user:", error);
+      }
+    };
+
+    fetchSessionUser();
+  }, []);
 
   useEffect(() => {
     const handleKeyDown = (e) => {
@@ -28,6 +49,10 @@ function Header({ pageName }) {
         <h1 className="text-white font-semibold text-2xl tracking-wide">{pageName}</h1>
 
         <div className="flex items-center space-x-5">
+          <span className="text-teal-400 font-medium text-sm hidden sm:block">
+             Hello, {userName || "..."}
+          </span>
+
           <button 
             onClick={() => setIsSearchOpen(true)} 
             className="group flex items-center gap-2 focus:outline-none"

@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from "react";
-// --- NO LINK IMPORT NEEDED ---
 import {
   DocumentTextIcon,
   CurrencyDollarIcon,
@@ -7,12 +6,10 @@ import {
   EyeIcon,
 } from "../../component/icons.jsx";
 import Modal from "../../component/superadmin/Modal.jsx";
-// --- IMPORT THE NEW FORM COMPONENT ---
 import ApplyPackageForm from "../../component/user/ApplyPackageForm.jsx";
 
 const apiBase = "http://localhost:8080/api";
 
-// A simplified action component for users (View only)
 const PackageActions = ({ pkg, onView }) => (
   <div className="flex items-center justify-end space-x-2">
     <button
@@ -25,7 +22,6 @@ const PackageActions = ({ pkg, onView }) => (
   </div>
 );
 
-// --- MODIFICATION IS HERE: ADD onApplyClick PROP ---
 const ViewPackageModal = ({
   isOpen,
   onClose,
@@ -35,7 +31,6 @@ const ViewPackageModal = ({
 }) => {
   if (!packageData) return null;
 
-  // This function decides the text for the "Apply" button
   const getApplyText = () => {
     switch (packageType) {
       case "fixed-deposit":
@@ -50,7 +45,6 @@ const ViewPackageModal = ({
   };
 
   const renderContent = () => {
-    // ... (This switch statement is UNCHANGED) ...
     switch (packageType) {
       case "fixed-deposit":
         return (
@@ -189,22 +183,19 @@ const ViewPackageModal = ({
     >
       {renderContent()}
 
-      {/* --- THIS SECTION IS MODIFIED --- */}
       <div className="mt-6 pt-6 border-t border-gray-200 flex justify-end">
         <button
           type="button"
-          onClick={onApplyClick} // Use the prop here
+          onClick={onApplyClick} 
           className="bg-teal-500 text-white font-bold py-3 px-8 rounded-full hover:bg-teal-600 transition-colors text-base"
         >
           {getApplyText()}
         </button>
       </div>
-      {/* --- END OF MODIFICATION --- */}
     </Modal>
   );
 };
 
-// Main component
 function UserPackages() {
   const [selectedNetworkId, setSelectedNetworkId] = useState(null);
   const [fixedDeposits, setFixedDeposits] = useState([]);
@@ -213,17 +204,13 @@ function UserPackages() {
   const [loading, setLoading] = useState(false);
   const [sessionLoading, setSessionLoading] = useState(true);
 
-  // View modal state
   const [viewPackageModalOpen, setViewPackageModalOpen] = useState(false);
   const [currentPackageToView, setCurrentPackageToView] = useState(null);
   const [currentPackageType, setCurrentPackageType] = useState(null);
 
-  // --- ADD STATE FOR THE APPLY MODAL ---
   const [isApplyModalOpen, setIsApplyModalOpen] = useState(false);
   const [currentPackageToApply, setCurrentPackageToApply] = useState(null);
-  // (we can reuse currentPackageType for the apply modal)
 
-  // ... (useEffect for fetchSession is UNCHANGED) ...
 
   useEffect(() => {
     const fetchSession = async () => {
@@ -236,14 +223,12 @@ function UserPackages() {
         if (response.ok) {
           const data = await response.json();
 
-          // If session contains error → redirect
           if (data.error) {
             console.error("Session error:", data.error);
             window.location.href = "/";
             return;
           }
 
-          // User must have sahakariId unless superadmin
           if (!data.sahakariId && data.userRole !== "superadmin") {
             console.error("No sahakariId found in session");
             window.location.href = "/";
@@ -269,7 +254,6 @@ function UserPackages() {
     fetchSession();
   }, []);
 
-  // ... (useEffect for fetchData is UNCHANGED) ...
   useEffect(() => {
     if (selectedNetworkId) {
       fetchData();
@@ -302,28 +286,21 @@ function UserPackages() {
     }
   };
 
-  // View handler (UNMODIFIED)
   const handleViewPackage = (pkg, type) => {
     setCurrentPackageToView(pkg);
     setCurrentPackageType(type);
     setViewPackageModalOpen(true);
   };
 
-  // --- ADD HANDLER FOR APPLY BUTTON CLICK ---
   const handleApplyClick = () => {
-    // 1. Set data for the new modal
     setCurrentPackageToApply(currentPackageToView);
-    // (currentPackageType is already set)
 
-    // 2. Close the current (view) modal
     setViewPackageModalOpen(false);
     setCurrentPackageToView(null);
 
-    // 3. Open the new (apply) modal
     setIsApplyModalOpen(true);
   };
 
-  // ... (sessionLoading and selectedNetworkId checks are UNCHANGED) ...
   if (sessionLoading) {
     return (
       <div className="bg-white p-6 min-h-[calc(100vh-8.5rem)] rounded-lg shadow-md flex items-center justify-center">
@@ -349,16 +326,13 @@ function UserPackages() {
           <p className="text-center text-gray-500">Loading packages...</p>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {/* Fixed Deposits */}
             <div className="border border-gray-200 rounded-lg p-4 shadow-lg">
-              {/* ... (Header is unchanged) ... */}
               <h3 className="text-lg font-semibold text-gray-700 mb-3 flex items-center gap-2">
                 <DocumentTextIcon className="w-5 h-5 text-teal-500" />
                 Fixed Deposits
               </h3>
               <div className="border-t border-gray-200 mt-2">
                 <table className="w-full mt-3 text-left">
-                  {/* ... (Table head is unchanged) ... */}
                   <thead>
                     <tr className="text-gray-600 text-sm">
                       <th className="py-2 px-2 font-medium">Package Name</th>
@@ -400,16 +374,13 @@ function UserPackages() {
               </div>
             </div>
 
-            {/* Saving Accounts */}
             <div className="border border-gray-200 rounded-lg p-4 shadow-lg">
-              {/* ... (Header is unchanged) ... */}
               <h3 className="text-lg font-semibold text-gray-700 mb-3 flex items-center gap-2">
                 <CurrencyDollarIcon className="w-5 h-5 text-teal-500" />
                 Saving Accounts
               </h3>
               <div className="border-t border-gray-200 mt-2">
                 <table className="w-full mt-3 text-left">
-                  {/* ... (Table head is unchanged) ... */}
                   <thead>
                     <tr className="text-gray-600 text-sm">
                       <th className="py-2 px-2 font-medium">Package Name</th>
@@ -451,16 +422,13 @@ function UserPackages() {
               </div>
             </div>
 
-            {/* Loan Packages */}
             <div className="border border-gray-200 rounded-lg p-4 shadow-lg">
-              {/* ... (Header is unchanged) ... */}
               <h3 className="text-lg font-semibold text-gray-700 mb-3 flex items-center gap-2">
                 <BanknotesIcon className="w-5 h-5 text-teal-500" />
                 Loan Packages
               </h3>
               <div className="border-t border-gray-200 mt-2">
                 <table className="w-full mt-3 text-left">
-                  {/* ... (Table head is unchanged) ... */}
                   <thead>
                     <tr className="text-gray-600 text-sm">
                       <th className="py-2 px-2 font-medium">Package Name</th>
@@ -505,7 +473,6 @@ function UserPackages() {
         )}
       </div>
 
-      {/* View Modal */}
       <ViewPackageModal
         isOpen={viewPackageModalOpen}
         onClose={() => {
@@ -515,10 +482,9 @@ function UserPackages() {
         }}
         packageData={currentPackageToView}
         packageType={currentPackageType}
-        onApplyClick={handleApplyClick} // --- PASS THE HANDLER HERE ---
+        onApplyClick={handleApplyClick} 
       />
 
-      {/* --- ADD THE NEW APPLY MODAL --- */}
       <Modal
         isOpen={isApplyModalOpen}
         onClose={() => {
@@ -526,10 +492,9 @@ function UserPackages() {
           setCurrentPackageToApply(null);
           setCurrentPackageType(null);
         }}
-        title="Package Application Form" // Title for the modal window
-        size="2xl" // Use "2xl" for a wider form
+        title="Package Application Form" 
+        size="2xl" 
       >
-        {/* Render the form component only when the modal is open */}
         {currentPackageToApply && (
           <ApplyPackageForm
             packageData={currentPackageToApply}

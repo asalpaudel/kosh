@@ -1,5 +1,5 @@
 import React from "react";
-import { NavLink } from "react-router-dom";
+import { NavLink, useNavigate } from "react-router-dom";
 import {
   LayoutDashboardIcon,
   LogOutIcon,
@@ -10,9 +10,26 @@ import {
   PiggyBankIcon, 
 } from "../icons.jsx"; 
 
+const API_BASE = "http://localhost:8080/api";
+
 function Sidebar() {
+  const navigate = useNavigate();
   const navLinkClass = ({ isActive }) =>
     `p-1.5 rounded-lg ${isActive ? "bg-gray-700" : ""}`;
+
+  const handleLogout = async () => {
+    try {
+      await fetch(`${API_BASE}/auth/logout`, {
+        method: "POST",
+        credentials: "include",
+      });
+    } catch (error) {
+      console.error("Logout API call failed:", error);
+    }
+    localStorage.clear();
+    sessionStorage.clear();
+    navigate("/");
+  };
 
   return (
     <div className="w-14 bg-black flex flex-col items-center justify-between py-6 h-screen sticky top-0">
@@ -37,12 +54,15 @@ function Sidebar() {
         <NavLink to="/admin/history" className={navLinkClass}>
           <ActivityIcon className="text-gray-300 h-7 w-7 transition-all duration-200 hover:scale-110 hover:text-white" />
         </NavLink>
-        
       </div>
 
-      <NavLink to="/" className={navLinkClass}>
-        <LogOutIcon className="text-gray-300 h-7 w-7 transition-all duration-200 hover:scale-110 hover:text-white" />
-      </NavLink>
+      <button 
+        onClick={handleLogout} 
+        className="p-1.5 rounded-lg hover:bg-gray-800 transition-colors"
+        title="Logout"
+      >
+        <LogOutIcon className="text-red-400 h-7 w-7 transition-all duration-200 hover:scale-110 hover:text-red-500" />
+      </button>
     </div>
   );
 }
