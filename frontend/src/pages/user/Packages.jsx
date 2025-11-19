@@ -225,8 +225,49 @@ function UserPackages() {
 
   // ... (useEffect for fetchSession is UNCHANGED) ...
 
+  useEffect(() => {
+    const fetchSession = async () => {
+      try {
+        const response = await fetch(`${apiBase}/session`, {
+          method: "GET",
+          credentials: "include",
+        });
 
+        if (response.ok) {
+          const data = await response.json();
 
+          // If session contains error → redirect
+          if (data.error) {
+            console.error("Session error:", data.error);
+            window.location.href = "/";
+            return;
+          }
+
+          // User must have sahakariId unless superadmin
+          if (!data.sahakariId && data.userRole !== "superadmin") {
+            console.error("No sahakariId found in session");
+            window.location.href = "/";
+            return;
+          }
+
+          setSelectedNetworkId(data.sahakariId);
+        } else if (response.status === 401) {
+          console.error("Unauthorized - no session");
+          window.location.href = "/";
+        } else {
+          console.error("Failed to fetch session data");
+          window.location.href = "/";
+        }
+      } catch (error) {
+        console.error("Error fetching session:", error);
+        window.location.href = "/";
+      } finally {
+        setSessionLoading(false);
+      }
+    };
+
+    fetchSession();
+  }, []);
 
   // ... (useEffect for fetchData is UNCHANGED) ...
   useEffect(() => {
@@ -321,9 +362,7 @@ function UserPackages() {
                   <thead>
                     <tr className="text-gray-600 text-sm">
                       <th className="py-2 px-2 font-medium">Package Name</th>
-                      <th className="py-2 px-2 text-right font-medium">
-                        View
-                      </th>
+                      <th className="py-2 px-2 text-right font-medium">View</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -374,9 +413,7 @@ function UserPackages() {
                   <thead>
                     <tr className="text-gray-600 text-sm">
                       <th className="py-2 px-2 font-medium">Package Name</th>
-                      <th className="py-2 px-2 text-right font-medium">
-                        View
-                      </th>
+                      <th className="py-2 px-2 text-right font-medium">View</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -427,9 +464,7 @@ function UserPackages() {
                   <thead>
                     <tr className="text-gray-600 text-sm">
                       <th className="py-2 px-2 font-medium">Package Name</th>
-                      <th className="py-2 px-2 text-right font-medium">
-                        View
-                      </th>
+                      <th className="py-2 px-2 text-right font-medium">View</th>
                     </tr>
                   </thead>
                   <tbody>
