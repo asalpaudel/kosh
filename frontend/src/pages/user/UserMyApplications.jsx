@@ -286,27 +286,7 @@ function UserMyApplications() {
   return (
     <div className="bg-white p-6 min-h-[calc(100vh-8.5rem)] rounded-lg shadow-md">
       <div className="mb-6">
-        <h2 className="text-2xl font-bold text-gray-800 mb-4">My Applications</h2>
-        
-        {/* Stats Overview */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-          <div className="bg-gradient-to-br from-blue-50 to-blue-100 p-4 rounded-lg border border-blue-200">
-            <p className="text-sm text-blue-600 font-semibold">Total</p>
-            <p className="text-3xl font-bold text-blue-700">{stats.total}</p>
-          </div>
-          <div className="bg-gradient-to-br from-yellow-50 to-yellow-100 p-4 rounded-lg border border-yellow-200">
-            <p className="text-sm text-yellow-600 font-semibold">Pending</p>
-            <p className="text-3xl font-bold text-yellow-700">{stats.pending}</p>
-          </div>
-          <div className="bg-gradient-to-br from-green-50 to-green-100 p-4 rounded-lg border border-green-200">
-            <p className="text-sm text-green-600 font-semibold">Approved</p>
-            <p className="text-3xl font-bold text-green-700">{stats.approved}</p>
-          </div>
-          <div className="bg-gradient-to-br from-red-50 to-red-100 p-4 rounded-lg border border-red-200">
-            <p className="text-sm text-red-600 font-semibold">Rejected</p>
-            <p className="text-3xl font-bold text-red-700">{stats.rejected}</p>
-          </div>
-        </div>
+        {/* <h2 className="text-2xl font-bold text-gray-800 mb-4">My Applications</h2> */}
 
         {/* Filter Buttons */}
         <div className="flex gap-2 flex-wrap">
@@ -324,7 +304,7 @@ function UserMyApplications() {
             onClick={() => setFilterStatus("PENDING")}
             className={`px-4 py-2 rounded-full font-semibold text-sm transition-colors ${
               filterStatus === "PENDING"
-                ? "bg-yellow-500 text-white"
+                ? "bg-teal-500 text-white"
                 : "bg-gray-200 text-gray-700 hover:bg-gray-300"
             }`}
           >
@@ -334,7 +314,7 @@ function UserMyApplications() {
             onClick={() => setFilterStatus("APPROVED")}
             className={`px-4 py-2 rounded-full font-semibold text-sm transition-colors ${
               filterStatus === "APPROVED"
-                ? "bg-green-500 text-white"
+                ? "bg-teal-500 text-white"
                 : "bg-gray-200 text-gray-700 hover:bg-gray-300"
             }`}
           >
@@ -344,7 +324,7 @@ function UserMyApplications() {
             onClick={() => setFilterStatus("REJECTED")}
             className={`px-4 py-2 rounded-full font-semibold text-sm transition-colors ${
               filterStatus === "REJECTED"
-                ? "bg-red-500 text-white"
+                ? "bg-teal-500 text-white"
                 : "bg-gray-200 text-gray-700 hover:bg-gray-300"
             }`}
           >
