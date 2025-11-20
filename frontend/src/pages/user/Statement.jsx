@@ -5,7 +5,6 @@ import {
   CalendarIcon, 
   DocumentIcon, 
   Logo, 
-  CheckIcon, 
   XIcon 
 } from '../../component/icons';
 import Modal from '../../component/superadmin/Modal';
@@ -15,6 +14,7 @@ import html2canvas from 'html2canvas-pro';
 
 const API_BASE = "http://localhost:8080/api";
 
+// --- VOUCHER COMPONENT ---
 const UserTransactionVoucher = ({ transaction, onClose }) => {
   const voucherRef = useRef(null);
   
@@ -44,6 +44,7 @@ const UserTransactionVoucher = ({ transaction, onClose }) => {
   };
 
   const handleReportIssue = () => {
+    // Logic to report issue
     const reason = window.prompt("Please describe the issue with this transaction:");
     if (reason) {
       alert("Issue reported successfully! Our support team will review it shortly.");
@@ -63,7 +64,7 @@ const UserTransactionVoucher = ({ transaction, onClose }) => {
              <Logo className="w-12 h-12 text-teal-600" />
              <div>
                <h2 className="text-xl font-bold uppercase tracking-wide">Sahakari Name</h2>
-               <p className="text-xs text-gray-500">Kathmandu, Nepal | Pan No: 123456789</p>
+               <p className="text-xs text-gray-500">Kathmandu, Nepal</p>
              </div>
           </div>
           <div className="text-right">
@@ -112,9 +113,10 @@ const UserTransactionVoucher = ({ transaction, onClose }) => {
       </div>
 
       <div className="flex flex-wrap justify-between items-center bg-gray-50 p-4 rounded-xl border border-gray-200 gap-4">
+        {/* REPORT ISSUE BUTTON */}
         <button 
           onClick={handleReportIssue}
-          className="flex items-center gap-2 text-red-600 hover:text-red-800 text-sm font-bold"
+          className="flex items-center gap-2 text-red-600 hover:text-red-800 text-sm font-bold border border-red-200 bg-red-50 px-4 py-2 rounded-full hover:bg-red-100 transition-colors"
         >
           <XIcon className="w-4 h-4" /> Report an Issue
         </button>
@@ -137,19 +139,24 @@ function Statement() {
   const [loading, setLoading] = useState(true);
   const [transactions, setTransactions] = useState([]);
   
+  // Filter States
   const [searchQuery, setSearchQuery] = useState("");
   const [dateFilter, setDateFilter] = useState("all");
   const [fromDate, setFromDate] = useState("");
   const [toDate, setToDate] = useState("");
 
+  // User Info
   const [currentUser, setCurrentUser] = useState(null);
   
+  // Modal State
   const [selectedTransaction, setSelectedTransaction] = useState(null);
 
+  // 1. Fetch Session & Transactions
   useEffect(() => {
     const init = async () => {
       try {
-        const sessionRes = await fetch(`${apiBase}/session`, {
+        // FIX: Use API_BASE variable here
+        const sessionRes = await fetch(`${API_BASE}/session`, {
           method: "GET",
           credentials: "include",
         });
@@ -165,26 +172,35 @@ function Statement() {
 
         setCurrentUser(sessionData);
 
-        const txRes = await fetch(`${apiBase}/transactions`, {
+        // FIX: Use API_BASE variable here
+        const txRes = await fetch(`${API_BASE}/transactions`, {
           credentials: "include"
         });
         
         if (txRes.ok) {
           const allTx = await txRes.json();
           
+          // Filter by User
           const myTx = allTx.filter(t => String(t.userId) === String(userId));
 
+          // Sort Oldest -> Newest for Balance Calculation
           myTx.sort((a, b) => new Date(a.date) - new Date(b.date));
 
           let runningBalance = 0;
           const processedTx = myTx.map(t => {
-            const cleanAmount = parseFloat(t.amount.replace(/[^0-9.-]+/g,""));
+            // Clean amount string
+            const amountStr = t.amount || t.amountValue || "0";
+            const cleanAmount = parseFloat(String(amountStr).replace(/[^0-9.-]+/g,""));
+            
             let isCredit = true;
             
-            if (t.type === "Withdrawal") {
+            // Logic: Withdrawal or Debit reduces balance
+            if (t.type === "Withdrawal" || t.type?.includes("Debit")) {
               isCredit = false;
               runningBalance -= cleanAmount;
             } else {
+              // Deposit, Interest, Loan Payment (incoming to pool) increases balance (from user perspective this might vary, but assuming user balance logic)
+              // Usually: Deposit (+), Interest (+), Withdrawal (-)
               runningBalance += cleanAmount;
             }
 
@@ -196,6 +212,7 @@ function Statement() {
             };
           });
 
+          // Reverse to show newest first
           setTransactions(processedTx.reverse());
         }
 
@@ -209,6 +226,7 @@ function Statement() {
     init();
   }, [navigate]);
 
+  // 2. Handle Date Filter Logic
   const handleFilterClick = (filter) => {
     setDateFilter(filter);
     if (filter !== 'custom') {
@@ -223,11 +241,13 @@ function Statement() {
     setDateFilter('custom');
   };
 
+  // 3. Computed Filtered Transactions
   const filteredTransactions = useMemo(() => {
     let data = transactions;
     const today = new Date();
     const todayStr = today.toISOString().split('T')[0];
 
+    // Date Filters
     if (dateFilter === "today") {
        data = data.filter(t => t.date && t.date.startsWith(todayStr));
     } else if (dateFilter === "week") {
@@ -244,19 +264,21 @@ function Statement() {
        });
     }
 
+    // Search Query
     if (searchQuery) {
       const lowerQuery = searchQuery.toLowerCase();
       data = data.filter(t => 
         t.type.toLowerCase().includes(lowerQuery) ||
         (t.date && t.date.includes(lowerQuery)) ||
         (t.voucherId && t.voucherId.toLowerCase().includes(lowerQuery)) ||
-        t.amount.includes(lowerQuery)
+        String(t.amount).includes(lowerQuery)
       );
     }
 
     return data;
   }, [transactions, searchQuery, dateFilter, fromDate, toDate]);
 
+  // 4. Export List to PDF
   const handleExportList = () => {
     const doc = new jsPDF();
     doc.text(`Account Statement: ${currentUser?.userName || 'User'}`, 14, 20);
@@ -298,8 +320,10 @@ function Statement() {
   return (
     <div className="bg-white p-6 min-h-[calc(100vh-8.5rem)]">
       
+      {/* Filter Bar */}
       <div className="flex flex-col xl:flex-row items-start xl:items-center justify-between mb-8 gap-4">
         
+        {/* Search Input */}
         <div className="relative flex-grow-0 w-full xl:w-80">
           <span className="absolute inset-y-0 left-0 flex items-center pl-4">
             <SearchIcon className="h-5 w-5 text-gray-400" />
@@ -313,6 +337,7 @@ function Statement() {
           />
         </div>
 
+        {/* Filters & Export */}
         <div className="flex flex-wrap items-center gap-4 w-full xl:w-auto justify-end">
           
           <div className="flex items-center gap-2 bg-gray-100 p-1.5 rounded-full overflow-x-auto">
@@ -362,14 +387,15 @@ function Statement() {
         </div>
       </div>
 
+      {/* Transactions Table (Left Aligned) */}
       <div className="w-full overflow-x-auto rounded-lg border border-gray-100">
         <table className="min-w-full text-left">
           <thead className="bg-gray-50 text-gray-500">
             <tr>
-              <th className="py-4 px-4 text-xs font-bold uppercase tracking-wider">S.N</th>
-              <th className="py-4 px-4 text-xs font-bold uppercase tracking-wider">Date</th>
-              <th className="py-4 px-4 text-xs font-bold uppercase tracking-wider">Voucher</th>
-              <th className="py-4 px-4 text-xs font-bold uppercase tracking-wider">Type / Description</th>
+              <th className="py-4 px-4 text-xs font-bold uppercase tracking-wider text-left">S.N</th>
+              <th className="py-4 px-4 text-xs font-bold uppercase tracking-wider text-left">Date</th>
+              <th className="py-4 px-4 text-xs font-bold uppercase tracking-wider text-left">Voucher</th>
+              <th className="py-4 px-4 text-xs font-bold uppercase tracking-wider text-left">Type / Description</th>
               <th className="py-4 px-4 text-xs font-bold uppercase tracking-wider text-right">Debit</th>
               <th className="py-4 px-4 text-xs font-bold uppercase tracking-wider text-right">Credit</th>
               <th className="py-4 px-4 text-xs font-bold uppercase tracking-wider text-right">Balance</th>
@@ -383,15 +409,16 @@ function Statement() {
                   onClick={() => setSelectedTransaction(t)}
                   className="hover:bg-gray-50 transition-colors cursor-pointer"
                 >
-                  <td className="py-4 px-4 text-gray-600 text-sm font-medium">{index + 1}</td>
-                  <td className="py-4 px-4 text-gray-600 text-sm whitespace-nowrap">
+                  <td className="py-4 px-4 text-gray-600 text-sm font-medium text-left">{index + 1}</td>
+                  <td className="py-4 px-4 text-gray-600 text-sm whitespace-nowrap text-left">
                     {t.date}
                   </td>
-                  <td className="py-4 px-4 text-gray-500 text-xs font-mono font-bold">
+                  <td className="py-4 px-4 text-gray-500 text-xs font-mono font-bold text-left">
                     {t.voucherId || '-'}
                   </td>
-                  <td className="py-4 px-4 text-gray-800 font-semibold text-sm">
+                  <td className="py-4 px-4 text-gray-800 font-semibold text-sm text-left">
                     {t.type}
+                    {/* Small ID below description */}
                     <span className="block text-xs text-gray-400 font-normal font-mono mt-0.5">
                       ID: {t.transactionId ? t.transactionId.substring(0, 8) : 'N/A'}
                     </span>
