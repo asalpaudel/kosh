@@ -11,7 +11,7 @@ import Settings from "./pages/user/Settings.jsx";
 import Login from "./pages/Login.jsx";
 import Signup from "./pages/Signup.jsx";
 import UserPackages from "./pages/user/Packages.jsx";
-import ApplyPackageForm from "./component/user/ApplyPackageForm.jsx";
+import UserMyApplications from "./pages/user/UserMyApplications.jsx";
 
 // SUPERADMIN IMPORTS
 import SuperadminLayout from "./component/superadmin/Layout.jsx";
@@ -19,6 +19,7 @@ import SuperadminDashboard from "./pages/superadmin/Dashboard.jsx";
 import Analytics from "./pages/superadmin/Analytics.jsx";
 import History from "./pages/superadmin/History.jsx";
 import Networks from "./pages/superadmin/Networks.jsx";
+
 // ADMIN IMPORTS
 import AdminLayout from "./component/admin/Layout.jsx";
 import AdminDashboard from "./pages/admin/Dashboard.jsx";
@@ -26,6 +27,7 @@ import AdminUsers from "./pages/admin/Users.jsx";
 import AdminHistory from "./pages/admin/History.jsx";
 import AdminTransactions from "./pages/admin/Transactions.jsx";
 import AdminPackages from "./pages/admin/Packages.jsx";
+import AdminApplications from "./pages/admin/AdminApplications.jsx";
 import AdminSettings from "./pages/admin/Settings.jsx";
 
 function App() {
@@ -44,6 +46,7 @@ function App() {
             <Route path="statement" element={<Statement />} />
             <Route path="settings" element={<Settings />} /> 
             <Route path="packages" element={<UserPackages />} />
+            <Route path="applications" element={<UserMyApplications />} />
           </Route>
 
           {/* Admin Routes */}
@@ -52,6 +55,7 @@ function App() {
             <Route path="dashboard" element={<AdminDashboard />} />
             <Route path="users" element={<AdminUsers />} />
             <Route path="packages" element={<AdminPackages />} />
+            <Route path="applications" element={<AdminApplications />} />
             <Route path="history" element={<AdminHistory />} />
             <Route path="transactions" element={<AdminTransactions />} />
             <Route path="settings" element={<AdminSettings />} />

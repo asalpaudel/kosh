@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   DocumentTextIcon,
   CurrencyDollarIcon,
@@ -158,6 +159,8 @@ const ApplicationCard = ({ application, type }) => {
 };
 
 function UserMyApplications() {
+  const navigate = useNavigate();
+  const [sessionData, setSessionData] = useState(null);
   const [fdApplications, setFdApplications] = useState([]);
   const [saApplications, setSaApplications] = useState([]);
   const [loanApplications, setLoanApplications] = useState([]);
@@ -175,24 +178,43 @@ function UserMyApplications() {
 
         if (response.ok) {
           const data = await response.json();
-          if (data.error || !data.userId) {
-            window.location.href = "/";
+          console.log("Session data:", data);
+          
+          // Check if session has error (no userEmail)
+          if (data.error) {
+            console.error("Session error:", data.error);
+            navigate('/');
             return;
           }
+          
+          setSessionData(data);
+
+          // If user doesn't have sahakariId, redirect to login
+          if (!data.sahakariId && data.userRole !== "superadmin") {
+            console.error("No sahakariId found in session");
+            navigate('/');
+            return;
+          }
+
+          // Fetch applications after session is validated
           fetchApplications();
+        } else if (response.status === 401) {
+          console.error("Unauthorized - no session");
+          navigate('/');
         } else {
-          window.location.href = "/";
+          console.error("Failed to fetch session data");
+          navigate('/');
         }
       } catch (error) {
         console.error("Error fetching session:", error);
-        window.location.href = "/";
+        navigate('/');
       } finally {
         setSessionLoading(false);
       }
     };
 
     fetchSession();
-  }, []);
+  }, [navigate]);
 
   const fetchApplications = async () => {
     setLoading(true);
@@ -209,9 +231,9 @@ function UserMyApplications() {
         }),
       ]);
 
-      setFdApplications(await fdRes.json());
-      setSaApplications(await saRes.json());
-      setLoanApplications(await loanRes.json());
+      if (fdRes.ok) setFdApplications(await fdRes.json());
+      if (saRes.ok) setSaApplications(await saRes.json());
+      if (loanRes.ok) setLoanApplications(await loanRes.json());
     } catch (error) {
       console.error("Failed to fetch applications:", error);
     } finally {
@@ -232,10 +254,17 @@ function UserMyApplications() {
 
   if (sessionLoading) {
     return (
-      <div className="bg-white p-6 min-h-[calc(100vh-8.5rem)] rounded-lg shadow-md flex items-center justify-center">
-        <p className="text-center text-gray-500">Loading session...</p>
+      <div className="min-h-screen bg-white flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-teal-500 mx-auto mb-4"></div>
+          <p className="text-gray-500">Loading session...</p>
+        </div>
       </div>
     );
+  }
+
+  if (!sessionData?.userEmail) {
+    return null; // Will redirect via useEffect
   }
 
   const stats = {
