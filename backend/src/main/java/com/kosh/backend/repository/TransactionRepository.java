@@ -1,9 +1,10 @@
 package com.kosh.backend.repository;
 
-import com.kosh.backend.model.Transaction;
+import java.util.List;
 import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.stereotype.Repository;
+import com.kosh.backend.model.Transaction;
 
-@Repository
 public interface TransactionRepository extends JpaRepository<Transaction, Long> {
+    List<Transaction> findByUserId(Integer userId);
+    List<Transaction> findBySahakariId(Long sahakariId);
 }

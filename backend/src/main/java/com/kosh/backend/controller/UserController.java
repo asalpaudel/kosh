@@ -22,6 +22,8 @@ import com.kosh.backend.model.User;
 import com.kosh.backend.repository.NetworkRepository;
 import com.kosh.backend.repository.UserRepository;
 
+import jakarta.servlet.http.HttpSession;
+
 @RestController
 @RequestMapping("/api/users")
 public class UserController {
@@ -118,7 +120,7 @@ public class UserController {
     @GetMapping("/network/{networkId}")
     public ResponseEntity<?> getUsersByNetworkId(@PathVariable Long networkId) {
         Network network = networkRepo.findById(networkId).orElse(null);
-        
+
         if (network == null) {
             return ResponseEntity.badRequest().body(Map.of("error", "Network not found"));
         }
@@ -286,14 +288,56 @@ public class UserController {
         repo.deleteById(id);
     }
 
+    // FIXED: Search endpoint with proper session handling
     @GetMapping
-    public List<User> getAllUsers(
-            @RequestParam(value = "search", required = false) String search) {
+    public ResponseEntity<?> getAllUsers(
+            @RequestParam(value = "search", required = false) String search,
+            HttpSession session) {
 
-        if (search != null && !search.isEmpty()) {
-            return repo.findByNameContainingIgnoreCase(search);
-        } else {
-            return repo.findAll();
+        // Debug logging
+        System.out.println("=== User Search Request ===");
+        System.out.println("Search param: " + search);
+        System.out.println("Session ID: " + session.getId());
+
+        // Get sahakari from session
+        String sahakari = (String) session.getAttribute("sahakari");
+        System.out.println("Session sahakari: " + sahakari);
+
+        // If sahakari is not in session, return error with helpful message
+        if (sahakari == null) {
+            System.out.println("ERROR: Sahakari not found in session");
+            return ResponseEntity.status(401)
+                    .body(Map.of("error", "Session expired or not authenticated. Please login again."));
         }
+
+        List<User> users;
+
+        if (search != null && !search.trim().isEmpty()) {
+            System.out.println("Searching for: '" + search + "' in network: " + sahakari);
+
+            // Search by name or phone, filtered by sahakari
+            users = repo.findAll().stream()
+                    .filter(u -> sahakari.equals(u.getSahakari()))
+                    .filter(u -> {
+                        String lowerSearch = search.toLowerCase();
+                        boolean nameMatch = u.getName() != null &&
+                                u.getName().toLowerCase().contains(lowerSearch);
+                        boolean phoneMatch = u.getPhone() != null &&
+                                u.getPhone().contains(search);
+                        return nameMatch || phoneMatch;
+                    })
+                    .collect(Collectors.toList());
+
+            System.out.println("Found " + users.size() + " matching users");
+        } else {
+            // Return all users in the sahakari
+            users = repo.findAll().stream()
+                    .filter(u -> sahakari.equals(u.getSahakari()))
+                    .collect(Collectors.toList());
+
+            System.out.println("Returning all users: " + users.size());
+        }
+
+        return ResponseEntity.ok(users);
     }
 }

@@ -19,6 +19,7 @@ public class SessionController {
 
     @GetMapping("/api/session")
     public ResponseEntity<Map<String, Object>> getSession(HttpSession session) {
+        System.out.println("========== SESSION CHECK ==========");
         System.out.println("Session ID: " + session.getId());
         
         Map<String, Object> sessionData = new HashMap<>();
@@ -49,11 +50,22 @@ public class SessionController {
 
         sessionData.put("sahakariId", sahakariId);
         
+        // ⭐ ADD SAHAKARI NAME TO SESSION DATA
+        String sahakari = (String) session.getAttribute("sahakari");
+        sessionData.put("sahakari", sahakari);
+        
         String userRole = (String) session.getAttribute("userRole");
         sessionData.put("userRole", userRole);
         
+        Integer userId = (Integer) session.getAttribute("userId");
+        sessionData.put("userId", userId);
+        
         sessionData.put("maxInactiveInterval", session.getMaxInactiveInterval());
         sessionData.put("expired", false);
+        
+        System.out.println("Session sahakari: " + sahakari);
+        System.out.println("Session sahakariId: " + sahakariId);
+        System.out.println("===================================");
         
         return ResponseEntity.ok(sessionData);
     }
