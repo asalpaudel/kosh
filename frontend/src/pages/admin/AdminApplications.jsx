@@ -20,7 +20,9 @@ const ApplicationCard = ({ application, type, onReview }) => {
       WITHDRAWN: "bg-gray-100 text-gray-800",
     };
     return (
-      <span className={`px-3 py-1 rounded-full text-xs font-semibold ${styles[status]}`}>
+      <span
+        className={`px-3 py-1 rounded-full text-xs font-semibold ${styles[status]}`}
+      >
         {status}
       </span>
     );
@@ -44,19 +46,32 @@ const ApplicationCard = ({ application, type, onReview }) => {
       case "fixed-deposit":
         return (
           <>
-            <p><strong>Amount:</strong> Rs. {application.depositAmount?.toLocaleString()}</p>
-            <p><strong>Term:</strong> {application.depositTerm} months</p>
+            <p>
+              <strong>Amount:</strong> Rs.{" "}
+              {application.depositAmount?.toLocaleString()}
+            </p>
+            <p>
+              <strong>Term:</strong> {application.depositTerm} months
+            </p>
           </>
         );
       case "saving-account":
         return (
-          <p><strong>Initial Deposit:</strong> Rs. {application.initialDeposit?.toLocaleString()}</p>
+          <p>
+            <strong>Initial Deposit:</strong> Rs.{" "}
+            {application.initialDeposit?.toLocaleString()}
+          </p>
         );
       case "loan":
         return (
           <>
-            <p><strong>Amount:</strong> Rs. {application.requestedAmount?.toLocaleString()}</p>
-            <p><strong>Purpose:</strong> {application.purpose}</p>
+            <p>
+              <strong>Amount:</strong> Rs.{" "}
+              {application.requestedAmount?.toLocaleString()}
+            </p>
+            <p>
+              <strong>Purpose:</strong> {application.purpose}
+            </p>
           </>
         );
       default:
@@ -69,11 +84,13 @@ const ApplicationCard = ({ application, type, onReview }) => {
       <div className="flex justify-between items-start mb-3">
         <div>
           <h4 className="font-semibold text-gray-900">{getPackageName()}</h4>
-          <p className="text-sm text-gray-600">User ID: {application.user?.id}</p>
+          <p className="text-sm text-gray-600">
+            User ID: {application.user?.id}
+          </p>
         </div>
         {getStatusBadge(application.status)}
       </div>
-      
+
       <div className="text-sm text-gray-700 space-y-1 mb-3">
         {getDetails()}
         <p className="text-xs text-gray-500 mt-2">
@@ -117,7 +134,12 @@ const ReviewModal = ({ isOpen, onClose, application, type, onSubmit }) => {
   };
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="Review Application" size="lg">
+    <Modal
+      isOpen={isOpen}
+      onClose={onClose}
+      title="Review Application"
+      size="lg"
+    >
       <form onSubmit={handleSubmit} className="flex flex-col gap-4">
         <div>
           <label className="block font-semibold mb-2">Decision *</label>
@@ -133,7 +155,9 @@ const ReviewModal = ({ isOpen, onClose, application, type, onSubmit }) => {
         </div>
 
         <div>
-          <label className="block font-semibold mb-2">Review Notes (Optional)</label>
+          <label className="block font-semibold mb-2">
+            Review Notes (Optional)
+          </label>
           <textarea
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
@@ -205,12 +229,18 @@ function AdminApplications() {
     setLoading(true);
     try {
       const [fdRes, saRes, loanRes] = await Promise.all([
-        fetch(`${apiBase}/applications/fixed-deposit/network/${selectedNetworkId}`, {
-          credentials: "include",
-        }),
-        fetch(`${apiBase}/applications/saving-account/network/${selectedNetworkId}`, {
-          credentials: "include",
-        }),
+        fetch(
+          `${apiBase}/applications/fixed-deposit/network/${selectedNetworkId}`,
+          {
+            credentials: "include",
+          }
+        ),
+        fetch(
+          `${apiBase}/applications/saving-account/network/${selectedNetworkId}`,
+          {
+            credentials: "include",
+          }
+        ),
         fetch(`${apiBase}/applications/loan/network/${selectedNetworkId}`, {
           credentials: "include",
         }),
@@ -329,7 +359,9 @@ function AdminApplications() {
     <>
       <div className="bg-white p-6 min-h-[calc(100vh-8.5rem)] rounded-lg shadow-md">
         <div className="flex justify-between items-center mb-6">
-          <h2 className="text-2xl font-bold text-gray-800">Application Management</h2>
+          <h2 className="text-2xl font-bold text-gray-800">
+            Application Management
+          </h2>
           <div className="flex gap-2">
             <button
               onClick={() => setFilterStatus("ALL")}
@@ -345,31 +377,31 @@ function AdminApplications() {
               onClick={() => setFilterStatus("PENDING")}
               className={`px-4 py-2 rounded-full font-semibold text-sm transition-colors ${
                 filterStatus === "PENDING"
-                  ? "bg-yellow-500 text-white"
+                  ? "bg-teal-500 text-white"
                   : "bg-gray-200 text-gray-700 hover:bg-gray-300"
               }`}
             >
-              Pending ({stats.pending})
+              Pending
             </button>
             <button
               onClick={() => setFilterStatus("APPROVED")}
               className={`px-4 py-2 rounded-full font-semibold text-sm transition-colors ${
                 filterStatus === "APPROVED"
-                  ? "bg-green-500 text-white"
+                  ? "bg-teal-500 text-white"
                   : "bg-gray-200 text-gray-700 hover:bg-gray-300"
               }`}
             >
-              Approved ({stats.approved})
+              Approved
             </button>
             <button
               onClick={() => setFilterStatus("REJECTED")}
               className={`px-4 py-2 rounded-full font-semibold text-sm transition-colors ${
                 filterStatus === "REJECTED"
-                  ? "bg-red-500 text-white"
+                  ? "bg-teal-500 text-white"
                   : "bg-gray-200 text-gray-700 hover:bg-gray-300"
               }`}
             >
-              Rejected ({stats.rejected})
+              Rejected
             </button>
           </div>
         </div>
@@ -391,11 +423,15 @@ function AdminApplications() {
                       key={app.id}
                       application={app}
                       type="fixed-deposit"
-                      onReview={(app, status) => handleQuickReview(app, status, "fixed-deposit")}
+                      onReview={(app, status) =>
+                        handleQuickReview(app, status, "fixed-deposit")
+                      }
                     />
                   ))
                 ) : (
-                  <p className="text-center text-gray-400 py-8">No applications</p>
+                  <p className="text-center text-gray-400 py-8">
+                    No applications
+                  </p>
                 )}
               </div>
             </div>
@@ -413,11 +449,15 @@ function AdminApplications() {
                       key={app.id}
                       application={app}
                       type="saving-account"
-                      onReview={(app, status) => handleQuickReview(app, status, "saving-account")}
+                      onReview={(app, status) =>
+                        handleQuickReview(app, status, "saving-account")
+                      }
                     />
                   ))
                 ) : (
-                  <p className="text-center text-gray-400 py-8">No applications</p>
+                  <p className="text-center text-gray-400 py-8">
+                    No applications
+                  </p>
                 )}
               </div>
             </div>
@@ -435,11 +475,15 @@ function AdminApplications() {
                       key={app.id}
                       application={app}
                       type="loan"
-                      onReview={(app, status) => handleQuickReview(app, status, "loan")}
+                      onReview={(app, status) =>
+                        handleQuickReview(app, status, "loan")
+                      }
                     />
                   ))
                 ) : (
-                  <p className="text-center text-gray-400 py-8">No applications</p>
+                  <p className="text-center text-gray-400 py-8">
+                    No applications
+                  </p>
                 )}
               </div>
             </div>
