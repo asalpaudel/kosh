@@ -100,6 +100,7 @@ public class AuthController {
 
         session.setAttribute("userEmail", user.getEmail());
         session.setAttribute("sahakariId", networkId);
+        session.setAttribute("userId", user.getId());
         session.setAttribute("userRole", user.getRole());
         session.setAttribute("userName", user.getName()); 
 
@@ -110,7 +111,7 @@ public class AuthController {
                 true,
                 "Login successful",
                 user.getRole(),
-                user.getId(),
+                user.getId().intValue(),
                 networkId);
     }
 
