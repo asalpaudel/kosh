@@ -295,4 +295,25 @@ public class TransactionController {
 
         return ResponseEntity.ok(response);
     }
+
+    @GetMapping
+    public ResponseEntity<?> getAllTransactionsForLoggedSahakari(HttpSession session) {
+        Object sahakariIdObj = session.getAttribute("sahakariId");
+        String userEmail = (String) session.getAttribute("userEmail");
+
+        if (userEmail == null) {
+            return ResponseEntity.status(401).body(Map.of("error", "Not authenticated"));
+        }
+
+        if (sahakariIdObj == null) {
+            return ResponseEntity.status(401).body(Map.of("error", "Sahakari ID missing in session"));
+        }
+
+        Long sahakariId = (sahakariIdObj instanceof Integer)
+                ? ((Integer) sahakariIdObj).longValue()
+                : (Long) sahakariIdObj;
+
+        return ResponseEntity.ok(repo.findBySahakariId(sahakariId));
+    }
+
 }
