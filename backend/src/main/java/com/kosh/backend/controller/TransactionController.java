@@ -32,7 +32,6 @@ public class TransactionController {
     @Autowired
     private UserRepository userRepo; 
 
-    // ... (TransactionRequest class is unchanged) ...
     public static class TransactionRequest {
         private Integer userId;
         private String userName; 
@@ -95,7 +94,7 @@ public class TransactionController {
             newTransaction.setUser(req.getUserName()); 
             newTransaction.setType(txType);
             
-            String formattedAmount = String.format(new Locale("en", "NP"), "Rs. %.2f", txAmount);
+            String formattedAmount = String.format(new Locale("en", "NP"), "Rs. %f", txAmount);
             
             newTransaction.setAmount(formattedAmount); 
 
