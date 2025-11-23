@@ -105,6 +105,7 @@ public class AuthController {
         session.setAttribute("userId", user.getId());
         session.setAttribute("sahakariId", networkId);
         session.setAttribute("sahakari", sahakariName); // ⭐ THIS IS THE CRITICAL LINE
+        session.setAttribute("userId", user.getId());
         session.setAttribute("userRole", user.getRole());
         session.setAttribute("userName", user.getName());
 
@@ -119,7 +120,7 @@ public class AuthController {
                 true,
                 "Login successful",
                 user.getRole(),
-                user.getId(),
+                user.getId().intValue(),
                 networkId);
     }
 
