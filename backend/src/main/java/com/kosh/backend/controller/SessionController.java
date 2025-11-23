@@ -57,7 +57,7 @@ public class SessionController {
         String userRole = (String) session.getAttribute("userRole");
         sessionData.put("userRole", userRole);
         
-        Integer userId = (Integer) session.getAttribute("userId");
+        Long userId = (Long) session.getAttribute("userId");
         sessionData.put("userId", userId);
         
         sessionData.put("maxInactiveInterval", session.getMaxInactiveInterval());

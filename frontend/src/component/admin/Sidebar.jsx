@@ -7,7 +7,8 @@ import {
   ActivityIcon,
   FileTextIcon,
   UsersIcon, 
-  PiggyBankIcon, 
+  PiggyBankIcon,
+  ClipboardListIcon, // Add this icon for applications
 } from "../icons.jsx"; 
 
 const API_BASE = "http://localhost:8080/api";
@@ -39,6 +40,7 @@ function Sidebar() {
         <NavLink to="/admin/dashboard" className={navLinkClass}>
           <LayoutDashboardIcon className="text-gray-300 h-7 w-7 transition-all duration-200 hover:scale-110 hover:text-white" />
         </NavLink>
+        
         <NavLink to="/admin/transactions" className={navLinkClass}>
           <FileTextIcon className="text-gray-300 h-7 w-7 transition-all duration-200 hover:scale-110 hover:text-white" />
         </NavLink>
@@ -49,6 +51,10 @@ function Sidebar() {
 
         <NavLink to="/admin/packages" className={navLinkClass}>
           <PiggyBankIcon className="text-gray-300 h-7 w-7 transition-all duration-200 hover:scale-110 hover:text-white" />
+        </NavLink>
+
+        <NavLink to="/admin/applications" className={navLinkClass} title="Applications">
+          <ClipboardListIcon className="text-gray-300 h-7 w-7 transition-all duration-200 hover:scale-110 hover:text-white" />
         </NavLink>
         
         <NavLink to="/admin/history" className={navLinkClass}>
