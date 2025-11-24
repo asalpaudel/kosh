@@ -13,6 +13,7 @@ export default function EditUserForm({
     phone: initialData.phone ?? "",
     role: initialData.role ?? "",
     sahakari: initialData.sahakari ?? "",
+    status: initialData.status ?? "Pending",
     password: "", // Leave empty - only update if user enters new password
   });
 
@@ -33,21 +34,19 @@ export default function EditUserForm({
     setError("");
 
     try {
-      // Prepare payload - only include password if user entered a new one
+      // Prepare payload with ALL fields
       const payload = {
         name: formData.name,
         email: formData.email,
         phone: formData.phone || null,
         role: formData.role,
         sahakari: formData.sahakari,
+        status: formData.status, // Include status to preserve it
       };
 
       // Only include password if user wants to change it
       if (formData.password.trim()) {
         payload.password = formData.password;
-      } else {
-        // Keep existing password from backend
-        payload.password = initialData.password;
       }
 
       console.log("Updating user:", formData.id);
@@ -114,6 +113,18 @@ export default function EditUserForm({
           className="w-full bg-gray-100 rounded-lg px-4 py-2 outline-none"
         />
 
+        <select
+          name="role"
+          onChange={onChange}
+          value={formData.role}
+          className="w-full bg-gray-100 rounded-lg px-4 py-2 outline-none"
+          required
+        >
+          <option value="">Select Role</option>
+          <option value="admin">Admin</option>
+          <option value="member">Member</option>
+        </select>
+
         <input
           name="sahakari"
           onChange={onChange}
@@ -123,13 +134,26 @@ export default function EditUserForm({
           required
         />
 
+        <select
+          name="status"
+          onChange={onChange}
+          value={formData.status}
+          className="w-full bg-gray-100 rounded-lg px-4 py-2 outline-none"
+          required
+        >
+          <option value="Active">Active</option>
+          <option value="Pending">Pending</option>
+          <option value="Suspended">Suspended</option>
+          <option value="Rejected">Rejected</option>
+        </select>
+
         <input
           type="password"
           name="password"
           onChange={onChange}
           value={formData.password}
           placeholder="New Password (leave empty to keep current)"
-          className="w-full bg-gray-100 rounded-lg px-4 py-2 outline-none"
+          className="w-full bg-gray-100 rounded-lg px-4 py-2 outline-none col-span-2"
         />
       </div>
 

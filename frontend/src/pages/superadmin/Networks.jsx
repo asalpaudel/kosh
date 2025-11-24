@@ -183,7 +183,7 @@ function Networks() {
   const loadUsers = async () => {
     try {
       setLoading(true);
-      const res = await fetch(`${API_BASE}/users`);
+      const res = await fetch(`${API_BASE}/users/all`);
 
       if (!res.ok) {
         throw new Error(`Failed to fetch: ${res.status} ${res.statusText}`);

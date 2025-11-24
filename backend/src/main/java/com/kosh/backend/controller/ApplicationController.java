@@ -51,6 +51,9 @@ public class ApplicationController {
             Long userId = (Long) session.getAttribute("userId");
             Long networkId = (Long) session.getAttribute("sahakariId");
             
+            System.out.println("=== FD Application Debug ===");
+            System.out.println("User ID from session: " + userId);
+            
             if (userId == null || networkId == null) {
                 return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                     .body(Map.of("error", "User not authenticated"));
@@ -62,6 +65,10 @@ public class ApplicationController {
 
             User user = userRepo.findById(userId.intValue())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
+            
+            System.out.println("User found: " + user.getName());
+            System.out.println("User balance: " + user.getBalance());
+            System.out.println("Deposit amount requested: " + depositAmount);
             
             FixedDeposit fixedDeposit = fixedDepositRepo.findById(packageId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Package not found"));
@@ -78,6 +85,24 @@ public class ApplicationController {
                 return ResponseEntity.badRequest()
                     .body(Map.of("error", "Deposit term below minimum duration"));
             }
+
+            // CHECK USER BALANCE
+            Double userBalance = user.getBalance() != null ? user.getBalance() : 0.0;
+            System.out.println("Balance check - User has: " + userBalance + ", Needs: " + depositAmount);
+            
+            if (userBalance < depositAmount) {
+                System.out.println("INSUFFICIENT BALANCE - Rejecting application");
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(Map.of(
+                        "error", 
+                        "Insufficient balance. Your balance: Rs. " + 
+                        String.format("%.2f", userBalance) + 
+                        ", Required: Rs. " + 
+                        String.format("%.2f", depositAmount)
+                    ));
+            }
+            
+            System.out.println("Balance sufficient - Proceeding with application");
 
             FixedDepositApplication application = new FixedDepositApplication();
             application.setUser(user);
@@ -175,6 +200,19 @@ public class ApplicationController {
             if (initialDeposit < savingAccount.getMinBalance()) {
                 return ResponseEntity.badRequest()
                     .body(Map.of("error", "Initial deposit below minimum balance"));
+            }
+
+            // CHECK USER BALANCE FOR SAVINGS ACCOUNT
+            Double userBalance = user.getBalance() != null ? user.getBalance() : 0.0;
+            if (userBalance < initialDeposit) {
+                return ResponseEntity.badRequest()
+                    .body(Map.of(
+                        "error", 
+                        "Insufficient balance. Your balance: Rs. " + 
+                        String.format("%.2f", userBalance) + 
+                        ", Required: Rs. " + 
+                        String.format("%.2f", initialDeposit)
+                    ));
             }
 
             SavingAccountApplication application = new SavingAccountApplication();

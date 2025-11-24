@@ -13,8 +13,13 @@ export default function EditNetworkForm({
     address: initialData.address ?? "",
     createdAt: initialData.createdAt ?? "",
     phone: initialData.phone ?? "",
+    panNumber: initialData.panNumber ?? "",
     staffCount: initialData.staffCount?.toString() ?? "",
     userCount: initialData.userCount?.toString() ?? "",
+    packageType: initialData.packageType ?? "",
+    packagePrice: initialData.packagePrice?.toString() ?? "",
+    adminLimit: initialData.adminLimit?.toString() ?? "",
+    userLimit: initialData.userLimit?.toString() ?? "",
   });
 
   const [saving, setSaving] = useState(false);
@@ -34,15 +39,20 @@ export default function EditNetworkForm({
     setError("");
 
     try {
-      // Prepare payload with proper number conversion
+      // Prepare payload with ALL fields to prevent nulls
       const payload = {
         registeredId: formData.registeredId,
         name: formData.name,
         address: formData.address || null,
         createdAt: formData.createdAt || null,
         phone: formData.phone || null,
+        panNumber: formData.panNumber || null,
         staffCount: formData.staffCount ? parseInt(formData.staffCount, 10) : null,
         userCount: formData.userCount ? parseInt(formData.userCount, 10) : null,
+        packageType: formData.packageType || null,
+        packagePrice: formData.packagePrice ? parseFloat(formData.packagePrice) : null,
+        adminLimit: formData.adminLimit ? parseInt(formData.adminLimit, 10) : null,
+        userLimit: formData.userLimit ? parseInt(formData.userLimit, 10) : null,
       };
 
       console.log("Updating network:", formData.id);
@@ -119,6 +129,13 @@ export default function EditNetworkForm({
           className="w-full bg-gray-100 rounded-lg px-4 py-2 outline-none" 
         />
         <input 
+          name="panNumber" 
+          onChange={onChange} 
+          value={formData.panNumber} 
+          placeholder="PAN Number" 
+          className="w-full bg-gray-100 rounded-lg px-4 py-2 outline-none" 
+        />
+        <input 
           type="number" 
           name="staffCount" 
           onChange={onChange} 
@@ -133,6 +150,50 @@ export default function EditNetworkForm({
           onChange={onChange} 
           value={formData.userCount} 
           placeholder="User Count" 
+          className="w-full bg-gray-100 rounded-lg px-4 py-2 outline-none" 
+          min="0"
+        />
+        
+        {/* Package Information */}
+        <select
+          name="packageType"
+          onChange={onChange}
+          value={formData.packageType}
+          className="w-full bg-gray-100 rounded-lg px-4 py-2 outline-none"
+        >
+          <option value="">Select Package Type</option>
+          <option value="basic">Basic</option>
+          <option value="premium">Premium</option>
+          <option value="custom">Custom</option>
+        </select>
+        
+        <input 
+          type="number" 
+          name="packagePrice" 
+          onChange={onChange} 
+          value={formData.packagePrice} 
+          placeholder="Package Price (रु)" 
+          className="w-full bg-gray-100 rounded-lg px-4 py-2 outline-none" 
+          min="0"
+          step="0.01"
+        />
+        
+        {/* Limits */}
+        <input 
+          type="number" 
+          name="adminLimit" 
+          onChange={onChange} 
+          value={formData.adminLimit} 
+          placeholder="Admin Limit" 
+          className="w-full bg-gray-100 rounded-lg px-4 py-2 outline-none" 
+          min="0"
+        />
+        <input 
+          type="number" 
+          name="userLimit" 
+          onChange={onChange} 
+          value={formData.userLimit} 
+          placeholder="User Limit" 
           className="w-full bg-gray-100 rounded-lg px-4 py-2 outline-none" 
           min="0"
         />

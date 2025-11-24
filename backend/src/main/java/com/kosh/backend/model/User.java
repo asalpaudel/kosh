@@ -1,5 +1,6 @@
 package com.kosh.backend.model;
 
+import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
@@ -21,7 +22,7 @@ public class User {
     private String documentPath;
     private String status = "Pending";
 
-
+    @Column(nullable = false, columnDefinition = "DOUBLE DEFAULT 0.0")
     private Double balance = 0.0;
 
     public Long getId() {
@@ -79,7 +80,8 @@ public class User {
     public void setDocumentPath(String documentPath) {
         this.documentPath = documentPath;
     }
-        public String getStatus() {
+    
+    public String getStatus() {
         return status;
     }
     
@@ -88,9 +90,10 @@ public class User {
     }
 
     public Double getBalance() {
-        return balance;
+        return balance != null ? balance : 0.0;
     }
+    
     public void setBalance(Double balance) {
-        this.balance = balance;
+        this.balance = balance != null ? balance : 0.0;
     }
 }

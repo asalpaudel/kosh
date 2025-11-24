@@ -4,6 +4,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -339,5 +340,72 @@ public class UserController {
         }
 
         return ResponseEntity.ok(users);
+    }
+
+    // Add this new endpoint for super admin
+    @GetMapping("/all")
+    public ResponseEntity<?> getAllUsersForSuperAdmin(
+            @RequestParam(value = "search", required = false) String search) {
+
+        System.out.println("=== Super Admin User Search ===");
+        System.out.println("Search param: " + search);
+
+        List<User> users;
+
+        if (search != null && !search.trim().isEmpty()) {
+            String lowerSearch = search.toLowerCase();
+            
+            users = repo.findAll().stream()
+                    .filter(u -> {
+                        boolean nameMatch = u.getName() != null &&
+                                u.getName().toLowerCase().contains(lowerSearch);
+                        boolean phoneMatch = u.getPhone() != null &&
+                                u.getPhone().contains(search);
+                        return nameMatch || phoneMatch;
+                    })
+                    .collect(Collectors.toList());
+        } else {
+            users = repo.findAll();
+        }
+
+        System.out.println("Returning " + users.size() + " users");
+        return ResponseEntity.ok(users);
+    }
+
+    // Add this method to your UserController.java
+
+    @GetMapping("/me")
+    public ResponseEntity<?> getCurrentUser(HttpSession session) {
+        Long userId = (Long) session.getAttribute("userId");
+        
+        System.out.println("=== Get Current User ===");
+        System.out.println("Session User ID: " + userId);
+        
+        if (userId == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                .body(Map.of("error", "Not authenticated"));
+        }
+        
+        User user = repo.findById(userId.intValue()).orElse(null);
+        
+        if (user == null) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .body(Map.of("error", "User not found"));
+        }
+        
+        System.out.println("User: " + user.getName());
+        System.out.println("Balance: " + user.getBalance());
+        
+        // Return user data including balance
+        return ResponseEntity.ok(Map.of(
+            "id", user.getId(),
+            "name", user.getName(),
+            "email", user.getEmail(),
+            "phone", user.getPhone(),
+            "role", user.getRole(),
+            "sahakari", user.getSahakari(),
+            "balance", user.getBalance() != null ? user.getBalance() : 0.0,
+            "status", user.getStatus()
+        ));
     }
 }
