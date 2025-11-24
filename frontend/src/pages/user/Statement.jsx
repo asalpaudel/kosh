@@ -13,17 +13,23 @@ import html2canvas from 'html2canvas-pro';
 
 const API_BASE = "http://localhost:8080/api";
 
-// Helper to parse string to number ONLY for internal Balance calculation
+// ----------------------------------------------
+// FIXED PARSER (SECTION 1)
+// ----------------------------------------------
 const parseAmountToNumber = (raw) => {
-  if (raw === null || raw === undefined) return 0;
-  if (typeof raw === 'number') return raw;
+  if (!raw) return 0;
 
-  const cleaned = String(raw).replace(/[^\d.-]/g, '').trim(); 
-  const num = parseFloat(cleaned);
+  let str = String(raw).trim();
+
+  str = str.replace(/Rs\.?/gi, '')
+           .replace(/,/g, '')
+           .replace(/[^\d.-]/g, '')
+           .trim();
+
+  const num = Number(str);
   return isNaN(num) ? 0 : num;
 };
 
-// Helper to format the Calculated Balance (since that is a number)
 const formatBalance = (num) => {
   return `Rs. ${num.toLocaleString('en-IN', {
     minimumFractionDigits: 2,
@@ -35,7 +41,6 @@ const UserTransactionVoucher = ({ transaction, onClose }) => {
   const voucherRef = useRef(null);
   if (!transaction) return null;
 
-  // Use the raw string directly as requested
   const totalDisplay = transaction.amount || transaction.amountValue || "0";
 
   const mockHistory = [
@@ -228,7 +233,6 @@ function Statement() {
   const [loading, setLoading] = useState(true);
   const [transactions, setTransactions] = useState([]);
 
-  // Filter States
   const [searchQuery, setSearchQuery] = useState('');
   const [dateFilter, setDateFilter] = useState('all');
   const [fromDate, setFromDate] = useState('');
@@ -259,25 +263,21 @@ function Statement() {
 
         let runningBalance = 0;
 
+        // ----------------------------------------------
+        // FIXED BALANCE LOGIC (SECTION 2)
+        // ----------------------------------------------
         const processedTx = myTx.map((t) => {
-          // We only parse for Math to calculate the running balance
           const numericVal = parseAmountToNumber(t.amount ?? t.amountValue ?? 0);
-          // We keep the original string for display
           const displayAmount = t.amount || t.amountValue || "0";
 
-          let isCredit = true;
-          if (t.type === 'Withdrawal' || t.type?.includes('Debit')) {
-            isCredit = false;
-            runningBalance -= numericVal;
-          } else {
-            runningBalance += numericVal;
-          }
+          const isCredit = numericVal >= 0;
+          runningBalance += numericVal;
 
           return {
             ...t,
-            displayAmount, // Use this raw string in UI
+            displayAmount,
             isCredit,
-            runningBalance, 
+            runningBalance,
           };
         });
 
@@ -427,7 +427,7 @@ function Statement() {
                 className="bg-transparent text-sm font-semibold text-gray-700 outline-none w-28 cursor-pointer"
               />
             </div>
-            <div className="flex items-center px-3 gap-2 relative">
+            <div className="flex items-large px-3 gap-2 relative">
               <span className="text-xs font-bold text-gray-500 uppercase">To</span>
               <input
                 type="date"
