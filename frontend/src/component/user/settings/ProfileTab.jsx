@@ -1,9 +1,10 @@
-import React, { useState } from "react";
-import Modal from "../../superadmin/Modal"; // Reusing the modal
-import EditProfileModal from "./EditProfileModal"; // We will create this
+import React, { useState, useEffect } from "react";
+import Modal from "../../superadmin/Modal";
+import EditProfileModal from "./EditProfileModal";
 import { UserCircleIcon } from "../../icons";
 
-// A reusable component for displaying info fields
+const API_BASE = "http://localhost:8080/api";
+
 const InfoItem = ({ label, value }) => (
   <div className="flex-1 min-w-[250px]">
     <label className="block text-sm font-medium text-gray-500">{label}</label>
@@ -11,46 +12,92 @@ const InfoItem = ({ label, value }) => (
   </div>
 );
 
-// Mock user data - in a real app, this would come from an API
-const getMockUser = () => ({
-  id: "123",
-  name: "Barsey geda",
-  email: "123@gmail.com",
-  phone: "+09345348 46",
-  address: "lamo",
-  secondaryAddress: "",
-  secondaryContact: "Jane Doe (Spouse) +0911122233",
-  sahakari: "Geda Sahakari",
-  status: "Active",
-});
-
 function ProfileTab() {
-  const [user, setUser] = useState(getMockUser());
+  const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
-  const handleUpdate = (updatedUser) => {
-    setUser(updatedUser);
-    setIsModalOpen(false);
-    // Here you would also make an API call to save the data
-    alert("Profile Updated Successfully!");
+  useEffect(() => {
+    const fetchUser = async () => {
+      const userId = localStorage.getItem("userId");
+      
+      if (!userId) {
+        setError("User ID not found. Please log in.");
+        setLoading(false);
+        return;
+      }
+
+      try {
+        const response = await fetch(`${API_BASE}/users/${userId}`, {
+          credentials: "include", 
+        });
+
+        if (!response.ok) {
+          throw new Error("Failed to fetch profile data");
+        }
+
+        const data = await response.json();
+        setUser(data);
+      } catch (err) {
+        console.error("Error fetching profile:", err);
+        setError(err.message);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchUser();
+  }, []);
+
+  const handleUpdate = async (updatedData) => {
+    try {
+      const response = await fetch(`${API_BASE}/users/${user.id}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(updatedData),
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(errorText || "Failed to update profile");
+      }
+
+      const savedUser = await response.json();
+      setUser(savedUser); 
+      setIsModalOpen(false);
+      alert("Profile Updated Successfully!");
+    } catch (err) {
+      console.error("Update failed:", err);
+      alert(`Error updating profile: ${err.message}`);
+      throw err; 
+    }
   };
+
+  if (loading) return <div className="p-5 text-gray-500">Loading profile...</div>;
+  if (error) return <div className="p-5 text-red-500">Error: {error}</div>;
+  if (!user) return <div className="p-5 text-gray-500">No user data found.</div>;
 
   return (
     <>
       <div className="space-y-10">
-        {/* --- Profile Header --- */}
         <div className="flex items-center gap-5 p-5 border border-gray-200 rounded-lg">
-          <UserCircleIcon className="w-16 h-16 text-gray-400 flex-shrink-0" />
+          <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center flex-shrink-0">
+             <UserCircleIcon className="w-12 h-12 text-gray-400" />
+          </div>
           <div>
             <h2 className="text-2xl font-bold">{user.name}</h2>
             <p className="text-gray-600">
-              {user.sahakari} -{" "}
-              <span className="font-semibold text-green-600">{user.status}</span>
+              {user.sahakari || "No Sahakari"} -{" "}
+              <span className={`font-semibold ${user.status === 'Active' ? 'text-green-600' : 'text-yellow-600'}`}>
+                {user.status || "Pending"}
+              </span>
             </p>
           </div>
         </div>
 
-        {/* --- Personal Information Card --- */}
         <div className="p-5 border border-gray-200 rounded-lg">
           <div className="flex justify-between items-center mb-6">
             <h3 className="text-xl font-semibold">Personal Information</h3>
@@ -68,7 +115,6 @@ function ProfileTab() {
           </div>
         </div>
 
-        {/* --- Address & Contact Card (Your "KYC" fields) --- */}
         <div className="p-5 border border-gray-200 rounded-lg">
           <div className="flex justify-between items-center mb-6">
             <h3 className="text-xl font-semibold">Address & Secondary Contact</h3>
@@ -87,7 +133,6 @@ function ProfileTab() {
         </div>
       </div>
 
-      {/* --- Edit Modal --- */}
       <Modal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
