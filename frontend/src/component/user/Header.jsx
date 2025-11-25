@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { SearchIcon, BellIcon, SettingsIcon } from '../icons';
 import { useNavigate } from 'react-router-dom';
+import GlobalSearch from './GlobalSearch';
 
 function Header({ pageName }) {
   const navigate = useNavigate();
   const [userName, setUserName] = useState(""); 
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
 
   useEffect(() => {
     const fetchSessionUser = async () => {
@@ -30,25 +32,50 @@ function Header({ pageName }) {
     fetchSessionUser();
   }, []);
 
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault();
+        setIsSearchOpen((prev) => !prev);
+      }
+      if (e.key === 'Escape') {
+        setIsSearchOpen(false);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
   return (
-    <header className="bg-black h-14 flex items-center justify-between px-6 sticky top-0 z-10">
-      <h1 className="text-white font-semibold text-2xl tracking-wide">{pageName}</h1>
+    <>
+      <header className="bg-black h-14 flex items-center justify-between px-6 sticky top-0 z-10">
+        <h1 className="text-white font-semibold text-2xl tracking-wide">{pageName}</h1>
 
-      <div className="flex items-center space-x-5">
-        <span className="text-teal-400 font-medium text-sm hidden sm:block">
-           Hello, {userName || "..."}
-        </span>
+        <div className="flex items-center space-x-5">
+          <span className="text-teal-400 font-medium text-sm hidden sm:block">
+             Hello, {userName || "..."}
+          </span>
 
-        <SearchIcon className="text-yellow-400 h-6 w-6 cursor-pointer"/>
+          <button 
+            onClick={() => setIsSearchOpen(true)} 
+            className="group flex items-center gap-2 focus:outline-none"
+            title=""
+          >
+            <SearchIcon className="text-yellow-400 h-6 w-6 cursor-pointer group-hover:scale-110 transition-transform"/>
+          </button>
 
-        <BellIcon className="text-yellow-400 h-6 w-6 cursor-pointer"/>
+          <BellIcon className="text-yellow-400 h-6 w-6 cursor-pointer hover:scale-110 transition-transform"/>
 
-        <SettingsIcon
-          className="text-gray-400 h-6 w-6 cursor-pointer hover:text-white transition-colors"
-          onClick={() => navigate('/home/settings')}
-        />
-      </div>
-    </header>
+          <SettingsIcon
+            className="text-gray-400 h-6 w-6 cursor-pointer hover:text-white transition-colors"
+            onClick={() => navigate('/home/settings')}
+          />
+        </div>
+      </header>
+
+      <GlobalSearch isOpen={isSearchOpen} onClose={() => setIsSearchOpen(false)} />
+    </>
   );
 }
 
