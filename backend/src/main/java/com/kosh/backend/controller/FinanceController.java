@@ -1,16 +1,28 @@
 package com.kosh.backend.controller;
 
-import com.kosh.backend.model.*;
-import com.kosh.backend.repository.FixedDepositRepository;
-import com.kosh.backend.repository.LoanPackageRepository;
-import com.kosh.backend.repository.SavingAccountRepository;
-import com.kosh.backend.repository.NetworkRepository;
+import java.util.List;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
-import java.util.List;
+
+import com.kosh.backend.model.FixedDeposit;
+import com.kosh.backend.model.LoanPackage;
+import com.kosh.backend.model.Network;
+import com.kosh.backend.model.SavingAccount;
+import com.kosh.backend.repository.FixedDepositRepository;
+import com.kosh.backend.repository.LoanPackageRepository;
+import com.kosh.backend.repository.NetworkRepository;
+import com.kosh.backend.repository.SavingAccountRepository;
 
 @RestController
 @RequestMapping("/api/finance")

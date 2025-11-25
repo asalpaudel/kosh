@@ -90,27 +90,37 @@ public class AuthController {
         System.out.println("User status is Active - allowing login");
 
         Long networkId = null;
+        String sahakariName = null;
 
         if (!user.getRole().equals("superadmin")) {
-            Network net = networkRepo.findByName(user.getSahakari());
+            sahakariName = user.getSahakari(); // Get the sahakari name from user
+            Network net = networkRepo.findByName(sahakariName);
             if (net != null) {
                 networkId = net.getId();
             }
         }
 
+        // Set all session attributes
         session.setAttribute("userEmail", user.getEmail());
+        session.setAttribute("userId", user.getId());
         session.setAttribute("sahakariId", networkId);
+        session.setAttribute("sahakari", sahakariName); // ⭐ THIS IS THE CRITICAL LINE
+        session.setAttribute("userId", user.getId());
         session.setAttribute("userRole", user.getRole());
-        session.setAttribute("userName", user.getName()); 
+        session.setAttribute("userName", user.getName());
 
+        System.out.println("========== LOGIN SESSION DEBUG ==========");
         System.out.println("User logged in: " + user.getEmail());
         System.out.println("Session ID: " + session.getId());
+        System.out.println("Session sahakari: " + session.getAttribute("sahakari"));
+        System.out.println("Session sahakariId: " + session.getAttribute("sahakariId"));
+        System.out.println("=========================================");
 
         return new LoginResponse(
                 true,
                 "Login successful",
                 user.getRole(),
-                user.getId(),
+                user.getId().intValue(),
                 networkId);
     }
 

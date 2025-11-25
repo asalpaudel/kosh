@@ -1,9 +1,11 @@
 package com.kosh.backend.controller;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -21,6 +23,8 @@ import com.kosh.backend.model.Network;
 import com.kosh.backend.model.User;
 import com.kosh.backend.repository.NetworkRepository;
 import com.kosh.backend.repository.UserRepository;
+
+import jakarta.servlet.http.HttpSession;
 
 @RestController
 @RequestMapping("/api/users")
@@ -118,7 +122,7 @@ public class UserController {
     @GetMapping("/network/{networkId}")
     public ResponseEntity<?> getUsersByNetworkId(@PathVariable Long networkId) {
         Network network = networkRepo.findById(networkId).orElse(null);
-        
+
         if (network == null) {
             return ResponseEntity.badRequest().body(Map.of("error", "Network not found"));
         }
@@ -286,14 +290,138 @@ public class UserController {
         repo.deleteById(id);
     }
 
+    // FIXED: Search endpoint with proper session handling
     @GetMapping
-    public List<User> getAllUsers(
+    public ResponseEntity<?> getAllUsers(
+            @RequestParam(value = "search", required = false) String search,
+            HttpSession session) {
+
+        // Debug logging
+        System.out.println("=== User Search Request ===");
+        System.out.println("Search param: " + search);
+        System.out.println("Session ID: " + session.getId());
+
+        // Get sahakari from session
+        String sahakari = (String) session.getAttribute("sahakari");
+        System.out.println("Session sahakari: " + sahakari);
+
+        // If sahakari is not in session, return error with helpful message
+        if (sahakari == null) {
+            System.out.println("ERROR: Sahakari not found in session");
+            return ResponseEntity.status(401)
+                    .body(Map.of("error", "Session expired or not authenticated. Please login again."));
+        }
+
+        List<User> users;
+
+        if (search != null && !search.trim().isEmpty()) {
+            System.out.println("Searching for: '" + search + "' in network: " + sahakari);
+
+            // Search by name or phone, filtered by sahakari
+            users = repo.findAll().stream()
+                    .filter(u -> sahakari.equals(u.getSahakari()))
+                    .filter(u -> {
+                        String lowerSearch = search.toLowerCase();
+                        boolean nameMatch = u.getName() != null &&
+                                u.getName().toLowerCase().contains(lowerSearch);
+                        boolean phoneMatch = u.getPhone() != null &&
+                                u.getPhone().contains(search);
+                        return nameMatch || phoneMatch;
+                    })
+                    .collect(Collectors.toList());
+
+            System.out.println("Found " + users.size() + " matching users");
+        } else {
+            // Return all users in the sahakari
+            users = repo.findAll().stream()
+                    .filter(u -> sahakari.equals(u.getSahakari()))
+                    .collect(Collectors.toList());
+
+            System.out.println("Returning all users: " + users.size());
+        }
+
+        return ResponseEntity.ok(users);
+    }
+
+    // Add this new endpoint for super admin
+    @GetMapping("/all")
+    public ResponseEntity<?> getAllUsersForSuperAdmin(
             @RequestParam(value = "search", required = false) String search) {
 
-        if (search != null && !search.isEmpty()) {
-            return repo.findByNameContainingIgnoreCase(search);
+        System.out.println("=== Super Admin User Search ===");
+        System.out.println("Search param: " + search);
+
+        List<User> users;
+
+        if (search != null && !search.trim().isEmpty()) {
+            String lowerSearch = search.toLowerCase();
+
+            users = repo.findAll().stream()
+                    .filter(u -> {
+                        boolean nameMatch = u.getName() != null &&
+                                u.getName().toLowerCase().contains(lowerSearch);
+                        boolean phoneMatch = u.getPhone() != null &&
+                                u.getPhone().contains(search);
+                        return nameMatch || phoneMatch;
+                    })
+                    .collect(Collectors.toList());
         } else {
-            return repo.findAll();
+            users = repo.findAll();
         }
+
+        System.out.println("Returning " + users.size() + " users");
+        return ResponseEntity.ok(users);
     }
+
+    // Add this method to your UserController.java
+
+    @GetMapping("/me")
+    public ResponseEntity<?> getCurrentUser(HttpSession session) {
+        Long userId = (Long) session.getAttribute("userId");
+
+        System.out.println("=== Get Current User ===");
+        System.out.println("Session User ID: " + userId);
+
+        if (userId == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(Map.of("error", "Not authenticated"));
+        }
+
+        User user = repo.findById(userId.intValue()).orElse(null);
+
+        if (user == null) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(Map.of("error", "User not found"));
+        }
+
+        System.out.println("User: " + user.getName());
+        System.out.println("Balance: " + user.getBalance());
+
+        // Return user data including balance
+        return ResponseEntity.ok(Map.of(
+                "id", user.getId(),
+                "name", user.getName(),
+                "email", user.getEmail(),
+                "phone", user.getPhone(),
+                "role", user.getRole(),
+                "sahakari", user.getSahakari(),
+                "balance", user.getBalance() != null ? user.getBalance() : 0.0,
+                "status", user.getStatus()));
+    }
+
+    @GetMapping("/count")
+    public ResponseEntity<Map<String, Long>> getUserCounts() {
+
+        long total = repo.count();
+        long admins = repo.countByRole("admin");
+        long members = repo.countByRole("member");
+
+        Map<String, Long> map = new HashMap<>();
+        map.put("total", total);
+        map.put("admins", admins);
+        map.put("users", members);
+
+        return ResponseEntity.ok(map);
+    }
+
 }

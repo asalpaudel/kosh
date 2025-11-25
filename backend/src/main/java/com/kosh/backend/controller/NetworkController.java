@@ -6,6 +6,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.util.Base64;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -29,14 +30,13 @@ import com.kosh.backend.repository.NetworkRepository;
 @RequestMapping("/api/networks")
 public class NetworkController {
 
-    private final NetworkRepository repo;
+    private final NetworkRepository networkRepository;
 
-    // Define upload directory (make sure this directory exists)
     private static final String UPLOAD_DIR = "uploads/network-documents/";
 
-    public NetworkController(NetworkRepository repo) {
-        this.repo = repo;
-        // Create upload directory if it doesn't exist
+    public NetworkController(NetworkRepository networkRepository) {
+        this.networkRepository = networkRepository;
+
         try {
             Files.createDirectories(Paths.get(UPLOAD_DIR));
             System.out.println("Upload directory created/verified: " + UPLOAD_DIR);
@@ -46,16 +46,14 @@ public class NetworkController {
         }
     }
 
-    // ⭐ NEW ENDPOINT: Handle Base64 JSON uploads
+    // ⭐ Base64 Upload Endpoint
     @PostMapping("/base64")
     public ResponseEntity<?> createNetworkBase64(@RequestBody Map<String, Object> payload) {
         try {
             System.out.println("POST /api/networks/base64 hit!");
-            System.out.println("Creating network from Base64 data");
 
             Network network = new Network();
-            
-            // Set basic fields
+
             network.setRegisteredId((String) payload.get("registeredId"));
             network.setName((String) payload.get("name"));
             network.setAddress((String) payload.get("address"));
@@ -63,78 +61,48 @@ public class NetworkController {
             network.setPhone((String) payload.get("phone"));
             network.setPanNumber((String) payload.get("panNumber"));
             network.setPackageType((String) payload.get("packageType"));
-            
-            // Parse numeric fields
+
             network.setPackagePrice(((Number) payload.get("packagePrice")).doubleValue());
             network.setStaffCount(((Number) payload.get("staffCount")).intValue());
             network.setUserCount(((Number) payload.get("userCount")).intValue());
             network.setAdminLimit(((Number) payload.get("adminLimit")).intValue());
             network.setUserLimit(((Number) payload.get("userLimit")).intValue());
 
-            System.out.println("Limits set - Admin: " + network.getAdminLimit() + ", User: " + network.getUserLimit());
-
-            // Decode Base64 document and save as file
+            // Handle Base64 document
             Map<String, String> documentData = (Map<String, String>) payload.get("document");
             if (documentData != null && documentData.get("data") != null) {
                 byte[] documentBytes = Base64.getDecoder().decode(documentData.get("data"));
                 String filename = documentData.get("filename");
-                
-                // Get file extension
-                String fileExtension = "";
-                int dotIndex = filename.lastIndexOf(".");
-                if (dotIndex > 0) {
-                    fileExtension = filename.substring(dotIndex);
-                }
-                
-                // Generate unique filename
-                String uniqueFilename = UUID.randomUUID().toString() + fileExtension;
-                Path documentPath = Paths.get(UPLOAD_DIR + uniqueFilename);
-                
-                // Write bytes to file
-                Files.write(documentPath, documentBytes);
-                network.setDocumentPath(uniqueFilename);
-                
-                System.out.println("Document saved: " + uniqueFilename);
+
+                String ext = filename.contains(".") ? filename.substring(filename.lastIndexOf(".")) : "";
+                String unique = UUID.randomUUID().toString() + ext;
+
+                Files.write(Paths.get(UPLOAD_DIR + unique), documentBytes);
+                network.setDocumentPath(unique);
             }
 
-            // Decode Base64 logo and save as file
+            // Handle Base64 logo
             Map<String, String> logoData = (Map<String, String>) payload.get("logo");
             if (logoData != null && logoData.get("data") != null) {
                 byte[] logoBytes = Base64.getDecoder().decode(logoData.get("data"));
                 String filename = logoData.get("filename");
-                
-                // Get file extension
-                String fileExtension = "";
-                int dotIndex = filename.lastIndexOf(".");
-                if (dotIndex > 0) {
-                    fileExtension = filename.substring(dotIndex);
-                }
-                
-                // Generate unique filename
-                String uniqueFilename = UUID.randomUUID().toString() + fileExtension;
-                Path logoPath = Paths.get(UPLOAD_DIR + uniqueFilename);
-                
-                // Write bytes to file
-                Files.write(logoPath, logoBytes);
-                network.setLogoPath(uniqueFilename);
-                
-                System.out.println("Logo saved: " + uniqueFilename);
+
+                String ext = filename.contains(".") ? filename.substring(filename.lastIndexOf(".")) : "";
+                String unique = UUID.randomUUID().toString() + ext;
+
+                Files.write(Paths.get(UPLOAD_DIR + unique), logoBytes);
+                network.setLogoPath(unique);
             }
 
-            // Save to database
-            Network saved = repo.save(network);
-            System.out.println("Network saved with ID: " + saved.getId());
-
+            Network saved = networkRepository.save(network);
             return ResponseEntity.ok(saved);
 
         } catch (Exception e) {
-            System.err.println("Error creating network from Base64: " + e.getMessage());
-            e.printStackTrace();
             return ResponseEntity.badRequest().body("Error creating network: " + e.getMessage());
         }
     }
 
-    // Original MultipartFile endpoint
+    // ⭐ Multipart Upload
     @PostMapping
     public ResponseEntity<?> createNetwork(
             @RequestParam("registeredId") String registeredId,
@@ -153,13 +121,8 @@ public class NetworkController {
             @RequestParam(value = "logo", required = false) MultipartFile logo) {
 
         try {
-            System.out.println("POST /api/networks hit!");
-            System.out.println("Creating network: " + name);
-            System.out.println("Package: " + packageType + " - Price: रु" + packagePrice);
-            System.out.println("Staff Count: " + staffCount + ", User Count: " + userCount);
-            System.out.println("Received Admin Limit: " + adminLimit + ", User Limit: " + userLimit);
-
             Network network = new Network();
+
             network.setRegisteredId(registeredId);
             network.setName(name);
             network.setAddress(address);
@@ -168,218 +131,120 @@ public class NetworkController {
             network.setPanNumber(panNumber);
             network.setPackageType(packageType);
 
-            // Parse packagePrice safely
-            try {
-                network.setPackagePrice(Double.parseDouble(packagePrice));
-            } catch (NumberFormatException e) {
-                return ResponseEntity.badRequest().body("Invalid package price format");
-            }
+            network.setPackagePrice(Double.parseDouble(packagePrice));
+            network.setStaffCount(Integer.parseInt(staffCount));
+            network.setUserCount(Integer.parseInt(userCount));
+            network.setAdminLimit(Integer.parseInt(adminLimit));
+            network.setUserLimit(Integer.parseInt(userLimit));
 
-            // Parse staffCount and userCount safely
-            try {
-                network.setStaffCount(Integer.parseInt(staffCount));
-                network.setUserCount(Integer.parseInt(userCount));
-            } catch (NumberFormatException e) {
-                return ResponseEntity.badRequest().body("Invalid staff or user count format");
-            }
-
-            // Parse and SET adminLimit and userLimit safely
-            try {
-                int parsedAdminLimit = Integer.parseInt(adminLimit);
-                int parsedUserLimit = Integer.parseInt(userLimit);
-                network.setAdminLimit(parsedAdminLimit);
-                network.setUserLimit(parsedUserLimit);
-                System.out.println("Limits set - Admin: " + parsedAdminLimit + ", User: " + parsedUserLimit);
-            } catch (NumberFormatException e) {
-                System.err.println("Error parsing limits: " + e.getMessage());
-                return ResponseEntity.badRequest().body("Invalid admin or user limit format");
-            }
-
-            // Handle document upload
+            // Document file
             if (document != null && !document.isEmpty()) {
-                String originalFilename = document.getOriginalFilename();
-                System.out.println("Document received: " + originalFilename);
+                String original = document.getOriginalFilename();
+                String ext = original.contains(".") ? original.substring(original.lastIndexOf(".")) : "";
+                String unique = UUID.randomUUID().toString() + ext;
 
-                // Validate file
-                if (originalFilename == null || originalFilename.isEmpty()) {
-                    return ResponseEntity.badRequest().body("Invalid file name");
-                }
+                Files.copy(document.getInputStream(), Paths.get(UPLOAD_DIR + unique),
+                        StandardCopyOption.REPLACE_EXISTING);
 
-                // Get file extension
-                String fileExtension = "";
-                int dotIndex = originalFilename.lastIndexOf(".");
-                if (dotIndex > 0) {
-                    fileExtension = originalFilename.substring(dotIndex);
-                }
-
-                // Generate unique filename
-                String uniqueFilename = UUID.randomUUID().toString() + fileExtension;
-
-                // Save file to disk
-                Path uploadPath = Paths.get(UPLOAD_DIR + uniqueFilename);
-                Files.copy(document.getInputStream(), uploadPath, StandardCopyOption.REPLACE_EXISTING);
-
-                network.setDocumentPath(uniqueFilename);
-                System.out.println("Document uploaded successfully: " + uniqueFilename);
-            } else {
-                System.out.println("No document uploaded");
+                network.setDocumentPath(unique);
             }
 
-            // Handle logo upload
+            // Logo file
             if (logo != null && !logo.isEmpty()) {
-                String originalFilename = logo.getOriginalFilename();
-                System.out.println("Logo received: " + originalFilename);
+                String original = logo.getOriginalFilename();
+                String ext = original.contains(".") ? original.substring(original.lastIndexOf(".")) : "";
+                String unique = UUID.randomUUID().toString() + ext;
 
-                // Validate file
-                if (originalFilename == null || originalFilename.isEmpty()) {
-                    return ResponseEntity.badRequest().body("Invalid logo file name");
-                }
+                Files.copy(logo.getInputStream(), Paths.get(UPLOAD_DIR + unique),
+                        StandardCopyOption.REPLACE_EXISTING);
 
-                // Get file extension
-                String fileExtension = "";
-                int dotIndex = originalFilename.lastIndexOf(".");
-                if (dotIndex > 0) {
-                    fileExtension = originalFilename.substring(dotIndex);
-                }
-
-                // Generate unique filename
-                String uniqueFilename = UUID.randomUUID().toString() + fileExtension;
-
-                // Save file to disk
-                Path uploadPath = Paths.get(UPLOAD_DIR + uniqueFilename);
-                Files.copy(logo.getInputStream(), uploadPath, StandardCopyOption.REPLACE_EXISTING);
-
-                network.setLogoPath(uniqueFilename);
-                System.out.println("Logo uploaded successfully: " + uniqueFilename);
-            } else {
-                System.out.println("No logo uploaded");
+                network.setLogoPath(unique);
             }
 
-            // Verify all values before saving
-            System.out.println("About to save network with:");
-            System.out.println("  - Admin Limit: " + network.getAdminLimit());
-            System.out.println("  - User Limit: " + network.getUserLimit());
-            System.out.println("  - Staff Count: " + network.getStaffCount());
-            System.out.println("  - User Count: " + network.getUserCount());
+            return ResponseEntity.ok(networkRepository.save(network));
 
-            Network saved = repo.save(network);
-            System.out.println("Network saved with ID: " + saved.getId());
-
-            return ResponseEntity.ok(saved);
-
-        } catch (IOException e) {
-            System.err.println("Error saving file: " + e.getMessage());
-            e.printStackTrace();
-            return ResponseEntity.badRequest().body("Error uploading document: " + e.getMessage());
         } catch (Exception e) {
-            System.err.println("Error creating network: " + e.getMessage());
-            e.printStackTrace();
             return ResponseEntity.badRequest().body("Error creating network: " + e.getMessage());
         }
     }
 
+    // ⭐ Get All Networks
     @GetMapping
     public List<Network> getAllNetworks() {
-        System.out.println("GET /api/networks hit!");
-        return repo.findAll();
+        return networkRepository.findAll();
     }
 
+    // ⭐ Get Network by ID
     @GetMapping("/{id}")
     public ResponseEntity<?> getNetworkById(@PathVariable Long id) {
-        System.out.println("GET /api/networks/" + id + " hit!");
-        return repo.findById(id)
+        return networkRepository.findById(id)
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
     }
 
+    // ⭐ Update Network
     @PutMapping("/{id}")
     public ResponseEntity<?> updateNetwork(
             @PathVariable Long id,
             @RequestBody Network updatedNetwork) {
 
-        System.out.println("PUT /api/networks/" + id + " hit!");
+        return networkRepository.findById(id).map(existing -> {
 
-        return repo.findById(id)
-                .map(existing -> {
-                    existing.setRegisteredId(updatedNetwork.getRegisteredId());
-                    existing.setName(updatedNetwork.getName());
-                    existing.setAddress(updatedNetwork.getAddress());
-                    existing.setCreatedAt(updatedNetwork.getCreatedAt());
-                    existing.setPhone(updatedNetwork.getPhone());
-                    existing.setPanNumber(updatedNetwork.getPanNumber());
-                    existing.setPackageType(updatedNetwork.getPackageType());
-                    existing.setPackagePrice(updatedNetwork.getPackagePrice());
-                    existing.setStaffCount(updatedNetwork.getStaffCount());
-                    existing.setUserCount(updatedNetwork.getUserCount());
-                    existing.setAdminLimit(updatedNetwork.getAdminLimit());
-                    existing.setUserLimit(updatedNetwork.getUserLimit());
-                    // Note: Document is not updated here (would need separate endpoint for that)
+            existing.setRegisteredId(updatedNetwork.getRegisteredId());
+            existing.setName(updatedNetwork.getName());
+            existing.setAddress(updatedNetwork.getAddress());
+            existing.setCreatedAt(updatedNetwork.getCreatedAt());
+            existing.setPhone(updatedNetwork.getPhone());
+            existing.setPanNumber(updatedNetwork.getPanNumber());
+            existing.setPackageType(updatedNetwork.getPackageType());
+            existing.setPackagePrice(updatedNetwork.getPackagePrice());
+            existing.setStaffCount(updatedNetwork.getStaffCount());
+            existing.setUserCount(updatedNetwork.getUserCount());
+            existing.setAdminLimit(updatedNetwork.getAdminLimit());
+            existing.setUserLimit(updatedNetwork.getUserLimit());
 
-                    Network saved = repo.save(existing);
-                    System.out.println("Network updated with ID: " + saved.getId());
-                    return ResponseEntity.ok(saved);
-                })
-                .orElseGet(() -> {
-                    System.out.println("Network not found with ID: " + id);
-                    return ResponseEntity.notFound().build();
-                });
+            return ResponseEntity.ok(networkRepository.save(existing));
+        }).orElse(ResponseEntity.notFound().build());
     }
 
+    // ⭐ Delete Network
     @DeleteMapping("/{id}")
     public ResponseEntity<?> deleteNetwork(@PathVariable Long id) {
-        System.out.println("DELETE /api/networks/" + id + " hit!");
-
         try {
-            // Find the network first to get document path
-            Network network = repo.findById(id).orElse(null);
-
-            if (network == null) {
-                System.out.println("Network not found with ID: " + id);
+            Network network = networkRepository.findById(id).orElse(null);
+            if (network == null)
                 return ResponseEntity.notFound().build();
+
+            if (network.getDocumentPath() != null) {
+                Files.deleteIfExists(Paths.get(UPLOAD_DIR + network.getDocumentPath()));
+            }
+            if (network.getLogoPath() != null) {
+                Files.deleteIfExists(Paths.get(UPLOAD_DIR + network.getLogoPath()));
             }
 
-            // Delete associated document file if it exists
-            if (network.getDocumentPath() != null && !network.getDocumentPath().isEmpty()) {
-                try {
-                    Path filePath = Paths.get(UPLOAD_DIR + network.getDocumentPath());
-                    boolean deleted = Files.deleteIfExists(filePath);
-                    if (deleted) {
-                        System.out.println("Document file deleted: " + network.getDocumentPath());
-                    } else {
-                        System.out.println("Document file not found: " + network.getDocumentPath());
-                    }
-                } catch (IOException e) {
-                    System.err.println("Error deleting document file: " + e.getMessage());
-                    e.printStackTrace();
-                }
-            }
-
-            // Delete associated logo file if it exists
-            if (network.getLogoPath() != null && !network.getLogoPath().isEmpty()) {
-                try {
-                    Path filePath = Paths.get(UPLOAD_DIR + network.getLogoPath());
-                    boolean deleted = Files.deleteIfExists(filePath);
-                    if (deleted) {
-                        System.out.println("Logo file deleted: " + network.getLogoPath());
-                    } else {
-                        System.out.println("Logo file not found: " + network.getLogoPath());
-                    }
-                } catch (IOException e) {
-                    System.err.println("Error deleting logo file: " + e.getMessage());
-                    e.printStackTrace();
-                }
-            }
-
-            // Delete the network from database
-            repo.deleteById(id);
-            System.out.println("Network deleted with ID: " + id);
-
+            networkRepository.deleteById(id);
             return ResponseEntity.ok().build();
 
         } catch (Exception e) {
-            System.err.println("Error deleting network: " + e.getMessage());
-            e.printStackTrace();
             return ResponseEntity.badRequest().body("Error deleting network: " + e.getMessage());
         }
     }
+
+    @GetMapping("/stats")
+    public ResponseEntity<Map<String, Long>> getNetworkStats() {
+
+        long total = networkRepository.count();
+        long totalBasic = networkRepository.countByPackageType("basic");
+        long totalPremium = networkRepository.countByPackageType("premium");
+        long totalCustom = networkRepository.countByPackageType("custom");
+
+        Map<String, Long> map = new HashMap<>();
+        map.put("total", total);
+        map.put("totalBasic", totalBasic);
+        map.put("totalPremium", totalPremium);
+        map.put("totalCustom", totalCustom);
+
+        return ResponseEntity.ok(map);
+    }
+
 }
