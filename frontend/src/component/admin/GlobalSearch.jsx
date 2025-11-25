@@ -9,7 +9,13 @@ import {
   PiggyBankIcon, 
   SettingsIcon,
   PlusCircleIcon,
-  DocumentTextIcon
+  DocumentTextIcon,
+  ShieldIcon,
+  BellIcon,
+  MoonIcon,
+  BanknotesIcon,
+  DocumentIcon,
+  CurrencyDollarIcon
 } from '../icons';
 
 const API_BASE = "http://localhost:8080/api";
@@ -28,12 +34,24 @@ export default function GlobalSearch({ isOpen, onClose }) {
     { name: "Manage Users", path: "/admin/users", icon: <UsersIcon className="w-5 h-5" /> },
     { name: "Transactions", path: "/admin/transactions", icon: <FileTextIcon className="w-5 h-5" /> },
     { name: "Packages", path: "/admin/packages", icon: <PiggyBankIcon className="w-5 h-5" /> },
+    { name: "Applications", path: "/admin/applications", icon: <DocumentTextIcon className="w-5 h-5" /> },
     { name: "Settings", path: "/admin/settings", icon: <SettingsIcon className="w-5 h-5" /> },
   ];
 
   const staticActions = [
     { name: "Add User", type: "action", actionCode: "openAddUser", path: "/admin/users", icon: <PlusCircleIcon className="w-5 h-5 text-green-500" /> },
     { name: "Add Transaction", type: "action", actionCode: "openAddTxn", path: "/admin/transactions", icon: <PlusCircleIcon className="w-5 h-5 text-blue-500" /> },
+    
+    { name: "Add Fixed Deposit Package", type: "action", actionCode: "openAddFD", path: "/admin/packages", icon: <DocumentIcon className="w-5 h-5 text-teal-500" /> },
+    { name: "Add Saving Account Package", type: "action", actionCode: "openAddSaving", path: "/admin/packages", icon: <CurrencyDollarIcon className="w-5 h-5 text-teal-500" /> },
+    { name: "Add Loan Package", type: "action", actionCode: "openAddLoan", path: "/admin/packages", icon: <BanknotesIcon className="w-5 h-5 text-teal-500" /> },
+
+    { name: "Profile Settings", type: "setting", tab: "Profile", path: "/admin/settings", icon: <UserCircleIcon className="w-5 h-5 text-gray-500" /> },
+    { name: "Security Settings", type: "setting", tab: "Security", path: "/admin/settings", icon: <ShieldIcon className="w-5 h-5 text-gray-500" /> },
+    { name: "Change Password", type: "setting", tab: "Security", path: "/admin/settings", icon: <ShieldIcon className="w-5 h-5 text-gray-500" /> },
+    { name: "Two-Factor Authentication (2FA)", type: "setting", tab: "Security", path: "/admin/settings", icon: <ShieldIcon className="w-5 h-5 text-gray-500" /> },
+    { name: "Notification Settings", type: "setting", tab: "Notification", path: "/admin/settings", icon: <BellIcon className="w-5 h-5 text-gray-500" /> },
+    { name: "Appearance / Theme", type: "setting", tab: "Appearance", path: "/admin/settings", icon: <MoonIcon className="w-5 h-5 text-gray-500" /> },
   ];
 
   useEffect(() => {
@@ -129,8 +147,10 @@ export default function GlobalSearch({ isOpen, onClose }) {
   const handleNavigation = (item) => {
     if (!item) return;
     
-    if (item.category === 'action') {
+    if (item.type === 'action') {
       navigate(item.path, { state: { action: item.actionCode } });
+    } else if (item.type === 'setting') {
+      navigate(item.path, { state: { tab: item.tab } });
     } else if (item.category === 'page') {
       navigate(item.path);
     } else if (item.category === 'transaction') {
@@ -195,7 +215,7 @@ export default function GlobalSearch({ isOpen, onClose }) {
             ref={inputRef}
             type="text"
             className="flex-1 text-xl outline-none text-gray-700 placeholder-gray-400 bg-transparent"
-            placeholder="Search users, vouchers, pages or actions..."
+            placeholder="Search users, vouchers, add loan, security..."
             value={query}
             onChange={(e) => setQuery(e.target.value)}
           />
@@ -210,7 +230,7 @@ export default function GlobalSearch({ isOpen, onClose }) {
             if (item.category === 'action') {
               icon = item.icon;
               title = item.name;
-              subtitle = "Quick Action";
+              subtitle = item.type === 'setting' ? "Go to Settings" : "Quick Action";
             } else if (item.category === 'page') {
               icon = <div className="text-gray-500">{item.icon}</div>;
               title = item.name;

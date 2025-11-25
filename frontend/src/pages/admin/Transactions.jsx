@@ -20,6 +20,9 @@ const TransactionVoucher = ({ transaction, onClose, onStatusUpdate }) => {
   const voucherRef = useRef(null);
   if (!transaction) return null;
 
+  // Calculate raw amount to determine color
+  const rawAmount = transaction.amount || transaction.amountValue || 0;
+
   const isFrozen =
     transaction.status === "Frozen" || transaction.status === "Disputed";
 
@@ -178,17 +181,10 @@ const TransactionVoucher = ({ transaction, onClose, onStatusUpdate }) => {
           <span className="text-gray-600 font-medium">Total Amount</span>
           <span
             className={`text-3xl font-bold ${
-              transaction.type?.includes("Credit") ||
-              transaction.type === "Deposit"
-                ? "text-green-600"
-                : "text-red-600"
+              rawAmount > 0 ? "text-green-600" : "text-red-600"
             }`}
           >
-            {(
-              transaction.amount ||
-              transaction.amountValue ||
-              0
-            ).toLocaleString()}
+            Rs. {Math.abs(rawAmount).toLocaleString()}
           </span>
         </div>
 
@@ -569,6 +565,7 @@ function AdminTransactions() {
                 .map((log, index) => {
                   const isFrozen =
                     log.status === "Frozen" || log.status === "Disputed";
+                  const rawAmount = log.amount || log.amountValue || 0;
 
                   return (
                     <tr
@@ -614,12 +611,10 @@ function AdminTransactions() {
                       </td>
                       <td
                         className={`py-4 px-4 font-bold text-right text-sm ${
-                          log.type?.includes("Credit") || log.type === "Deposit"
-                            ? "text-green-600"
-                            : "text-red-600"
+                          rawAmount > 0 ? "text-green-600" : "text-red-600"
                         }`}
                       >
-                        {(log.amount || log.amountValue || 0).toLocaleString()}
+                        Rs. {Math.abs(rawAmount).toLocaleString()}
                       </td>
                     </tr>
                   );

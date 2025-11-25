@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { useLocation } from "react-router-dom"; // Added useLocation
 import {
   PlusCircleIcon,
   DocumentTextIcon,
@@ -20,6 +21,7 @@ import EditLoanPackageForm from "../../component/admin/EditLoanPackageForm.jsx";
 
 const apiBase = "http://localhost:8080/api";
 
+// ... (Keep PackageActions and ViewPackageModal components as they are) ...
 const PackageActions = ({ pkg, onView, onEdit, onDelete }) => (
   <div className="flex items-center justify-end space-x-2">
     <button
@@ -47,171 +49,172 @@ const PackageActions = ({ pkg, onView, onEdit, onDelete }) => (
 );
 
 const ViewPackageModal = ({ isOpen, onClose, packageData, packageType }) => {
-  if (!packageData) return null;
-
-  const renderContent = () => {
-    switch (packageType) {
-      case "fixed-deposit":
-        return (
-          <div className="flex flex-col gap-5">
-            <div>
-              <label className="block font-semibold mb-2">Package Name</label>
-              <div className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-full text-gray-900">
-                {packageData.name}
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+    if (!packageData) return null;
+  
+    const renderContent = () => {
+      switch (packageType) {
+        case "fixed-deposit":
+          return (
+            <div className="flex flex-col gap-5">
               <div>
-                <label className="block font-semibold mb-2">
-                  Interest Rate (%)
-                </label>
+                <label className="block font-semibold mb-2">Package Name</label>
                 <div className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-full text-gray-900">
-                  {packageData.interestRate}%
+                  {packageData.name}
                 </div>
               </div>
-
+  
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block font-semibold mb-2">
+                    Interest Rate (%)
+                  </label>
+                  <div className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-full text-gray-900">
+                    {packageData.interestRate}%
+                  </div>
+                </div>
+  
+                <div>
+                  <label className="block font-semibold mb-2">
+                    Minimum Duration (months)
+                  </label>
+                  <div className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-full text-gray-900">
+                    {packageData.minDuration} months
+                  </div>
+                </div>
+              </div>
+  
+              {/* Minimum Amount */}
               <div>
-                <label className="block font-semibold mb-2">
-                  Minimum Duration (months)
-                </label>
+                <label className="block font-semibold mb-2">Minimum Amount</label>
                 <div className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-full text-gray-900">
-                  {packageData.minDuration} months
+                  Rs. {packageData.minAmount?.toLocaleString()}
                 </div>
               </div>
-            </div>
-
-            {/* Minimum Amount */}
-            <div>
-              <label className="block font-semibold mb-2">Minimum Amount</label>
-              <div className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-full text-gray-900">
-                Rs. {packageData.minAmount?.toLocaleString()}
-              </div>
-            </div>
-
-            {/* Description */}
-            {packageData.description && (
-              <div>
-                <label className="block font-semibold mb-2">Description</label>
-                <div className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-2xl text-gray-900 min-h-[80px]">
-                  {packageData.description}
+  
+              {/* Description */}
+              {packageData.description && (
+                <div>
+                  <label className="block font-semibold mb-2">Description</label>
+                  <div className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-2xl text-gray-900 min-h-[80px]">
+                    {packageData.description}
+                  </div>
                 </div>
-              </div>
-            )}
-          </div>
-        );
-      case "saving-account":
-        return (
-          <div className="flex flex-col gap-5">
-            {/* Package Name */}
-            <div>
-              <label className="block font-semibold mb-2">Package Name</label>
-              <div className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-full text-gray-900">
-                {packageData.name}
-              </div>
+              )}
             </div>
-
-            {/* Interest Rate and Min Balance in one row */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          );
+        case "saving-account":
+          return (
+            <div className="flex flex-col gap-5">
+              {/* Package Name */}
               <div>
-                <label className="block font-semibold mb-2">
-                  Interest Rate (%)
-                </label>
+                <label className="block font-semibold mb-2">Package Name</label>
                 <div className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-full text-gray-900">
-                  {packageData.interestRate}%
+                  {packageData.name}
                 </div>
               </div>
-
+  
+              {/* Interest Rate and Min Balance in one row */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block font-semibold mb-2">
+                    Interest Rate (%)
+                  </label>
+                  <div className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-full text-gray-900">
+                    {packageData.interestRate}%
+                  </div>
+                </div>
+  
+                <div>
+                  <label className="block font-semibold mb-2">
+                    Minimum Balance
+                  </label>
+                  <div className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-full text-gray-900">
+                    Rs. {packageData.minBalance?.toLocaleString()}
+                  </div>
+                </div>
+              </div>
+  
+              {/* Description */}
+              {packageData.description && (
+                <div>
+                  <label className="block font-semibold mb-2">Description</label>
+                  <div className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-2xl text-gray-900 min-h-[80px]">
+                    {packageData.description}
+                  </div>
+                </div>
+              )}
+            </div>
+          );
+        case "loan-package":
+          return (
+            <div className="flex flex-col gap-5">
+              {/* Package Name */}
               <div>
-                <label className="block font-semibold mb-2">
-                  Minimum Balance
-                </label>
+                <label className="block font-semibold mb-2">Package Name</label>
                 <div className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-full text-gray-900">
-                  Rs. {packageData.minBalance?.toLocaleString()}
+                  {packageData.name}
                 </div>
               </div>
-            </div>
-
-            {/* Description */}
-            {packageData.description && (
-              <div>
-                <label className="block font-semibold mb-2">Description</label>
-                <div className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-2xl text-gray-900 min-h-[80px]">
-                  {packageData.description}
+  
+              {/* Interest Rate and Max Duration in one row */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block font-semibold mb-2">
+                    Interest Rate (%)
+                  </label>
+                  <div className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-full text-gray-900">
+                    {packageData.interestRate}%
+                  </div>
+                </div>
+  
+                <div>
+                  <label className="block font-semibold mb-2">
+                    Maximum Duration (months)
+                  </label>
+                  <div className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-full text-gray-900">
+                    {packageData.maxDuration} months
+                  </div>
                 </div>
               </div>
-            )}
-          </div>
-        );
-      case "loan-package":
-        return (
-          <div className="flex flex-col gap-5">
-            {/* Package Name */}
-            <div>
-              <label className="block font-semibold mb-2">Package Name</label>
-              <div className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-full text-gray-900">
-                {packageData.name}
-              </div>
-            </div>
-
-            {/* Interest Rate and Max Duration in one row */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+  
+              {/* Maximum Amount */}
               <div>
-                <label className="block font-semibold mb-2">
-                  Interest Rate (%)
-                </label>
+                <label className="block font-semibold mb-2">Maximum Amount</label>
                 <div className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-full text-gray-900">
-                  {packageData.interestRate}%
+                  Rs. {packageData.maxAmount?.toLocaleString()}
                 </div>
               </div>
-
-              <div>
-                <label className="block font-semibold mb-2">
-                  Maximum Duration (months)
-                </label>
-                <div className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-full text-gray-900">
-                  {packageData.maxDuration} months
+  
+              {/* Description */}
+              {packageData.description && (
+                <div>
+                  <label className="block font-semibold mb-2">Description</label>
+                  <div className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-2xl text-gray-900 min-h-[80px]">
+                    {packageData.description}
+                  </div>
                 </div>
-              </div>
+              )}
             </div>
-
-            {/* Maximum Amount */}
-            <div>
-              <label className="block font-semibold mb-2">Maximum Amount</label>
-              <div className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-full text-gray-900">
-                Rs. {packageData.maxAmount?.toLocaleString()}
-              </div>
-            </div>
-
-            {/* Description */}
-            {packageData.description && (
-              <div>
-                <label className="block font-semibold mb-2">Description</label>
-                <div className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-2xl text-gray-900 min-h-[80px]">
-                  {packageData.description}
-                </div>
-              </div>
-            )}
-          </div>
-        );
-      default:
-        return null;
-    }
+          );
+        default:
+          return null;
+      }
+    };
+  
+    return (
+      <Modal
+        isOpen={isOpen}
+        onClose={onClose}
+        title="View Package Details"
+        size="xl"
+      >
+        {renderContent()}
+      </Modal>
+    );
   };
 
-  return (
-    <Modal
-      isOpen={isOpen}
-      onClose={onClose}
-      title="View Package Details"
-      size="xl"
-    >
-      {renderContent()}
-    </Modal>
-  );
-};
-
 function AdminPackages() {
+  const location = useLocation(); // Hook for navigation state
   const [selectedNetworkId, setSelectedNetworkId] = useState(null);
   const [fixedDeposits, setFixedDeposits] = useState([]);
   const [savingAccounts, setSavingAccounts] = useState([]);
@@ -220,34 +223,45 @@ function AdminPackages() {
   const [sessionLoading, setSessionLoading] = useState(true);
 
   // Add modals
-  const [isAddFixedDepositModalOpen, setIsAddFixedDepositModalOpen] =
-    useState(false);
-  const [isAddSavingAccountModalOpen, setIsAddSavingAccountModalOpen] =
-    useState(false);
+  const [isAddFixedDepositModalOpen, setIsAddFixedDepositModalOpen] = useState(false);
+  const [isAddSavingAccountModalOpen, setIsAddSavingAccountModalOpen] = useState(false);
   const [isAddLoanModalOpen, setIsAddLoanModalOpen] = useState(false);
 
-  // Edit modals
-  const [isEditFixedDepositModalOpen, setIsEditFixedDepositModalOpen] =
-    useState(false);
-  const [isEditSavingAccountModalOpen, setIsEditSavingAccountModalOpen] =
-    useState(false);
+  // ... (Rest of your state variables) ...
+  const [isEditFixedDepositModalOpen, setIsEditFixedDepositModalOpen] = useState(false);
+  const [isEditSavingAccountModalOpen, setIsEditSavingAccountModalOpen] = useState(false);
   const [isEditLoanModalOpen, setIsEditLoanModalOpen] = useState(false);
-
-  // View modal
   const [viewPackageModalOpen, setViewPackageModalOpen] = useState(false);
   const [currentPackageToView, setCurrentPackageToView] = useState(null);
   const [currentPackageType, setCurrentPackageType] = useState(null);
-
-  // Current package for editing
   const [currentEditPackage, setCurrentEditPackage] = useState(null);
 
+  // --- NEW: Effect to handle Global Search actions ---
+  useEffect(() => {
+    if (location.state && location.state.action) {
+      const action = location.state.action;
+      
+      // Small timeout to ensure component is ready
+      setTimeout(() => {
+        if (action === "openAddFD") setIsAddFixedDepositModalOpen(true);
+        if (action === "openAddSaving") setIsAddSavingAccountModalOpen(true);
+        if (action === "openAddLoan") setIsAddLoanModalOpen(true);
+      }, 100);
+
+      // Clear state to prevent reopening on refresh
+      window.history.replaceState({}, document.title);
+    }
+  }, [location]);
+
+  // ... (Keep the rest of your existing code intact) ...
+  
   // Fetch session sahakariId
   useEffect(() => {
     const fetchSession = async () => {
       try {
         const response = await fetch(`${apiBase}/session`, {
           method: "GET",
-          credentials: "include", // Important: Include cookies for session
+          credentials: "include",
         });
         
         if (response.ok) {
@@ -351,7 +365,6 @@ function AdminPackages() {
     setCurrentEditPackage(null);
   };
 
-  // Show loading state while fetching session
   if (sessionLoading) {
     return (
       <div className="bg-white p-6 min-h-[calc(100vh-8.5rem)] rounded-lg shadow-md flex items-center justify-center">
@@ -360,7 +373,6 @@ function AdminPackages() {
     );
   }
 
-  // Show error if no network ID
   if (!selectedNetworkId) {
     return (
       <div className="bg-white p-6 min-h-[calc(100vh-8.5rem)] rounded-lg shadow-md flex items-center justify-center">
