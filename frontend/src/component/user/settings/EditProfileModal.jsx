@@ -8,6 +8,8 @@ function EditProfileModal({ currentUserData, onSave, onClose }) {
     address: currentUserData.address || "",
     secondaryAddress: currentUserData.secondaryAddress || "",
     secondaryContact: currentUserData.secondaryContact || "",
+    role: currentUserData.role,
+    sahakari: currentUserData.sahakari,
   });
   const [saving, setSaving] = useState(false);
 
@@ -19,17 +21,22 @@ function EditProfileModal({ currentUserData, onSave, onClose }) {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setSaving(true);
-    // In a real app, you'd send this to an API
-    // For now, we just simulate a save
-    await new Promise(resolve => setTimeout(resolve, 500)); 
-    setSaving(false);
-    onSave({ ...currentUserData, ...formData }); // Merge changes
+    
+    try {
+     
+      await onSave({ ...currentUserData, ...formData });
+   
+      onClose();
+    } catch (error) {
+      console.error("Failed to save:", error);
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-5">
       
-      {/* Name & Email */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
           <label className="block font-semibold mb-2">Full Name</label>
@@ -50,12 +57,11 @@ function EditProfileModal({ currentUserData, onSave, onClose }) {
             value={formData.email}
             readOnly
             disabled
-            className="w-full px-4 py-3 border border-gray-200 bg-gray-50 rounded-full"
+            className="w-full px-4 py-3 border border-gray-200 bg-gray-50 rounded-full text-gray-500 cursor-not-allowed"
           />
         </div>
       </div>
 
-      {/* Phone */}
       <div>
         <label className="block font-semibold mb-2">Phone Number</label>
         <input
@@ -67,7 +73,6 @@ function EditProfileModal({ currentUserData, onSave, onClose }) {
         />
       </div>
 
-      {/* Primary Address */}
       <div>
         <label className="block font-semibold mb-2">Primary Address</label>
         <textarea
@@ -80,7 +85,6 @@ function EditProfileModal({ currentUserData, onSave, onClose }) {
         />
       </div>
 
-      {/* Secondary Address */}
       <div>
         <label className="block font-semibold mb-2">Secondary Address (Optional)</label>
         <textarea
@@ -93,7 +97,6 @@ function EditProfileModal({ currentUserData, onSave, onClose }) {
         />
       </div>
 
-      {/* Secondary Contact */}
       <div>
         <label className="block font-semibold mb-2">Secondary Contact Info (Optional)</label>
         <input
@@ -106,11 +109,11 @@ function EditProfileModal({ currentUserData, onSave, onClose }) {
         />
       </div>
       
-      {/* Buttons */}
       <div className="flex justify-end gap-3 pt-4">
         <button
           type="button"
           onClick={onClose}
+          disabled={saving}
           className="px-6 py-2 bg-gray-200 rounded-full hover:bg-gray-300 transition-colors font-semibold"
         >
           Cancel
@@ -118,7 +121,7 @@ function EditProfileModal({ currentUserData, onSave, onClose }) {
         <button
           type="submit"
           disabled={saving}
-          className="px-6 py-2 bg-teal-500 text-white rounded-full hover:bg-teal-600 transition-colors font-semibold disabled:bg-gray-300"
+          className="px-6 py-2 bg-teal-500 text-white rounded-full hover:bg-teal-600 transition-colors font-semibold disabled:bg-gray-300 disabled:cursor-not-allowed"
         >
           {saving ? "Saving..." : "Save Changes"}
         </button>
