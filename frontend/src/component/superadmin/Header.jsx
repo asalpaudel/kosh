@@ -9,7 +9,6 @@ function Header({ pageName }) {
 
       <div className="flex items-center space-x-5">
         <SearchIcon className="text-yellow-400 h-6 w-6 cursor-pointer"/>
-        <BellIcon className="text-yellow-400 h-6 w-6 cursor-pointer"/>
         <SettingsIcon className="text-gray-400 h-6 w-6 cursor-pointer"/>
       </div>
     </header>

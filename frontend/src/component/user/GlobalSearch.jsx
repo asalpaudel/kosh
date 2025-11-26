@@ -2,78 +2,37 @@ import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
   SearchIcon, 
-  UserCircleIcon, 
   LayoutDashboardIcon, 
   FileTextIcon, 
-  UsersIcon, 
   PiggyBankIcon, 
   SettingsIcon,
-  PlusCircleIcon,
-  DocumentTextIcon,
-  ShieldIcon,
-  BellIcon,
-  MoonIcon,
-  BanknotesIcon,
-  DocumentIcon,
-  CurrencyDollarIcon
+  BarChartIcon,
+  DocumentTextIcon
 } from '../icons';
 
 const API_BASE = "http://localhost:8080/api";
 
 export default function GlobalSearch({ isOpen, onClose }) {
   const [query, setQuery] = useState("");
-  const [results, setResults] = useState({ pages: [], users: [], transactions: [], actions: [] });
-  const [adminSahakari, setAdminSahakari] = useState(null);
+  const [results, setResults] = useState({ pages: [], transactions: [], actions: [] });
   const [selectedIndex, setSelectedIndex] = useState(0);
   const inputRef = useRef(null);
   const listRef = useRef(null);
   const navigate = useNavigate();
 
   const pages = [
-    { name: "Dashboard", path: "/admin/dashboard", icon: <LayoutDashboardIcon className="w-5 h-5" /> },
-    { name: "Manage Users", path: "/admin/users", icon: <UsersIcon className="w-5 h-5" /> },
-    { name: "Transactions", path: "/admin/transactions", icon: <FileTextIcon className="w-5 h-5" /> },
-    { name: "Packages", path: "/admin/packages", icon: <PiggyBankIcon className="w-5 h-5" /> },
-    { name: "Applications", path: "/admin/applications", icon: <DocumentTextIcon className="w-5 h-5" /> },
-    { name: "Settings", path: "/admin/settings", icon: <SettingsIcon className="w-5 h-5" /> },
+    { name: "Dashboard", path: "/home/dashboard", icon: <LayoutDashboardIcon className="w-5 h-5" /> },
+    { name: "Financial Report", path: "/home/report", icon: <BarChartIcon className="w-5 h-5" /> },
+    { name: "Account Statement", path: "/home/statement", icon: <FileTextIcon className="w-5 h-5" /> },
+    { name: "Our Packages", path: "/home/packages", icon: <PiggyBankIcon className="w-5 h-5" /> },
+    { name: "Settings", path: "/home/settings", icon: <SettingsIcon className="w-5 h-5" /> },
   ];
 
   const staticActions = [
-    { name: "Add User", type: "action", actionCode: "openAddUser", path: "/admin/users", icon: <PlusCircleIcon className="w-5 h-5 text-green-500" /> },
-    { name: "Add Transaction", type: "action", actionCode: "openAddTxn", path: "/admin/transactions", icon: <PlusCircleIcon className="w-5 h-5 text-blue-500" /> },
-    
-    { name: "Add Fixed Deposit Package", type: "action", actionCode: "openAddFD", path: "/admin/packages", icon: <DocumentIcon className="w-5 h-5 text-teal-500" /> },
-    { name: "Add Saving Account Package", type: "action", actionCode: "openAddSaving", path: "/admin/packages", icon: <CurrencyDollarIcon className="w-5 h-5 text-teal-500" /> },
-    { name: "Add Loan Package", type: "action", actionCode: "openAddLoan", path: "/admin/packages", icon: <BanknotesIcon className="w-5 h-5 text-teal-500" /> },
-
-    { name: "Profile Settings", type: "setting", tab: "Profile", path: "/admin/settings", icon: <UserCircleIcon className="w-5 h-5 text-gray-500" /> },
-    { name: "Security Settings", type: "setting", tab: "Security", path: "/admin/settings", icon: <ShieldIcon className="w-5 h-5 text-gray-500" /> },
-    { name: "Change Password", type: "setting", tab: "Security", path: "/admin/settings", icon: <ShieldIcon className="w-5 h-5 text-gray-500" /> },
-    { name: "Two-Factor Authentication (2FA)", type: "setting", tab: "Security", path: "/admin/settings", icon: <ShieldIcon className="w-5 h-5 text-gray-500" /> },
-    { name: "Notification Settings", type: "setting", tab: "Notification", path: "/admin/settings", icon: <BellIcon className="w-5 h-5 text-gray-500" /> },
-    { name: "Appearance / Theme", type: "setting", tab: "Appearance", path: "/admin/settings", icon: <MoonIcon className="w-5 h-5 text-gray-500" /> },
+    { name: "Change Password", type: "action", path: "/home/settings", icon: <SettingsIcon className="w-5 h-5 text-gray-500" /> },
+    { name: "View Transactions", type: "action", path: "/home/statement", icon: <FileTextIcon className="w-5 h-5 text-blue-500" /> },
+    { name: "Apply for Loan", type: "action", path: "/home/packages", icon: <PiggyBankIcon className="w-5 h-5 text-teal-500" /> },
   ];
-
-  useEffect(() => {
-    const fetchSession = async () => {
-      try {
-        const res = await fetch(`${API_BASE}/session`, { credentials: "include" });
-        if (res.ok) {
-          const data = await res.json();
-          if(data.sahakariId) {
-             const netRes = await fetch(`${API_BASE}/networks/${data.sahakariId}`, { credentials: "include" });
-             if(netRes.ok) {
-                const netData = await netRes.json();
-                setAdminSahakari(netData.name);
-             }
-          }
-        }
-      } catch (e) {
-        console.error(e);
-      }
-    };
-    if (isOpen) fetchSession();
-  }, [isOpen]);
 
   useEffect(() => {
     if (isOpen && inputRef.current) setTimeout(() => inputRef.current.focus(), 50);
@@ -86,7 +45,7 @@ export default function GlobalSearch({ isOpen, onClose }) {
   useEffect(() => {
     const delayDebounceFn = setTimeout(async () => {
       if (!query) {
-        setResults({ pages: [], users: [], transactions: [], actions: [] });
+        setResults({ pages: [], transactions: [], actions: [] });
         return;
       }
 
@@ -94,38 +53,31 @@ export default function GlobalSearch({ isOpen, onClose }) {
       const matchingPages = pages.filter(p => p.name.toLowerCase().includes(lowerQuery));
       const matchingActions = staticActions.filter(a => a.name.toLowerCase().includes(lowerQuery));
 
-      let matchingUsers = [];
       let matchingTransactions = [];
+      const userId = localStorage.getItem("userId");
 
-      if (adminSahakari) {
+      if (userId) {
         try {
-            const userRes = await fetch(`${API_BASE}/users?search=${query}`, { credentials: "include" });
-            if (userRes.ok) {
-                const allUsers = await userRes.json();
-                matchingUsers = allUsers.filter(u => 
-                    u.sahakari === adminSahakari && 
-                    (u.name.toLowerCase().includes(lowerQuery) || u.email.toLowerCase().includes(lowerQuery))
-                ).slice(0, 3);
-            }
-
-            const txnRes = await fetch(`${API_BASE}/transactions`, { credentials: "include" });
-            if (txnRes.ok) {
-                const allTxns = await txnRes.json();
-                matchingTransactions = allTxns.filter(t => 
-                    (t.transactionId && t.transactionId.toLowerCase().includes(lowerQuery)) ||
-                    (t.voucherId && t.voucherId.toLowerCase().includes(lowerQuery)) ||
-                    (String(t.id) === lowerQuery)
-                ).slice(0, 3);
-            }
-
+          const txnRes = await fetch(`${API_BASE}/transactions`, { credentials: "include" });
+          if (txnRes.ok) {
+            const allTxns = await txnRes.json();
+            matchingTransactions = allTxns
+              .filter(t => String(t.userId) === String(userId))
+              .filter(t => 
+                (t.transactionId && t.transactionId.toLowerCase().includes(lowerQuery)) ||
+                (t.voucherId && t.voucherId.toLowerCase().includes(lowerQuery)) ||
+                (String(t.id) === lowerQuery) ||
+                (t.type && t.type.toLowerCase().includes(lowerQuery)) ||
+                (t.amountValue && String(t.amountValue).includes(lowerQuery))
+            ).slice(0, 3);
+          }
         } catch (error) {
-            console.error(error);
+          console.error(error);
         }
       }
 
       setResults({ 
           pages: matchingPages, 
-          users: matchingUsers, 
           transactions: matchingTransactions, 
           actions: matchingActions 
       });
@@ -133,30 +85,23 @@ export default function GlobalSearch({ isOpen, onClose }) {
     }, 300);
 
     return () => clearTimeout(delayDebounceFn);
-  }, [query, adminSahakari]);
+  }, [query]);
 
   const flatResults = useMemo(() => {
     return [
       ...results.actions.map(i => ({ ...i, category: 'action' })),
       ...results.pages.map(i => ({ ...i, category: 'page' })),
-      ...results.transactions.map(i => ({ ...i, category: 'transaction' })),
-      ...results.users.map(i => ({ ...i, category: 'user' }))
+      ...results.transactions.map(i => ({ ...i, category: 'transaction' }))
     ];
   }, [results]);
 
   const handleNavigation = (item) => {
     if (!item) return;
     
-    if (item.type === 'action') {
-      navigate(item.path, { state: { action: item.actionCode } });
-    } else if (item.type === 'setting') {
-      navigate(item.path, { state: { tab: item.tab } });
-    } else if (item.category === 'page') {
+    if (item.category === 'transaction') {
+      navigate("/home/statement", { state: { highlightTransactionId: item.id } });
+    } else {
       navigate(item.path);
-    } else if (item.category === 'transaction') {
-      navigate("/admin/transactions", { state: { openTransactionId: item.id } });
-    } else if (item.category === 'user') {
-      navigate("/admin/users", { state: { searchQuery: item.name } });
     }
     onClose();
   };
@@ -215,7 +160,7 @@ export default function GlobalSearch({ isOpen, onClose }) {
             ref={inputRef}
             type="text"
             className="flex-1 text-xl outline-none text-gray-700 placeholder-gray-400 bg-transparent"
-            placeholder="Search users, vouchers, add loan, security..."
+            placeholder="Search pages, transactions, or actions..."
             value={query}
             onChange={(e) => setQuery(e.target.value)}
           />
@@ -230,7 +175,7 @@ export default function GlobalSearch({ isOpen, onClose }) {
             if (item.category === 'action') {
               icon = item.icon;
               title = item.name;
-              subtitle = item.type === 'setting' ? "Go to Settings" : "Quick Action";
+              subtitle = "Quick Action";
             } else if (item.category === 'page') {
               icon = <div className="text-gray-500">{item.icon}</div>;
               title = item.name;
@@ -238,11 +183,7 @@ export default function GlobalSearch({ isOpen, onClose }) {
             } else if (item.category === 'transaction') {
               icon = <DocumentTextIcon className="w-5 h-5 text-orange-500" />;
               title = `Voucher: ${item.voucherId || 'N/A'}`;
-              subtitle = `ID: ${item.transactionId} • ${item.amount}`;
-            } else {
-              icon = <UserCircleIcon className="w-5 h-5 text-teal-600" />;
-              title = item.name;
-              subtitle = `${item.email} • ${item.role}`;
+              subtitle = `${item.type} • Rs. ${item.amount || item.amountValue}`;
             }
 
             return (

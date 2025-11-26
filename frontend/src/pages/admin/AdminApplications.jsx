@@ -12,7 +12,12 @@ import AddTransactionForm from "../../component/admin/AddTransactionForm.jsx";
 
 const apiBase = "http://localhost:8080/api";
 
-const ApplicationCard = ({ application, type, onReview, onOpenTransaction }) => {
+const ApplicationCard = ({
+  application,
+  type,
+  onReview,
+  onOpenTransaction,
+}) => {
   const getStatusBadge = (status) => {
     const styles = {
       PENDING: "bg-yellow-100 text-yellow-800",
@@ -352,9 +357,9 @@ function AdminApplications() {
             "Content-Type": "application/json",
           },
           credentials: "include",
-          body: JSON.stringify({ 
+          body: JSON.stringify({
             status: finalStatus,
-            reviewNotes: "Approved via transaction entry"
+            reviewNotes: "Approved via transaction entry",
           }),
         });
 
@@ -445,7 +450,9 @@ function AdminApplications() {
     <>
       <div className="bg-white p-6 min-h-[calc(100vh-8.5rem)] rounded-lg shadow-md">
         <div className="flex justify-between items-center mb-6">
-          <h2 className="text-2xl font-bold text-gray-800">Applications Review</h2>
+          <h2 className="text-2xl font-bold text-gray-800">
+            Applications Review
+          </h2>
           <div className="flex gap-2">
             <button
               onClick={() => setFilterStatus("ALL")}
@@ -604,7 +611,8 @@ function AdminApplications() {
         <div className="mb-4 p-4 bg-blue-50 border-l-4 border-blue-500 text-blue-700 rounded">
           <p className="font-semibold">📋 Application Approval Workflow</p>
           <p className="text-sm mt-1">
-            Complete the transaction details below to approve this application and create a transaction record.
+            Complete the transaction details below to approve this application
+            and create a transaction record.
           </p>
         </div>
         {transactionData && (

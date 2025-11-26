@@ -56,10 +56,9 @@ function Header({ pageName }) {
           <button 
             onClick={() => setIsSearchOpen(true)} 
             className="group flex items-center gap-2 focus:outline-none"
-            title="Search (Ctrl+K)"
+            title=""
           >
             <SearchIcon className="text-yellow-400 h-6 w-6 cursor-pointer group-hover:scale-110 transition-transform"/>
-            <span className="hidden md:block text-gray-500 text-sm group-hover:text-gray-300">Search...</span>
           </button>
           
           <BellIcon className="text-yellow-400 h-6 w-6 cursor-pointer hover:scale-110 transition-transform"/>

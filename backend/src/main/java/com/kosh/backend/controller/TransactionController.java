@@ -192,7 +192,7 @@ public class TransactionController {
                 return "Fixed Deposit";
             } else if (accountHead.toLowerCase().contains("recurring deposit")
                     || accountHead.toLowerCase().contains("rd")) {
-                return "Fixed Deposit"; // Treat RD as Fixed Deposit
+                return "Interest"; // Treat RD as Fixed Deposit
             } else if (accountHead.toLowerCase().contains("loan")) {
                 return "Loan";
             } else {

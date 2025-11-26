@@ -1,5 +1,6 @@
 package com.kosh.backend.controller;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -354,7 +355,7 @@ public class UserController {
 
         if (search != null && !search.trim().isEmpty()) {
             String lowerSearch = search.toLowerCase();
-            
+
             users = repo.findAll().stream()
                     .filter(u -> {
                         boolean nameMatch = u.getName() != null &&
@@ -377,35 +378,50 @@ public class UserController {
     @GetMapping("/me")
     public ResponseEntity<?> getCurrentUser(HttpSession session) {
         Long userId = (Long) session.getAttribute("userId");
-        
+
         System.out.println("=== Get Current User ===");
         System.out.println("Session User ID: " + userId);
-        
+
         if (userId == null) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                .body(Map.of("error", "Not authenticated"));
+                    .body(Map.of("error", "Not authenticated"));
         }
-        
+
         User user = repo.findById(userId.intValue()).orElse(null);
-        
+
         if (user == null) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                .body(Map.of("error", "User not found"));
+                    .body(Map.of("error", "User not found"));
         }
-        
+
         System.out.println("User: " + user.getName());
         System.out.println("Balance: " + user.getBalance());
-        
+
         // Return user data including balance
         return ResponseEntity.ok(Map.of(
-            "id", user.getId(),
-            "name", user.getName(),
-            "email", user.getEmail(),
-            "phone", user.getPhone(),
-            "role", user.getRole(),
-            "sahakari", user.getSahakari(),
-            "balance", user.getBalance() != null ? user.getBalance() : 0.0,
-            "status", user.getStatus()
-        ));
+                "id", user.getId(),
+                "name", user.getName(),
+                "email", user.getEmail(),
+                "phone", user.getPhone(),
+                "role", user.getRole(),
+                "sahakari", user.getSahakari(),
+                "balance", user.getBalance() != null ? user.getBalance() : 0.0,
+                "status", user.getStatus()));
     }
+
+    @GetMapping("/count")
+    public ResponseEntity<Map<String, Long>> getUserCounts() {
+
+        long total = repo.count();
+        long admins = repo.countByRole("admin");
+        long members = repo.countByRole("member");
+
+        Map<String, Long> map = new HashMap<>();
+        map.put("total", total);
+        map.put("admins", admins);
+        map.put("users", members);
+
+        return ResponseEntity.ok(map);
+    }
+
 }

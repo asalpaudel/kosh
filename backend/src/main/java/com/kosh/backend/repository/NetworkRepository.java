@@ -10,9 +10,14 @@ import java.util.List;
 @Repository
 public interface NetworkRepository extends JpaRepository<Network, Long> {
 
+    // 🔍 Find network by name
     Network findByName(String name);
 
-    // 1️⃣ Monthly revenue per type (Basic, Premium, Custom)
+    // ❌ Removed countByStatus — Network has no status
+    // ✅ Instead, you can count by packageType if needed
+    long countByPackageType(String packageType);
+
+    // 1️⃣ Monthly revenue per package type (Basic, Premium, Custom)
     @Query(
         value = "SELECT DATE_FORMAT(created_at, '%Y-%m') AS month, " +
                 "SUM(CASE WHEN package_type = 'Basic' THEN package_price ELSE 0 END) AS basic, " +
@@ -25,7 +30,7 @@ public interface NetworkRepository extends JpaRepository<Network, Long> {
     )
     List<Object[]> getMonthlyRevenueByType();
 
-    // 2️⃣ Total revenue by type (all-time)
+    // 2️⃣ Total revenue by type (Basic, Premium, Custom)
     @Query(
         value = "SELECT package_type, SUM(package_price) AS total " +
                 "FROM networks " +

@@ -1,7 +1,7 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import { useLocation } from "react-router-dom";
 import { UserIcon, ShieldIcon, BellIcon, MoonIcon } from "../../component/icons";
 
-// Import tab components (we will create these next)
 import ProfileTab from "../../component/admin/settings/ProfileTab";
 import SecurityTab from "../../component/admin/settings/SecurityTab";
 import NotificationsTab from "../../component/admin/settings/NotificationsTab";
@@ -15,7 +15,15 @@ const tabs = [
 ];
 
 function AdminSettings() {
+  const location = useLocation(); // Use hook
   const [activeTab, setActiveTab] = useState(tabs[0].name);
+
+  useEffect(() => {
+    if (location.state && location.state.tab) {
+      setActiveTab(location.state.tab);
+      window.history.replaceState({}, document.title);
+    }
+  }, [location]);
 
   const renderTabContent = () => {
     switch (activeTab) {
@@ -36,8 +44,6 @@ function AdminSettings() {
     <div className="bg-white p-4 sm:p-6 lg:p-8 min-h-[calc(100vh-8.5rem)]">
       <div className="max-w-6xl">
 
-
-        {/* Tab Navigation */}
         <div className="border-b border-gray-200 mb-8">
           <nav className="flex flex-wrap -mb-px" aria-label="Tabs">
             {tabs.map((tab) => {
@@ -66,7 +72,6 @@ function AdminSettings() {
           </nav>
         </div>
 
-        {/* Tab Content */}
         <div className="rounded-lg">
           {renderTabContent()}
         </div>
