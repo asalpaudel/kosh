@@ -8,10 +8,16 @@ import {
   ClockIcon,
 } from "../../component/icons.jsx";
 import Modal from "../../component/superadmin/Modal.jsx";
+import AddTransactionForm from "../../component/admin/AddTransactionForm.jsx";
 
 const apiBase = "http://localhost:8080/api";
 
-const ApplicationCard = ({ application, type, onReview }) => {
+const ApplicationCard = ({
+  application,
+  type,
+  onReview,
+  onOpenTransaction,
+}) => {
   const getStatusBadge = (status) => {
     const styles = {
       PENDING: "bg-yellow-100 text-yellow-800",
@@ -85,7 +91,7 @@ const ApplicationCard = ({ application, type, onReview }) => {
         <div>
           <h4 className="font-semibold text-gray-900">{getPackageName()}</h4>
           <p className="text-sm text-gray-600">
-            User ID: {application.user?.id}
+            User: {application.user?.name || `ID: ${application.user?.id}`}
           </p>
         </div>
         {getStatusBadge(application.status)}
@@ -101,7 +107,7 @@ const ApplicationCard = ({ application, type, onReview }) => {
       {application.status === "PENDING" && (
         <div className="flex gap-2 mt-3">
           <button
-            onClick={() => onReview(application, "APPROVED")}
+            onClick={() => onOpenTransaction(application, type, "APPROVED")}
             className="flex-1 bg-green-500 text-white py-2 px-4 rounded-full hover:bg-green-600 transition-colors text-sm font-semibold"
           >
             Approve
@@ -125,7 +131,7 @@ const ApplicationCard = ({ application, type, onReview }) => {
 };
 
 const ReviewModal = ({ isOpen, onClose, application, type, onSubmit }) => {
-  const [status, setStatus] = useState("APPROVED");
+  const [status, setStatus] = useState("REJECTED");
   const [notes, setNotes] = useState("");
 
   const handleSubmit = (e) => {
@@ -149,7 +155,6 @@ const ReviewModal = ({ isOpen, onClose, application, type, onSubmit }) => {
             className="w-full px-4 py-3 border border-gray-300 rounded-full focus:outline-none focus:border-teal-500"
             required
           >
-            <option value="APPROVED">Approve</option>
             <option value="REJECTED">Reject</option>
           </select>
         </div>
@@ -199,6 +204,10 @@ function AdminApplications() {
   const [reviewModalOpen, setReviewModalOpen] = useState(false);
   const [currentReviewApp, setCurrentReviewApp] = useState(null);
   const [currentReviewType, setCurrentReviewType] = useState(null);
+
+  // NEW: Transaction form state
+  const [transactionModalOpen, setTransactionModalOpen] = useState(false);
+  const [transactionData, setTransactionData] = useState(null);
 
   useEffect(() => {
     const fetchSession = async () => {
@@ -263,25 +272,107 @@ function AdminApplications() {
   }, [selectedNetworkId]);
 
   const handleQuickReview = async (application, status, type) => {
-    try {
-      const endpoint = `${apiBase}/applications/${type}/${application.id}/review`;
-      const response = await fetch(endpoint, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        credentials: "include",
-        body: JSON.stringify({ status }),
-      });
+    if (status === "REJECTED") {
+      // Direct rejection without transaction
+      try {
+        const endpoint = `${apiBase}/applications/${type}/${application.id}/review`;
+        const response = await fetch(endpoint, {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          credentials: "include",
+          body: JSON.stringify({ status }),
+        });
 
-      if (response.ok) {
-        fetchApplications();
-      } else {
-        alert("Failed to update application status");
+        if (response.ok) {
+          fetchApplications();
+        } else {
+          alert("Failed to update application status");
+        }
+      } catch (error) {
+        console.error("Error reviewing application:", error);
+        alert("An error occurred while reviewing the application");
       }
-    } catch (error) {
-      console.error("Error reviewing application:", error);
-      alert("An error occurred while reviewing the application");
+    }
+  };
+
+  const handleOpenTransaction = (application, type, status) => {
+    // Build transaction data based on application type
+    const txData = buildTransactionData(application, type);
+    setTransactionData(txData);
+    setTransactionModalOpen(true);
+  };
+
+  const buildTransactionData = (application, type) => {
+    const baseData = {
+      applicationId: application.id,
+      applicationType: type,
+      userId: application.user?.id,
+      userName: application.user?.name,
+      date: new Date().toISOString().split("T")[0],
+    };
+
+    switch (type) {
+      case "fixed-deposit":
+        return {
+          ...baseData,
+          userProduct: "Fixed Deposit",
+          transactionType: "Debit", // Money going out from user
+          amountValue: application.depositAmount,
+          narration: `Fixed Deposit - ${application.fixedDeposit?.name} (${application.depositTerm} months)`,
+        };
+
+      case "saving-account":
+        return {
+          ...baseData,
+          userProduct: "Savings",
+          transactionType: "Debit", // Initial deposit going out
+          amountValue: application.initialDeposit,
+          narration: `Savings Account Opening - ${application.savingAccount?.name}`,
+        };
+
+      case "loan":
+        return {
+          ...baseData,
+          userProduct: "Loan",
+          transactionType: "Credit", // Loan amount coming in
+          amountValue: application.requestedAmount,
+          narration: `Loan Disbursement - ${application.loanPackage?.name} (${application.purpose})`,
+        };
+
+      default:
+        return baseData;
+    }
+  };
+
+  const handleTransactionComplete = async (finalStatus = "APPROVED") => {
+    // After transaction is saved, update the application status
+    if (transactionData) {
+      try {
+        const endpoint = `${apiBase}/applications/${transactionData.applicationType}/${transactionData.applicationId}/review`;
+        const response = await fetch(endpoint, {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          credentials: "include",
+          body: JSON.stringify({
+            status: finalStatus,
+            reviewNotes: "Approved via transaction entry",
+          }),
+        });
+
+        if (response.ok) {
+          setTransactionModalOpen(false);
+          setTransactionData(null);
+          fetchApplications();
+        } else {
+          alert("Transaction saved but failed to update application status");
+        }
+      } catch (error) {
+        console.error("Error updating application:", error);
+      }
     }
   };
 
@@ -360,7 +451,7 @@ function AdminApplications() {
       <div className="bg-white p-6 min-h-[calc(100vh-8.5rem)] rounded-lg shadow-md">
         <div className="flex justify-between items-center mb-6">
           <h2 className="text-2xl font-bold text-gray-800">
-            Application Management
+            Applications Review
           </h2>
           <div className="flex gap-2">
             <button
@@ -426,6 +517,7 @@ function AdminApplications() {
                       onReview={(app, status) =>
                         handleQuickReview(app, status, "fixed-deposit")
                       }
+                      onOpenTransaction={handleOpenTransaction}
                     />
                   ))
                 ) : (
@@ -452,6 +544,7 @@ function AdminApplications() {
                       onReview={(app, status) =>
                         handleQuickReview(app, status, "saving-account")
                       }
+                      onOpenTransaction={handleOpenTransaction}
                     />
                   ))
                 ) : (
@@ -478,6 +571,7 @@ function AdminApplications() {
                       onReview={(app, status) =>
                         handleQuickReview(app, status, "loan")
                       }
+                      onOpenTransaction={handleOpenTransaction}
                     />
                   ))
                 ) : (
@@ -491,6 +585,7 @@ function AdminApplications() {
         )}
       </div>
 
+      {/* Rejection Review Modal */}
       <ReviewModal
         isOpen={reviewModalOpen}
         onClose={() => {
@@ -502,6 +597,35 @@ function AdminApplications() {
         type={currentReviewType}
         onSubmit={handleSubmitReview}
       />
+
+      {/* NEW: Transaction Entry Modal */}
+      <Modal
+        isOpen={transactionModalOpen}
+        onClose={() => {
+          setTransactionModalOpen(false);
+          setTransactionData(null);
+        }}
+        title="Complete Application Approval"
+        size="xl"
+      >
+        <div className="mb-4 p-4 bg-blue-50 border-l-4 border-blue-500 text-blue-700 rounded">
+          <p className="font-semibold">📋 Application Approval Workflow</p>
+          <p className="text-sm mt-1">
+            Complete the transaction details below to approve this application
+            and create a transaction record.
+          </p>
+        </div>
+        {transactionData && (
+          <AddTransactionForm
+            onAdded={handleTransactionComplete}
+            onClose={() => {
+              setTransactionModalOpen(false);
+              setTransactionData(null);
+            }}
+            prefilledData={transactionData}
+          />
+        )}
+      </Modal>
     </>
   );
 }
