@@ -1,33 +1,65 @@
 import React, { useState, useEffect } from 'react';
 import ReactApexChart from 'react-apexcharts';
 
-const generateDailyData = (startDate, numDays) => {
-  const data = [];
-  let value = 50; 
-  for (let i = 0; i < numDays; i++) {
-    const newDate = new Date(startDate);
-    newDate.setDate(newDate.getDate() + i);
-    const fluctuation = (Math.random() - 0.5) * 5;
-    value += fluctuation;
-    data.push({
-      x: newDate.getTime(), 
-      y: Math.round(value * 100) / 100, 
-    });
-  }
-  return data;
+const API_BASE = "http://localhost:8080/api";
+
+const parseAmount = (val) => {
+  if (typeof val === 'number') return val;
+  if (!val) return 0;
+  // Remove "Rs.", commas, and spaces, then parse
+  return parseFloat(String(val).replace(/[^\d.-]/g, ''));
 };
 
 const FinancialChart = () => {
   const [allData, setAllData] = useState([]);
   const [displaySeries, setDisplaySeries] = useState([]);
-  const [activeFilter, setActiveFilter] = useState('1W'); 
+  const [activeFilter, setActiveFilter] = useState('ALL'); 
 
   useEffect(() => {
-    const today = new Date();
-    const startDate = new Date(new Date().setFullYear(today.getFullYear() - 2));
-    const totalDays = Math.floor((today - startDate) / (1000 * 60 * 60 * 24));
-    const data = generateDailyData(startDate, totalDays);
-    setAllData(data);
+    const fetchChartData = async () => {
+      try {
+        const userId = localStorage.getItem("userId");
+        if (!userId) return;
+
+        const res = await fetch(`${API_BASE}/transactions`, { credentials: "include" });
+        if (!res.ok) return;
+        
+        const data = await res.json();
+        
+        // Filter for current user and Sort by Date Ascending
+        const myTxns = data
+          .filter(t => String(t.userId) === String(userId))
+          .sort((a, b) => new Date(a.date) - new Date(b.date));
+
+        let currentBalance = 0;
+        const seriesData = myTxns.map(t => {
+          const amount = parseAmount(t.amount || t.amountValue);
+          
+          // Determine if Credit or Debit based on type
+          if (t.type === 'Withdrawal' || (t.type && t.type.includes('Debit'))) {
+            currentBalance -= amount;
+          } else {
+            currentBalance += amount;
+          }
+
+          return {
+            x: new Date(t.date).getTime(),
+            y: currentBalance
+          };
+        });
+
+        // If no data, add a zero point for today so chart isn't empty
+        if (seriesData.length === 0) {
+          seriesData.push({ x: Date.now(), y: 0 });
+        }
+
+        setAllData(seriesData);
+      } catch (error) {
+        console.error("Failed to load financial data:", error);
+      }
+    };
+
+    fetchChartData();
   }, []);
 
   useEffect(() => {
@@ -36,15 +68,16 @@ const FinancialChart = () => {
     const today = new Date();
     let startDate;
 
+    // Determine start date based on filter
     switch (activeFilter) {
       case '1W':
-        startDate = new Date(new Date().setDate(today.getDate() - 7));
+        startDate = new Date(today.setDate(today.getDate() - 7));
         break;
       case '1M':
-        startDate = new Date(new Date().setMonth(today.getMonth() - 1));
+        startDate = new Date(today.setMonth(today.getMonth() - 1));
         break;
       case '1Y':
-        startDate = new Date(new Date().setFullYear(today.getFullYear() - 1));
+        startDate = new Date(today.setFullYear(today.getFullYear() - 1));
         break;
       case 'ALL':
       default:
@@ -52,12 +85,31 @@ const FinancialChart = () => {
         break;
     }
 
-    const filteredData = allData.filter(item => item.x >= startDate.getTime());
+    const startTime = startDate.getTime();
+
+    // 1. Calculate Opening Balance
+    let openingBalance = 0;
+    const priorData = allData.filter(d => d.x < startTime);
+    if (priorData.length > 0) {
+      openingBalance = priorData[priorData.length - 1].y;
+    }
+
+    // 2. Get Data Points within range
+    const filteredData = allData.filter(item => item.x >= startTime);
+
+    // 3. Construct Chart Data
+    const chartData = [
+      { x: startTime, y: openingBalance },
+      ...filteredData
+    ];
+
+    // Add a final point for 'now'
+    chartData.push({ x: Date.now(), y: chartData[chartData.length - 1].y });
 
     setDisplaySeries([
       {
         name: 'Savings',
-        data: filteredData,
+        data: chartData,
       },
     ]);
   }, [activeFilter, allData]);
@@ -66,31 +118,29 @@ const FinancialChart = () => {
     chart: {
       type: 'line',
       height: 350,
-      zoom: {
-        enabled: false,
-      },
-      toolbar: {
-        show: false,
-      },
+      zoom: { enabled: false },
+      toolbar: { show: false },
+      animations: { enabled: true }
     },
     stroke: {
       width: 4,
-      curve: 'smooth',
+      curve: 'smooth', // Restored smooth curve
     },
     xaxis: {
       type: 'datetime',
-      tickAmount: 6,
+      tooltip: { enabled: false }
     },
     yaxis: {
-      title: {
-        text: 'Amount (Rs)',
-      },
+      title: { text: 'Amount (Rs)' },
+      labels: {
+        formatter: (value) => value.toLocaleString('en-IN')
+      }
     },
     fill: {
       type: 'gradient',
       gradient: {
         shade: 'dark',
-        gradientToColors: ['#3AC249'], 
+        gradientToColors: ['#000000'], // Fade to Black on the right
         shadeIntensity: 1,
         type: 'horizontal',
         opacityFrom: 1,
@@ -98,14 +148,20 @@ const FinancialChart = () => {
         stops: [0, 100],
       },
     },
-    colors: ['#000000'],
+    // Start with Green on the left
+    colors: ['#3AC249'], 
+    dataLabels: { enabled: false },
+    tooltip: {
+      x: { format: 'dd MMM yyyy' },
+      y: { formatter: (val) => `Rs. ${val.toLocaleString('en-IN')}` }
+    }
   };
 
   const timeRanges = ['1W', '1M', '1Y', 'ALL'];
 
   return (
     <div className="bg-white rounded-lg p-4 shadow-md col-span-2 flex flex-col">
-      <div id="chart">
+      <div id="chart" className="flex-1">
         <ReactApexChart
           options={chartOptions}
           series={displaySeries}
