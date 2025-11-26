@@ -4,7 +4,7 @@ import {
   DocumentTextIcon,
   UsersIcon,
   BuildingIcon,
-  CalendarIcon, // Assuming this is exported from your icons file
+  CalendarIcon,
 } from "../icons";
 
 const apiBase = "http://localhost:8080/api";
@@ -31,7 +31,6 @@ const CustomCalendar = ({ selectedDate, onChange, onClose }) => {
     "December",
   ];
 
-  // Generate Year Options (1950 - 2030)
   const currentYear = new Date().getFullYear();
   const years = Array.from({ length: 80 }, (_, i) => currentYear - 50 + i);
 
@@ -54,7 +53,6 @@ const CustomCalendar = ({ selectedDate, onChange, onClose }) => {
 
   const handleDayClick = (day) => {
     const newDate = new Date(year, month, day);
-    // Fix timezone offset for YYYY-MM-DD string
     const offset = newDate.getTimezoneOffset();
     const localDate = new Date(newDate.getTime() - offset * 60 * 1000);
     onChange(localDate.toISOString().split("T")[0]);
@@ -63,7 +61,6 @@ const CustomCalendar = ({ selectedDate, onChange, onClose }) => {
 
   return (
     <div className="absolute top-full left-0 z-50 mt-2 w-80 bg-white rounded-xl shadow-2xl border border-gray-200 p-4 select-none">
-      {/* Header with Dropdowns */}
       <div className="flex justify-between items-center mb-4 gap-2">
         <button
           type="button"
@@ -74,7 +71,6 @@ const CustomCalendar = ({ selectedDate, onChange, onClose }) => {
         </button>
 
         <div className="flex gap-2">
-          {/* Month Select */}
           <select
             value={month}
             onChange={handleMonthChange}
@@ -87,7 +83,6 @@ const CustomCalendar = ({ selectedDate, onChange, onClose }) => {
             ))}
           </select>
 
-          {/* Year Select */}
           <select
             value={year}
             onChange={handleYearChange}
@@ -110,7 +105,6 @@ const CustomCalendar = ({ selectedDate, onChange, onClose }) => {
         </button>
       </div>
 
-      {/* Days Header */}
       <div className="grid grid-cols-7 mb-2 text-center">
         {days.map((d, i) => (
           <span
@@ -124,7 +118,6 @@ const CustomCalendar = ({ selectedDate, onChange, onClose }) => {
         ))}
       </div>
 
-      {/* Calendar Grid */}
       <div className="grid grid-cols-7 gap-1">
         {Array.from({ length: firstDay }).map((_, i) => (
           <div key={`empty-${i}`} />
@@ -166,39 +159,44 @@ const CustomCalendar = ({ selectedDate, onChange, onClose }) => {
   );
 };
 
-function AddTransactionForm({ onAdded, onClose }) {
-  const [mode, setMode] = useState("member");
+function AddTransactionForm({ onAdded, onClose, prefilledData }) {
+  const [mode, setMode] = useState(prefilledData ? "member" : "member");
   const [showCalendar, setShowCalendar] = useState(false);
   const calendarRef = useRef(null);
 
   const [formData, setFormData] = useState({
-    voucherId: `V-${Math.floor(Math.random() * 10000)}`,
-    date: new Date().toISOString().split("T")[0],
+    voucherId: prefilledData?.voucherId || `V-${Math.floor(Math.random() * 10000)}`,
+    date: prefilledData?.date || new Date().toISOString().split("T")[0],
     fyType: "Current FY",
 
-    userId: null,
-    userName: "",
-    userProduct: "Savings",
+    userId: prefilledData?.userId || null,
+    userName: prefilledData?.userName || "",
+    userProduct: prefilledData?.userProduct || "Savings",
     internalHead: "",
     headCategory: "Expense",
     networkLedger: "Cash",
-    transactionType: "Credit",
-    amountValue: "",
+    transactionType: prefilledData?.transactionType || "Credit",
+    amountValue: prefilledData?.amountValue || "",
     paymentMethod: "Cash",
     chequeNo: "",
     bankName: "",
     receivedBy: "",
-    narration: "",
+    narration: prefilledData?.narration || "",
+    applicationId: prefilledData?.applicationId || null,
+    applicationType: prefilledData?.applicationType || null,
   });
 
   const [balances, setBalances] = useState({ current: 0, projected: 0 });
-  const [userSearch, setUserSearch] = useState("");
+  const [userSearch, setUserSearch] = useState(prefilledData?.userName || "");
   const [userResults, setUserResults] = useState([]);
   const [showUserResults, setShowUserResults] = useState(false);
   const searchTimeoutRef = useRef(null);
   const searchBoxRef = useRef(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+
+  // Disable mode switching if data is prefilled
+  const isPrefilledMode = !!prefilledData;
 
   // Close popups when clicking outside
   useEffect(() => {
@@ -243,7 +241,6 @@ function AddTransactionForm({ onAdded, onClose }) {
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
-  // 🧠 Manual Date Input Handler
   const handleDateInput = (e) => {
     setFormData((prev) => ({ ...prev, date: e.target.value }));
   };
@@ -269,7 +266,7 @@ function AddTransactionForm({ onAdded, onClose }) {
         const response = await fetch(
           `${apiBase}/users?search=${encodeURIComponent(query)}`,
           {
-            credentials: "include", // IMPORTANT: Include session cookies
+            credentials: "include",
           }
         );
 
@@ -302,65 +299,67 @@ function AddTransactionForm({ onAdded, onClose }) {
   };
 
   const handleSubmit = async (e) => {
-  e.preventDefault();
-  setLoading(true);
-  setError("");
+    e.preventDefault();
+    setLoading(true);
+    setError("");
 
-  if (mode === "member" && !formData.userId) {
-    setError("Please select a User.");
-    setLoading(false);
-    return;
-  }
-  if (!formData.amountValue) {
-    setError("Please enter an Amount.");
-    setLoading(false);
-    return;
-  }
-
-  try {
-    const payload = {
-      voucherId: mode === "member" ? formData.voucherId : null,
-      date: formData.date,
-      status: "Success",
-      userId: mode === "member" ? formData.userId : null,
-      userName: mode === "member" ? formData.userName : "Sahakari Network",
-      details: {
-        mode,
-        fyType: formData.fyType,
-        accountHead: mode === "member" ? formData.userProduct : `${formData.headCategory}: ${formData.internalHead}`,
-        networkLedger: formData.networkLedger,
-        direction: formData.transactionType,
-        paymentMethod: formData.paymentMethod,
-        chequeNo: formData.chequeNo,
-        bankName: formData.bankName,
-        receivedBy: formData.receivedBy,
-      },
-      type: mode === "member" 
-        ? `${formData.userProduct} (${formData.transactionType})` 
-        : `${formData.headCategory} (${formData.transactionType})`,
-      amountValue: parseFloat(formData.amountValue),
-      narration: formData.narration,
-    };
-
-    const response = await fetch(`${apiBase}/transactions`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      credentials: 'include', // ⭐ CRITICAL: Include session cookies
-      body: JSON.stringify(payload),
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.error || await response.text());
+    if (mode === "member" && !formData.userId) {
+      setError("Please select a User.");
+      setLoading(false);
+      return;
     }
-    
-    onAdded();
-  } catch (err) {
-    setError(err.message);
-  } finally {
-    setLoading(false);
-  }
-};
+    if (!formData.amountValue) {
+      setError("Please enter an Amount.");
+      setLoading(false);
+      return;
+    }
+
+    try {
+      const payload = {
+        voucherId: mode === "member" ? formData.voucherId : null,
+        date: formData.date,
+        status: "Success",
+        userId: mode === "member" ? formData.userId : null,
+        userName: mode === "member" ? formData.userName : "Sahakari Network",
+        details: {
+          mode,
+          fyType: formData.fyType,
+          accountHead: mode === "member" ? formData.userProduct : `${formData.headCategory}: ${formData.internalHead}`,
+          networkLedger: formData.networkLedger,
+          direction: formData.transactionType,
+          paymentMethod: formData.paymentMethod,
+          chequeNo: formData.chequeNo,
+          bankName: formData.bankName,
+          receivedBy: formData.receivedBy,
+        },
+        type: mode === "member" 
+          ? `${formData.userProduct} (${formData.transactionType})` 
+          : `${formData.headCategory} (${formData.transactionType})`,
+        amountValue: parseFloat(formData.amountValue),
+        narration: formData.narration,
+        applicationId: formData.applicationId,
+        applicationType: formData.applicationType,
+      };
+
+      const response = await fetch(`${apiBase}/transactions`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: 'include',
+        body: JSON.stringify(payload),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || await response.text());
+      }
+      
+      onAdded();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <form
@@ -381,7 +380,8 @@ function AddTransactionForm({ onAdded, onClose }) {
 
         <div
           className="relative bg-gray-200 p-1 rounded-full flex items-center w-48 h-10 cursor-pointer shadow-inner"
-          onClick={() => setMode(mode === "member" ? "network" : "member")}
+          onClick={() => !isPrefilledMode && setMode(mode === "member" ? "network" : "member")}
+          style={{ opacity: isPrefilledMode ? 0.5 : 1, cursor: isPrefilledMode ? 'not-allowed' : 'pointer' }}
         >
           <div
             className={`absolute top-1 bottom-1 w-[calc(50%-4px)] bg-teal-500 rounded-full shadow-md transition-all duration-300 ease-in-out z-0 ${
@@ -392,8 +392,9 @@ function AddTransactionForm({ onAdded, onClose }) {
             type="button"
             onClick={(e) => {
               e.stopPropagation();
-              setMode("member");
+              if (!isPrefilledMode) setMode("member");
             }}
+            disabled={isPrefilledMode}
             className={`relative z-10 w-1/2 flex items-center justify-center gap-2 text-sm font-bold transition-colors duration-300 ${
               mode === "member" ? "text-white" : "text-gray-600"
             }`}
@@ -404,8 +405,9 @@ function AddTransactionForm({ onAdded, onClose }) {
             type="button"
             onClick={(e) => {
               e.stopPropagation();
-              setMode("network");
+              if (!isPrefilledMode) setMode("network");
             }}
+            disabled={isPrefilledMode}
             className={`relative z-10 w-1/2 flex items-center justify-center gap-2 text-sm font-bold transition-colors duration-300 ${
               mode === "network" ? "text-white" : "text-gray-600"
             }`}
@@ -418,6 +420,12 @@ function AddTransactionForm({ onAdded, onClose }) {
       {error && (
         <div className="bg-red-50 border-l-4 border-red-500 text-red-700 p-3 text-sm rounded">
           {error}
+        </div>
+      )}
+
+      {isPrefilledMode && (
+        <div className="bg-teal-50 border-l-4 border-teal-500 text-teal-700 p-3 text-sm rounded">
+          <strong>✓ Application Pre-filled:</strong> Review the details below and complete the transaction to approve this application.
         </div>
       )}
 
@@ -440,7 +448,6 @@ function AddTransactionForm({ onAdded, onClose }) {
           />
         </div>
 
-        {/* 📅 Date Input with Manual Entry + Popup */}
         <div className="relative" ref={calendarRef}>
           <label className="block text-xs font-bold text-gray-500 uppercase mb-1">
             Date
@@ -458,7 +465,6 @@ function AddTransactionForm({ onAdded, onClose }) {
               className="absolute right-3 top-1/2 -translate-y-1/2 cursor-pointer z-20"
               onClick={() => setShowCalendar(!showCalendar)}
             >
-              {/* 📅 Teal Calendar Icon */}
               <CalendarIcon className="w-4 h-4 text-teal-600" />
             </span>
           </div>
@@ -516,12 +522,13 @@ function AddTransactionForm({ onAdded, onClose }) {
                   value={userSearch}
                   onChange={handleUserSearchChange}
                   onFocus={() =>
-                    userSearch.length > 1 && setShowUserResults(true)
+                    userSearch.length > 1 && !isPrefilledMode && setShowUserResults(true)
                   }
                   placeholder="Search Member..."
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none focus:border-teal-500"
+                  disabled={isPrefilledMode}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none focus:border-teal-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
                 />
-                {showUserResults && (
+                {showUserResults && !isPrefilledMode && (
                   <div className="absolute z-20 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-xl max-h-48 overflow-y-auto">
                     {userResults.map((u) => (
                       <div
@@ -539,7 +546,8 @@ function AddTransactionForm({ onAdded, onClose }) {
                 name="userProduct"
                 value={formData.userProduct}
                 onChange={handleChange}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none focus:border-teal-500"
+                disabled={isPrefilledMode}
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none focus:border-teal-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
               >
                 <option value="Savings">Savings Account (Sv)</option>
                 <option value="Fixed Deposit">Fixed Deposit (FD)</option>
@@ -723,7 +731,8 @@ function AddTransactionForm({ onAdded, onClose }) {
               value={formData.amountValue}
               onChange={handleChange}
               placeholder="0.00"
-              className="w-full pl-10 pr-4 py-3 text-xl font-bold border border-gray-300 rounded-lg focus:border-black outline-none"
+              disabled={isPrefilledMode}
+              className="w-full pl-10 pr-4 py-3 text-xl font-bold border border-gray-300 rounded-lg focus:border-black outline-none disabled:bg-gray-100 disabled:cursor-not-allowed"
             />
           </div>
         </div>
@@ -750,6 +759,8 @@ function AddTransactionForm({ onAdded, onClose }) {
         >
           {loading
             ? "Processing..."
+            : isPrefilledMode 
+            ? "Approve Application & Save Transaction" 
             : `Save ${mode === "member" ? "Member" : "Network"} Voucher`}
         </button>
       </div>

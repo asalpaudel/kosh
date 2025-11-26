@@ -10,6 +10,7 @@ import org.springframework.web.server.ResponseStatusException;
 
 import jakarta.servlet.http.HttpSession;
 import java.time.LocalDateTime;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -51,9 +52,6 @@ public class ApplicationController {
             Long userId = (Long) session.getAttribute("userId");
             Long networkId = (Long) session.getAttribute("sahakariId");
             
-            System.out.println("=== FD Application Debug ===");
-            System.out.println("User ID from session: " + userId);
-            
             if (userId == null || networkId == null) {
                 return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                     .body(Map.of("error", "User not authenticated"));
@@ -65,10 +63,6 @@ public class ApplicationController {
 
             User user = userRepo.findById(userId.intValue())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
-            
-            System.out.println("User found: " + user.getName());
-            System.out.println("User balance: " + user.getBalance());
-            System.out.println("Deposit amount requested: " + depositAmount);
             
             FixedDeposit fixedDeposit = fixedDepositRepo.findById(packageId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Package not found"));
@@ -86,23 +80,22 @@ public class ApplicationController {
                     .body(Map.of("error", "Deposit term below minimum duration"));
             }
 
-            // CHECK USER BALANCE
-            Double userBalance = user.getBalance() != null ? user.getBalance() : 0.0;
-            System.out.println("Balance check - User has: " + userBalance + ", Needs: " + depositAmount);
-            
-            if (userBalance < depositAmount) {
-                System.out.println("INSUFFICIENT BALANCE - Rejecting application");
-                return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                    .body(Map.of(
-                        "error", 
-                        "Insufficient balance. Your balance: Rs. " + 
-                        String.format("%.2f", userBalance) + 
-                        ", Required: Rs. " + 
-                        String.format("%.2f", depositAmount)
-                    ));
+            // ===== CHECK USER BALANCE =====
+            Double userBalance = user.getBalance();
+            if (userBalance == null) {
+                userBalance = 0.0;
             }
-            
-            System.out.println("Balance sufficient - Proceeding with application");
+
+            if (userBalance < depositAmount) {
+                Map<String, Object> errorResponse = new HashMap<>();
+                errorResponse.put("error", "Insufficient balance");
+                errorResponse.put("currentBalance", userBalance);
+                errorResponse.put("requiredAmount", depositAmount);
+                errorResponse.put("shortfall", depositAmount - userBalance);
+                
+                return ResponseEntity.badRequest().body(errorResponse);
+            }
+            // ===== END BALANCE CHECK =====
 
             FixedDepositApplication application = new FixedDepositApplication();
             application.setUser(user);
@@ -158,6 +151,10 @@ public class ApplicationController {
             ApplicationStatus status = ApplicationStatus.valueOf(statusStr);
             String notes = request.containsKey("reviewNotes") ? request.get("reviewNotes").toString() : null;
 
+            // ===== REMOVED BALANCE DEDUCTION =====
+            // Balance will be deducted via transaction entry instead
+            // The transaction will handle the balance update
+            
             application.setStatus(status);
             application.setReviewDate(LocalDateTime.now());
             application.setReviewedBy(admin);
@@ -197,23 +194,49 @@ public class ApplicationController {
             Network network = networkRepo.findById(networkId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Network not found"));
 
+            // ===== CHECK IF USER ALREADY HAS A SAVINGS ACCOUNT =====
+            List<SavingAccountApplication> existingApplications = saAppRepo.findByUserId(userId);
+            
+            // Check for approved account
+            boolean hasApprovedAccount = existingApplications.stream()
+                .anyMatch(app -> app.getStatus() == ApplicationStatus.APPROVED);
+            
+            if (hasApprovedAccount) {
+                return ResponseEntity.badRequest()
+                    .body(Map.of("error", "You already have an approved savings account. Only one savings account is allowed per user."));
+            }
+            
+            // Check for pending application
+            boolean hasPendingApplication = existingApplications.stream()
+                .anyMatch(app -> app.getStatus() == ApplicationStatus.PENDING);
+            
+            if (hasPendingApplication) {
+                return ResponseEntity.badRequest()
+                    .body(Map.of("error", "You already have a pending savings account application. Please wait for approval."));
+            }
+            // ===== END SAVINGS ACCOUNT CHECK =====
+
             if (initialDeposit < savingAccount.getMinBalance()) {
                 return ResponseEntity.badRequest()
                     .body(Map.of("error", "Initial deposit below minimum balance"));
             }
 
-            // CHECK USER BALANCE FOR SAVINGS ACCOUNT
-            Double userBalance = user.getBalance() != null ? user.getBalance() : 0.0;
-            if (userBalance < initialDeposit) {
-                return ResponseEntity.badRequest()
-                    .body(Map.of(
-                        "error", 
-                        "Insufficient balance. Your balance: Rs. " + 
-                        String.format("%.2f", userBalance) + 
-                        ", Required: Rs. " + 
-                        String.format("%.2f", initialDeposit)
-                    ));
+            // ===== CHECK USER BALANCE =====
+            Double userBalance = user.getBalance();
+            if (userBalance == null) {
+                userBalance = 0.0;
             }
+
+            if (userBalance < initialDeposit) {
+                Map<String, Object> errorResponse = new HashMap<>();
+                errorResponse.put("error", "Insufficient balance");
+                errorResponse.put("currentBalance", userBalance);
+                errorResponse.put("requiredAmount", initialDeposit);
+                errorResponse.put("shortfall", initialDeposit - userBalance);
+                
+                return ResponseEntity.badRequest().body(errorResponse);
+            }
+            // ===== END BALANCE CHECK =====
 
             SavingAccountApplication application = new SavingAccountApplication();
             application.setUser(user);
@@ -258,8 +281,8 @@ public class ApplicationController {
                 return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Not authenticated");
             }
 
-        User admin = userRepo.findById(adminId.intValue())
-            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Admin not found"));
+            User admin = userRepo.findById(adminId.intValue())
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Admin not found"));
 
             SavingAccountApplication application = saAppRepo.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Application not found"));
@@ -268,6 +291,9 @@ public class ApplicationController {
             ApplicationStatus status = ApplicationStatus.valueOf(statusStr);
             String notes = request.containsKey("reviewNotes") ? request.get("reviewNotes").toString() : null;
 
+            // ===== REMOVED BALANCE DEDUCTION =====
+            // Balance will be deducted via transaction entry instead
+            
             application.setStatus(status);
             application.setReviewDate(LocalDateTime.now());
             application.setReviewedBy(admin);
@@ -312,6 +338,8 @@ public class ApplicationController {
                 return ResponseEntity.badRequest()
                     .body(Map.of("error", "Requested amount exceeds maximum"));
             }
+
+            // Note: No balance check for loans - users are borrowing money
 
             LoanApplication application = new LoanApplication();
             application.setUser(user);
@@ -367,6 +395,9 @@ public class ApplicationController {
             ApplicationStatus status = ApplicationStatus.valueOf(statusStr);
             String notes = request.containsKey("reviewNotes") ? request.get("reviewNotes").toString() : null;
 
+            // ===== REMOVED BALANCE ADDITION =====
+            // Balance will be added via transaction entry instead
+            
             application.setStatus(status);
             application.setReviewDate(LocalDateTime.now());
             application.setReviewedBy(admin);
