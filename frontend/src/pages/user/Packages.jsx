@@ -1,202 +1,357 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
-  DocumentTextIcon,
-  CurrencyDollarIcon,
-  BanknotesIcon,
-  EyeIcon,
-} from "../../component/icons.jsx";
+  ChevronLeft,
+  ChevronRight,
+  X,
+  Info,
+  Check,
+  ArrowRight,
+  CreditCard,
+  Landmark,
+  Banknote,
+  Briefcase,
+} from "lucide-react";
 import Modal from "../../component/superadmin/Modal.jsx";
 import ApplyPackageForm from "../../component/user/ApplyPackageForm.jsx";
+import loanImage from "../../assets/image/loan.png"; 
 
 const apiBase = "http://localhost:8080/api";
 
-const PackageActions = ({ pkg, onView }) => (
-  <div className="flex items-center justify-end space-x-2">
-    <button
-      onClick={() => onView(pkg)}
-      className="text-blue-500 hover:text-blue-700 p-1 rounded-full hover:bg-blue-100 transition-colors"
-      title="View Package Details"
-    >
-      <EyeIcon className="w-5 h-5" />
-    </button>
-  </div>
-);
+// --- Helper Components ---
 
-const ViewPackageModal = ({
-  isOpen,
-  onClose,
-  packageData,
-  packageType,
-  onApplyClick,
-}) => {
-  if (!packageData) return null;
-
-  const getApplyText = () => {
-    switch (packageType) {
+// 1. The Package Card (Thumbnail)
+const PackageCard = ({ pkg, type, onClick, isGrid }) => {
+  const getGradient = () => {
+    switch (type) {
       case "fixed-deposit":
-        return "Apply for this Fixed Deposit";
+        return "from-teal-500 to-emerald-700";
       case "saving-account":
-        return "Open this Savings Account";
+        return "from-blue-500 to-indigo-700";
       case "loan-package":
-        return "Apply for this Loan";
+        return "from-rose-500 to-red-700";
       default:
-        return "Apply Now";
+        return "from-gray-700 to-gray-900";
     }
   };
 
-  const renderContent = () => {
-    switch (packageType) {
+  const getIcon = () => {
+    switch (type) {
       case "fixed-deposit":
-        return (
-          <div className="flex flex-col gap-5">
-            <div>
-              <label className="block font-semibold mb-2">Package Name</label>
-              <div className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-full text-gray-900">
-                {packageData.name}
-              </div>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block font-semibold mb-2">
-                  Interest Rate (%)
-                </label>
-                <div className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-full text-gray-900">
-                  {packageData.interestRate}%
-                </div>
-              </div>
-              <div>
-                <label className="block font-semibold mb-2">
-                  Minimum Duration (months)
-                </label>
-                <div className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-full text-gray-900">
-                  {packageData.minDuration} months
-                </div>
-              </div>
-            </div>
-            <div>
-              <label className="block font-semibold mb-2">Minimum Amount</label>
-              <div className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-full text-gray-900">
-                Rs. {packageData.minAmount?.toLocaleString()}
-              </div>
-            </div>
-            {packageData.description && (
-              <div>
-                <label className="block font-semibold mb-2">Description</label>
-                <div className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-2xl text-gray-900 min-h-[80px]">
-                  {packageData.description}
-                </div>
-              </div>
-            )}
-          </div>
-        );
+        return <Landmark className="w-8 h-8 text-white opacity-80" />;
       case "saving-account":
-        return (
-          <div className="flex flex-col gap-5">
-            <div>
-              <label className="block font-semibold mb-2">Package Name</label>
-              <div className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-full text-gray-900">
-                {packageData.name}
-              </div>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block font-semibold mb-2">
-                  Interest Rate (%)
-                </label>
-                <div className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-full text-gray-900">
-                  {packageData.interestRate}%
-                </div>
-              </div>
-              <div>
-                <label className="block font-semibold mb-2">
-                  Minimum Balance
-                </label>
-                <div className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-full text-gray-900">
-                  Rs. {packageData.minBalance?.toLocaleString()}
-                </div>
-              </div>
-            </div>
-            {packageData.description && (
-              <div>
-                <label className="block font-semibold mb-2">Description</label>
-                <div className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-2xl text-gray-900 min-h-[80px]">
-                  {packageData.description}
-                </div>
-              </div>
-            )}
-          </div>
-        );
+        return <CreditCard className="w-8 h-8 text-white opacity-80" />;
       case "loan-package":
-        return (
-          <div className="flex flex-col gap-5">
-            <div>
-              <label className="block font-semibold mb-2">Package Name</label>
-              <div className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-full text-gray-900">
-                {packageData.name}
-              </div>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block font-semibold mb-2">
-                  Interest Rate (%)
-                </label>
-                <div className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-full text-gray-900">
-                  {packageData.interestRate}%
-                </div>
-              </div>
-              <div>
-                <label className="block font-semibold mb-2">
-                  Maximum Duration (months)
-                </label>
-                <div className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-full text-gray-900">
-                  {packageData.maxDuration} months
-                </div>
-              </div>
-            </div>
-            <div>
-              <label className="block font-semibold mb-2">Maximum Amount</label>
-              <div className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-full text-gray-900">
-                Rs. {packageData.maxAmount?.toLocaleString()}
-              </div>
-            </div>
-            {packageData.description && (
-              <div>
-                <label className="block font-semibold mb-2">Description</label>
-                <div className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-2xl text-gray-900 min-h-[80px]">
-                  {packageData.description}
-                </div>
-              </div>
-            )}
-          </div>
-        );
+        return <Banknote className="w-8 h-8 text-white opacity-80" />;
       default:
-        return null;
+        return <Briefcase className="w-8 h-8 text-white opacity-80" />;
     }
   };
 
   return (
-    <Modal
-      isOpen={isOpen}
-      onClose={onClose}
-      title="View Package Details"
-      size="xl"
+    <div
+      onClick={() => onClick(pkg)}
+      className={`relative rounded-xl cursor-pointer transition-all duration-300 hover:scale-105 hover:shadow-2xl group overflow-hidden shadow-lg bg-gray-800 ${
+        isGrid ? "w-full h-48" : "flex-shrink-0 w-72 h-48" // Fixed width w-72 for carousel
+      }`}
     >
-      {renderContent()}
+      {/* Background Gradient */}
+      <div
+        className={`absolute inset-0 bg-gradient-to-br ${getGradient()} opacity-90 group-hover:opacity-100 transition-opacity`}
+      />
+      
+      {/* Decorative Circle */}
+      <div className="absolute -bottom-10 -right-10 w-32 h-32 bg-white/10 rounded-full blur-2xl transition-transform group-hover:scale-150" />
 
-      <div className="mt-6 pt-6 border-t border-gray-200 flex justify-end">
-        <button
-          type="button"
-          onClick={onApplyClick} 
-          className="bg-teal-500 text-white font-bold py-3 px-8 rounded-full hover:bg-teal-600 transition-colors text-base"
-        >
-          {getApplyText()}
-        </button>
+      {/* Content Overlay */}
+      <div className="absolute inset-0 p-5 flex flex-col justify-between z-10">
+        <div className="flex justify-between items-start">
+          {getIcon()}
+          <span className="text-xs font-bold text-white bg-black/20 border border-white/10 px-2.5 py-1 rounded-full backdrop-blur-md">
+            {pkg.interestRate}% Rate
+          </span>
+        </div>
+        
+        <div>
+          <h3 className="text-white font-bold text-xl leading-tight drop-shadow-sm line-clamp-2 mb-2">
+            {pkg.name}
+          </h3>
+          
+          <div className="flex items-center gap-3 text-xs text-gray-100 font-medium">
+            {type === "loan-package" && (
+              <span className="bg-white/20 px-2 py-0.5 rounded">
+                Max: Rs. {pkg.maxAmount?.toLocaleString()}
+              </span>
+            )}
+            {type === "fixed-deposit" && (
+              <span className="bg-white/20 px-2 py-0.5 rounded">
+                Min: Rs. {pkg.minAmount?.toLocaleString()}
+              </span>
+            )}
+            {type === "saving-account" && (
+              <span className="bg-white/20 px-2 py-0.5 rounded">
+                Min Bal: Rs. {pkg.minBalance?.toLocaleString()}
+              </span>
+            )}
+          </div>
+        </div>
       </div>
-    </Modal>
+    </div>
   );
 };
 
-function UserPackages() {
+// 2. Section Component (Carousel Logic)
+const PackageSection = ({ title, items, type, onItemClick }) => {
+  const [showGrid, setShowGrid] = useState(false);
+  const scrollRef = useRef(null);
+  const [canScrollLeft, setCanScrollLeft] = useState(false);
+  const [canScrollRight, setCanScrollRight] = useState(true);
+
+  // Check scroll position to toggle arrow visibility
+  const checkScroll = () => {
+    if (scrollRef.current) {
+      const { scrollLeft, scrollWidth, clientWidth } = scrollRef.current;
+      setCanScrollLeft(scrollLeft > 0);
+      setCanScrollRight(scrollLeft < scrollWidth - clientWidth - 10); // 10px buffer
+    }
+  };
+
+  useEffect(() => {
+    checkScroll();
+    window.addEventListener("resize", checkScroll);
+    return () => window.removeEventListener("resize", checkScroll);
+  }, [items]);
+
+  const scroll = (direction) => {
+    if (scrollRef.current) {
+      const { current } = scrollRef;
+      // Scroll by approx 2 card widths (w-72 is roughly 288px + 20px gap = ~308px)
+      const scrollAmount = direction === "left" ? -620 : 620; 
+      current.scrollBy({ left: scrollAmount, behavior: "smooth" });
+      
+      // Allow animation to finish before checking arrows again
+      setTimeout(checkScroll, 500);
+    }
+  };
+
+  if (!items || items.length === 0) return null;
+
+  // --- GRID VIEW MODE (View All) ---
+  if (showGrid) {
+    return (
+      <div className="mb-16 animate-in fade-in slide-in-from-bottom-4 duration-500">
+        <div className="flex justify-between items-center mb-6 px-1">
+          <h2 className="text-2xl font-bold text-gray-800 flex items-center gap-2">
+            {title}
+            <span className="text-sm font-normal text-gray-500 ml-2 bg-gray-100 px-2 py-0.5 rounded-full">
+              All {items.length}
+            </span>
+          </h2>
+          <button
+            onClick={() => setShowGrid(false)}
+            className="text-sm font-bold text-gray-500 hover:text-black flex items-center gap-1 transition-colors bg-gray-100 hover:bg-gray-200 px-3 py-1.5 rounded-full"
+          >
+            Show Less <X className="w-4 h-4" />
+          </button>
+        </div>
+        
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+          {items.map((item) => (
+            <PackageCard 
+              key={item.id} 
+              pkg={item} 
+              type={type} 
+              isGrid={true} 
+              onClick={() => onItemClick(item, type)} 
+            />
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  // --- CAROUSEL MODE ---
+  return (
+    <div className="mb-12 relative group">
+      {/* Header */}
+      <div className="flex justify-between items-end mb-4 px-1">
+        <h2 className="text-xl md:text-2xl font-bold text-gray-800 flex items-center gap-2">
+          {title} 
+        </h2>
+        
+        {/* Only show View All if there are many items */}
+        {items.length > 6 && (
+           <button 
+             onClick={() => setShowGrid(true)}
+             className="text-xs font-bold text-teal-600 hover:text-teal-800 transition-colors uppercase tracking-wider flex items-center gap-1"
+           >
+             View All ({items.length}) <ChevronRight className="w-3 h-3"/>
+           </button>
+        )}
+      </div>
+
+      <div className="relative">
+        {/* Left Arrow - Only show if we can scroll left */}
+        {canScrollLeft && (
+          <button
+            onClick={() => scroll("left")}
+            className="absolute -left-4 top-1/2 -translate-y-1/2 z-20 bg-white shadow-lg border border-gray-100 text-gray-700 w-10 h-10 rounded-full flex items-center justify-center hover:scale-110 hover:bg-teal-50 hover:text-teal-700 transition-all"
+          >
+            <ChevronLeft className="w-6 h-6" />
+          </button>
+        )}
+
+        {/* Scroll Container */}
+        <div
+          ref={scrollRef}
+          onScroll={checkScroll}
+          className="flex overflow-x-auto gap-5 pb-6 pt-2 scrollbar-hide px-1"
+          style={{ scrollBehavior: "smooth", scrollbarWidth: "none", msOverflowStyle: "none" }}
+        >
+          {items.map((item) => (
+            <PackageCard
+              key={item.id}
+              pkg={item}
+              type={type}
+              isGrid={false}
+              onClick={() => onItemClick(item, type)}
+            />
+          ))}
+          
+          {/* End of list placeholder if specific requirement needed, 
+              but standard carousel usually just ends. */}
+        </div>
+
+        {/* Right Arrow - Only show if we can scroll right */}
+        {canScrollRight && items.length > 4 && (
+          <button
+            onClick={() => scroll("right")}
+            className="absolute -right-4 top-1/2 -translate-y-1/2 z-20 bg-white shadow-lg border border-gray-100 text-gray-700 w-10 h-10 rounded-full flex items-center justify-center hover:scale-110 hover:bg-teal-50 hover:text-teal-700 transition-all"
+          >
+            <ChevronRight className="w-6 h-6" />
+          </button>
+        )}
+        
+        {/* Right Fade Gradient to indicate more content */}
+        {canScrollRight && (
+            <div className="absolute right-0 top-0 bottom-6 w-16 bg-gradient-to-l from-white/90 to-transparent pointer-events-none z-10 block md:hidden" />
+        )}
+      </div>
+    </div>
+  );
+};
+
+// 3. Detail Modal (Unchanged)
+const DetailModal = ({ isOpen, onClose, pkg, type, onApply }) => {
+  if (!isOpen || !pkg) return null;
+
+  const getGradient = () => {
+    switch (type) {
+      case "fixed-deposit": return "bg-gradient-to-r from-teal-600 to-teal-900";
+      case "saving-account": return "bg-gradient-to-r from-blue-600 to-blue-900";
+      case "loan-package": return "bg-gradient-to-r from-rose-600 to-red-900";
+      default: return "bg-gray-800";
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm transition-opacity animate-fade-in">
+      <div className="bg-white w-full max-w-4xl rounded-2xl overflow-hidden shadow-2xl relative flex flex-col max-h-[90vh]">
+        <button
+          onClick={onClose}
+          className="absolute top-4 right-4 z-20 p-2 bg-black/20 hover:bg-black/40 text-white rounded-full transition-colors"
+        >
+          <X className="w-5 h-5" />
+        </button>
+
+        <div className={`h-72 ${getGradient()} relative flex items-end p-8 md:p-12`}>
+          <div className="relative z-10 w-full">
+            <div className="flex items-center gap-3 mb-3">
+               <span className="px-3 py-1 bg-white/20 backdrop-blur-md border border-white/10 text-white text-xs font-bold uppercase tracking-wider rounded-full shadow-sm">
+                 {type.replace("-", " ")}
+               </span>
+               {pkg.interestRate && (
+                 <span className="text-green-300 font-bold text-sm flex items-center gap-1">
+                   <Check className="w-4 h-4" /> {pkg.interestRate}% Interest Rate
+                 </span>
+               )}
+            </div>
+            <h2 className="text-4xl md:text-6xl font-extrabold text-white drop-shadow-xl tracking-tight">
+              {pkg.name}
+            </h2>
+          </div>
+          <div className="absolute top-0 right-0 w-96 h-96 bg-white/10 rounded-full -translate-y-1/2 translate-x-1/4 blur-3xl"></div>
+        </div>
+
+        <div className="p-8 md:p-10 overflow-y-auto bg-white">
+          <div className="flex flex-col md:flex-row gap-10">
+            <div className="flex-1">
+              <h3 className="text-lg font-bold text-gray-900 mb-3">Package Overview</h3>
+              <p className="text-gray-600 text-lg leading-relaxed mb-8">
+                {pkg.description || "This package is designed to meet your financial goals with flexible terms and competitive interest rates."}
+              </p>
+
+              <div className="grid grid-cols-2 gap-4">
+                {pkg.minAmount !== undefined && (
+                  <div className="p-4 bg-gray-50 rounded-xl border border-gray-100">
+                    <p className="text-xs text-gray-500 uppercase font-bold tracking-wide mb-1">Min Amount</p>
+                    <p className="text-xl font-bold text-gray-900">Rs. {pkg.minAmount.toLocaleString()}</p>
+                  </div>
+                )}
+                {pkg.maxAmount !== undefined && (
+                  <div className="p-4 bg-gray-50 rounded-xl border border-gray-100">
+                    <p className="text-xs text-gray-500 uppercase font-bold tracking-wide mb-1">Max Amount</p>
+                    <p className="text-xl font-bold text-gray-900">Rs. {pkg.maxAmount.toLocaleString()}</p>
+                  </div>
+                )}
+                {pkg.minDuration !== undefined && (
+                  <div className="p-4 bg-gray-50 rounded-xl border border-gray-100">
+                    <p className="text-xs text-gray-500 uppercase font-bold tracking-wide mb-1">Min Duration</p>
+                    <p className="text-xl font-bold text-gray-900">{pkg.minDuration} Months</p>
+                  </div>
+                )}
+                {pkg.maxDuration !== undefined && (
+                  <div className="p-4 bg-gray-50 rounded-xl border border-gray-100">
+                    <p className="text-xs text-gray-500 uppercase font-bold tracking-wide mb-1">Max Duration</p>
+                    <p className="text-xl font-bold text-gray-900">{pkg.maxDuration} Months</p>
+                  </div>
+                )}
+                {pkg.minBalance !== undefined && (
+                  <div className="p-4 bg-gray-50 rounded-xl border border-gray-100">
+                    <p className="text-xs text-gray-500 uppercase font-bold tracking-wide mb-1">Min Balance</p>
+                    <p className="text-xl font-bold text-gray-900">Rs. {pkg.minBalance.toLocaleString()}</p>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="w-full md:w-80 flex flex-col gap-4 pt-2">
+               <div className="p-5 rounded-xl bg-teal-50 border border-teal-100">
+                 <h4 className="font-bold text-teal-800 mb-2">Ready to apply?</h4>
+                 <p className="text-sm text-teal-600 mb-4">Submit your application today and get processed within 48 hours.</p>
+                 <button
+                   onClick={onApply}
+                   className="w-full py-3.5 bg-teal-600 hover:bg-teal-700 text-white font-bold rounded-lg shadow-md flex items-center justify-center gap-2 transition-all transform hover:scale-105 active:scale-95"
+                 >
+                   <span>Apply Now</span>
+                   <ArrowRight className="w-5 h-5" />
+                 </button>
+               </div>
+               
+               <div className="text-xs text-gray-400 px-2">
+                 <p className="mb-1">• Terms and conditions apply.</p>
+                 <p>• Interest rates are subject to market change.</p>
+               </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// --- Main Page Component ---
+
+export default function UserPackages() {
   const [selectedNetworkId, setSelectedNetworkId] = useState(null);
   const [fixedDeposits, setFixedDeposits] = useState([]);
   const [savingAccounts, setSavingAccounts] = useState([]);
@@ -204,13 +359,8 @@ function UserPackages() {
   const [loading, setLoading] = useState(false);
   const [sessionLoading, setSessionLoading] = useState(true);
 
-  const [viewPackageModalOpen, setViewPackageModalOpen] = useState(false);
-  const [currentPackageToView, setCurrentPackageToView] = useState(null);
-  const [currentPackageType, setCurrentPackageType] = useState(null);
-
-  const [isApplyModalOpen, setIsApplyModalOpen] = useState(false);
-  const [currentPackageToApply, setCurrentPackageToApply] = useState(null);
-
+  const [detailModal, setDetailModal] = useState({ open: false, pkg: null, type: null });
+  const [applyModal, setApplyModal] = useState({ open: false, pkg: null, type: null });
 
   useEffect(() => {
     const fetchSession = async () => {
@@ -222,35 +372,16 @@ function UserPackages() {
 
         if (response.ok) {
           const data = await response.json();
-
-          if (data.error) {
-            console.error("Session error:", data.error);
-            window.location.href = "/";
-            return;
+          if (data.sahakariId) {
+            setSelectedNetworkId(data.sahakariId);
           }
-
-          if (!data.sahakariId && data.userRole !== "superadmin") {
-            console.error("No sahakariId found in session");
-            window.location.href = "/";
-            return;
-          }
-
-          setSelectedNetworkId(data.sahakariId);
-        } else if (response.status === 401) {
-          console.error("Unauthorized - no session");
-          window.location.href = "/";
-        } else {
-          console.error("Failed to fetch session data");
-          window.location.href = "/";
         }
       } catch (error) {
-        console.error("Error fetching session:", error);
-        window.location.href = "/";
+        console.error(error);
       } finally {
         setSessionLoading(false);
       }
     };
-
     fetchSession();
   }, []);
 
@@ -261,254 +392,144 @@ function UserPackages() {
   }, [selectedNetworkId]);
 
   const fetchData = async () => {
-    if (!selectedNetworkId) return;
     setLoading(true);
     try {
       const [fdRes, saRes, lpRes] = await Promise.all([
-        fetch(`${apiBase}/finance/fixed-deposits/${selectedNetworkId}`, {
-          credentials: "include",
-        }),
-        fetch(`${apiBase}/finance/saving-accounts/${selectedNetworkId}`, {
-          credentials: "include",
-        }),
-        fetch(`${apiBase}/finance/loan-packages/${selectedNetworkId}`, {
-          credentials: "include",
-        }),
+        fetch(`${apiBase}/finance/fixed-deposits/${selectedNetworkId}`, { credentials: "include" }),
+        fetch(`${apiBase}/finance/saving-accounts/${selectedNetworkId}`, { credentials: "include" }),
+        fetch(`${apiBase}/finance/loan-packages/${selectedNetworkId}`, { credentials: "include" }),
       ]);
 
-      setFixedDeposits(await fdRes.json());
-      setSavingAccounts(await saRes.json());
-      setLoans(await lpRes.json());
+      if (fdRes.ok) setFixedDeposits(await fdRes.json());
+      if (saRes.ok) setSavingAccounts(await saRes.json());
+      if (lpRes.ok) setLoans(await lpRes.json());
     } catch (error) {
-      console.error("Failed to fetch finance data:", error);
+      console.error("Failed to fetch data", error);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleViewPackage = (pkg, type) => {
-    setCurrentPackageToView(pkg);
-    setCurrentPackageType(type);
-    setViewPackageModalOpen(true);
+  const openDetail = (pkg, type) => {
+    setDetailModal({ open: true, pkg, type });
   };
 
-  const handleApplyClick = () => {
-    setCurrentPackageToApply(currentPackageToView);
-
-    setViewPackageModalOpen(false);
-    setCurrentPackageToView(null);
-
-    setIsApplyModalOpen(true);
+  const closeDetail = () => {
+    setDetailModal({ ...detailModal, open: false });
   };
 
-  if (sessionLoading) {
-    return (
-      <div className="bg-white p-6 min-h-[calc(100vh-8.5rem)] rounded-lg shadow-md flex items-center justify-center">
-        <p className="text-center text-gray-500">Loading session...</p>
-      </div>
-    );
-  }
+  const openApply = () => {
+    setApplyModal({ 
+      open: true, 
+      pkg: detailModal.pkg, 
+      type: detailModal.type 
+    });
+    closeDetail();
+  };
 
-  if (!selectedNetworkId) {
-    return (
-      <div className="bg-white p-6 min-h-[calc(100vh-8.5rem)] rounded-lg shadow-md flex items-center justify-center">
-        <p className="text-center text-red-500">
-          Unable to load packages. Please try logging in again.
-        </p>
-      </div>
-    );
-  }
+  const closeApply = () => {
+    setApplyModal({ open: false, pkg: null, type: null });
+  };
+
+  if (sessionLoading) return (
+    <div className="min-h-screen flex items-center justify-center bg-white">
+      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-teal-500"></div>
+    </div>
+  );
+  
+  if (!selectedNetworkId) return (
+    <div className="min-h-screen flex items-center justify-center bg-white text-red-500 font-semibold">
+      Access Denied. Please login again.
+    </div>
+  );
 
   return (
-    <>
-      <div className="bg-white p-6 min-h-[calc(100vh-8.5rem)] rounded-lg shadow-md">
+    <div className="bg-white min-h-screen pb-20">
+      
+      {/* Hero Section - Rounded Card Style */}
+      <div className="px-4 md:px-8 pt-6">
+        <div className="relative h-[45vh] bg-black rounded-3xl overflow-hidden shadow-2xl flex items-center group">
+           {/* Background Image with Parallax Effect */}
+           <div className="absolute inset-0 bg-gradient-to-r from-black via-black/80 to-transparent z-10" />
+           <img 
+             src={loanImage}
+             alt="Featured" 
+             className="absolute right-0 top-1/2 -translate-y-1/2 w-2/3 opacity-60 object-cover transition-transform duration-1000 group-hover:scale-105"
+           />
+           
+           <div className="relative z-20 p-8 md:p-16 max-w-2xl">
+              <h1 className="text-5xl md:text-6xl font-black text-white mb-6 tracking-tight leading-tight">
+                Unlock Your <span className="text-transparent bg-clip-text bg-gradient-to-r from-teal-400 to-emerald-500">Dreams</span>
+              </h1>
+              <p className="text-gray-300 text-lg md:text-xl mb-8 font-light leading-relaxed">
+                Explore our curated selection of financial packages. Whether you want to grow your savings or fund your next big project, we have the right plan for you.
+              </p>
+              <button 
+                onClick={() => document.getElementById('loans-section').scrollIntoView({ behavior: 'smooth' })}
+                className="bg-white text-black font-bold py-3.5 px-8 rounded-full hover:bg-gray-100 transition-all flex items-center gap-2 shadow-lg hover:shadow-xl active:scale-95"
+              >
+                <Info className="w-5 h-5" /> Browse Packages
+              </button>
+           </div>
+        </div>
+      </div>
+
+      {/* Content Sections with Proper Spacing */}
+      <div className="px-4 md:px-12 space-y-4 mt-12">
         {loading ? (
-          <p className="text-center text-gray-500">Loading packages...</p>
+          <div className="text-center py-20 text-gray-400">Loading Packages...</div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="border border-gray-200 rounded-lg p-4 shadow-lg">
-              <h3 className="text-lg font-semibold text-gray-700 mb-3 flex items-center gap-2">
-                <DocumentTextIcon className="w-5 h-5 text-teal-500" />
-                Fixed Deposits
-              </h3>
-              <div className="border-t border-gray-200 mt-2">
-                <table className="w-full mt-3 text-left">
-                  <thead>
-                    <tr className="text-gray-600 text-sm">
-                      <th className="py-2 px-2 font-medium">Package Name</th>
-                      <th className="py-2 px-2 text-right font-medium">View</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {fixedDeposits.length > 0 ? (
-                      fixedDeposits.map((pkg) => (
-                        <tr
-                          key={pkg.id}
-                          className="border-b border-gray-100 last:border-b-0"
-                        >
-                          <td className="py-3 px-2 text-gray-800 font-medium">
-                            {pkg.name}
-                          </td>
-                          <td className="py-3 px-2">
-                            <PackageActions
-                              pkg={pkg}
-                              onView={() =>
-                                handleViewPackage(pkg, "fixed-deposit")
-                              }
-                            />
-                          </td>
-                        </tr>
-                      ))
-                    ) : (
-                      <tr>
-                        <td
-                          colSpan="2"
-                          className="py-8 text-center text-gray-400"
-                        >
-                          No Fixed Deposit Packages
-                        </td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
-              </div>
+          <>
+            <div id="loans-section">
+              <PackageSection 
+                title="Loans For You" 
+                items={loans} 
+                type="loan-package" 
+                onItemClick={openDetail} 
+              />
             </div>
 
-            <div className="border border-gray-200 rounded-lg p-4 shadow-lg">
-              <h3 className="text-lg font-semibold text-gray-700 mb-3 flex items-center gap-2">
-                <CurrencyDollarIcon className="w-5 h-5 text-teal-500" />
-                Saving Accounts
-              </h3>
-              <div className="border-t border-gray-200 mt-2">
-                <table className="w-full mt-3 text-left">
-                  <thead>
-                    <tr className="text-gray-600 text-sm">
-                      <th className="py-2 px-2 font-medium">Package Name</th>
-                      <th className="py-2 px-2 text-right font-medium">View</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {savingAccounts.length > 0 ? (
-                      savingAccounts.map((pkg) => (
-                        <tr
-                          key={pkg.id}
-                          className="border-b border-gray-100 last:border-b-0"
-                        >
-                          <td className="py-3 px-2 text-gray-800 font-medium">
-                            {pkg.name}
-                          </td>
-                          <td className="py-3 px-2">
-                            <PackageActions
-                              pkg={pkg}
-                              onView={() =>
-                                handleViewPackage(pkg, "saving-account")
-                              }
-                            />
-                          </td>
-                        </tr>
-                      ))
-                    ) : (
-                      <tr>
-                        <td
-                          colSpan="2"
-                          className="py-8 text-center text-gray-400"
-                        >
-                          No Saving Account Packages
-                        </td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            </div>
+            <PackageSection 
+              title="High Yield Fixed Deposits" 
+              items={fixedDeposits} 
+              type="fixed-deposit" 
+              onItemClick={openDetail} 
+            />
 
-            <div className="border border-gray-200 rounded-lg p-4 shadow-lg">
-              <h3 className="text-lg font-semibold text-gray-700 mb-3 flex items-center gap-2">
-                <BanknotesIcon className="w-5 h-5 text-teal-500" />
-                Loan Packages
-              </h3>
-              <div className="border-t border-gray-200 mt-2">
-                <table className="w-full mt-3 text-left">
-                  <thead>
-                    <tr className="text-gray-600 text-sm">
-                      <th className="py-2 px-2 font-medium">Package Name</th>
-                      <th className="py-2 px-2 text-right font-medium">View</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {loans.length > 0 ? (
-                      loans.map((pkg) => (
-                        <tr
-                          key={pkg.id}
-                          className="border-b border-gray-100 last:border-b-0"
-                        >
-                          <td className="py-3 px-2 text-gray-800 font-medium">
-                            {pkg.name}
-                          </td>
-                          <td className="py-3 px-2">
-                            <PackageActions
-                              pkg={pkg}
-                              onView={() =>
-                                handleViewPackage(pkg, "loan-package")
-                              }
-                            />
-                          </td>
-                        </tr>
-                      ))
-                    ) : (
-                      <tr>
-                        <td
-                          colSpan="2"
-                          className="py-8 text-center text-gray-400"
-                        >
-                          No Loan Packages
-                        </td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          </div>
+            <PackageSection 
+              title="Saving Accounts" 
+              items={savingAccounts} 
+              type="saving-account" 
+              onItemClick={openDetail} 
+            />
+          </>
         )}
       </div>
 
-      <ViewPackageModal
-        isOpen={viewPackageModalOpen}
-        onClose={() => {
-          setViewPackageModalOpen(false);
-          setCurrentPackageToView(null);
-          setCurrentPackageType(null);
-        }}
-        packageData={currentPackageToView}
-        packageType={currentPackageType}
-        onApplyClick={handleApplyClick} 
+      {/* Modals */}
+      <DetailModal 
+        isOpen={detailModal.open}
+        onClose={closeDetail}
+        pkg={detailModal.pkg}
+        type={detailModal.type}
+        onApply={openApply}
       />
 
       <Modal
-        isOpen={isApplyModalOpen}
-        onClose={() => {
-          setIsApplyModalOpen(false);
-          setCurrentPackageToApply(null);
-          setCurrentPackageType(null);
-        }}
-        title="Package Application Form" 
-        size="2xl" 
+        isOpen={applyModal.open}
+        onClose={closeApply}
+        title="Application Form"
+        size="2xl"
       >
-        {currentPackageToApply && (
+        {applyModal.pkg && (
           <ApplyPackageForm
-            packageData={currentPackageToApply}
-            packageType={currentPackageType}
-            onClose={() => {
-              setIsApplyModalOpen(false);
-              setCurrentPackageToApply(null);
-              setCurrentPackageType(null);
-            }}
+            packageData={applyModal.pkg}
+            packageType={applyModal.type}
+            onClose={closeApply}
           />
         )}
       </Modal>
-    </>
+
+    </div>
   );
 }
-
-export default UserPackages;
