@@ -1,31 +1,132 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
+
+const API_BASE = "http://localhost:8080/api";
+
+const parseAmount = (val) => {
+  if (typeof val === 'number') return val;
+  if (!val) return 0;
+  return parseFloat(String(val).replace(/[^\d.-]/g, ''));
+};
+
+const formatAmount = (num) => {
+  return `Rs. ${Math.abs(num).toLocaleString('en-IN', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2
+  })}`;
+};
 
 function TransactionsList() {
-  const transactions = [
-    { description: "Loan Interest Deducted", date: "13-Apr-2025", debit: "-Rs. 1,300.00", balance: "Rs. 25,000.00" },
-    { description: "Savings Deposited", date: "1-Apr-2025", credit: "Rs. 1,300.00", balance: "Rs. 25,000.00" },
-    { description: "Interest Acquired", date: "1-Apr-2025", credit: "Rs. 1,300.00", balance: "Rs. 25,000.00" },
-    { description: "Interest Acquired", date: "1-Apr-2025", credit: "Rs. 1,300.00", balance: "Rs. 25,000.00" },
-  ];
+  const [transactions, setTransactions] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchTransactions = async () => {
+      try {
+        const userId = localStorage.getItem("userId");
+        if (!userId) {
+          setLoading(false);
+          return;
+        }
+
+        const res = await fetch(`${API_BASE}/transactions`, { 
+          credentials: "include" 
+        });
+        
+        if (!res.ok) {
+          console.error("Failed to fetch transactions");
+          setLoading(false);
+          return;
+        }
+        
+        const data = await res.json();
+        
+        // Filter for current user and sort by date descending (most recent first)
+        const myTxns = data
+          .filter(t => String(t.userId) === String(userId))
+          .sort((a, b) => new Date(b.date) - new Date(a.date));
+
+        // Calculate running balance for each transaction
+        let currentBalance = 0;
+        const sortedAsc = [...myTxns].sort((a, b) => new Date(a.date) - new Date(b.date));
+        
+        const balanceMap = {};
+        sortedAsc.forEach(t => {
+          const amount = parseAmount(t.amount || t.amountValue);
+          
+          if (t.type === 'Withdrawal' || (t.type && t.type.includes('Debit'))) {
+            currentBalance -= amount;
+          } else {
+            currentBalance += amount;
+          }
+          
+          balanceMap[t.id || t.transactionId] = currentBalance;
+        });
+
+        // Process transactions with balance info
+        const processedTxns = myTxns.slice(0, 5).map(t => {
+          const amount = parseAmount(t.amount || t.amountValue);
+          const isDebit = t.type === 'Withdrawal' || (t.type && t.type.includes('Debit'));
+          
+          return {
+            id: t.id || t.transactionId,
+            description: t.type || 'Transaction',
+            date: t.date ? new Date(t.date).toLocaleDateString('en-GB', {
+              day: 'numeric',
+              month: 'short',
+              year: 'numeric'
+            }).replace(/ /g, '-') : '-',
+            isDebit,
+            amount: formatAmount(amount),
+            balance: formatAmount(balanceMap[t.id || t.transactionId] || 0)
+          };
+        });
+
+        setTransactions(processedTxns);
+      } catch (error) {
+        console.error("Failed to load transactions:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchTransactions();
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="bg-white rounded-lg p-4 shadow-md col-span-2">
+        <h3 className="text-xl font-bold mb-4">Transactions</h3>
+        <div className="flex items-center justify-center py-8">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-teal-500"></div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="bg-white rounded-lg p-4 shadow-md col-span-2">
       <h3 className="text-xl font-bold mb-4">Transactions</h3>
       <div className="space-y-4">
-        {transactions.map((transaction, index) => (
-          <div key={index} className="flex justify-between items-center border-b pb-2 last:border-b-0 last:pb-0">
-            <div className="flex flex-col">
-              <span className="text-gray-800 font-medium">{transaction.description}</span>
-              <span className="text-gray-500 text-sm">{transaction.date}</span>
+        {transactions.length > 0 ? (
+          transactions.map((transaction, index) => (
+            <div key={index} className="flex justify-between items-center border-b pb-2 last:border-b-0 last:pb-0">
+              <div className="flex flex-col">
+                <span className="text-gray-800 font-medium">{transaction.description}</span>
+                <span className="text-gray-500 text-sm">{transaction.date}</span>
+              </div>
+              <div className="flex flex-col items-end">
+                <span className={`${transaction.isDebit ? 'text-red-500' : 'text-green-500'} font-semibold`}>
+                  {transaction.isDebit ? '-' : '+'}{transaction.amount}
+                </span>
+                <span className="text-gray-600 text-sm">{transaction.balance}</span>
+              </div>
             </div>
-            <div className="flex flex-col items-end">
-              <span className={`${transaction.debit ? 'text-red-500' : 'text-green-500'} font-semibold`}>
-                {transaction.debit || transaction.credit}
-              </span>
-              <span className="text-gray-600 text-sm">{transaction.balance}</span>
-            </div>
+          ))
+        ) : (
+          <div className="text-center py-8 text-gray-500">
+            <p>No transactions found</p>
           </div>
-        ))}
+        )}
       </div>
     </div>
   );
