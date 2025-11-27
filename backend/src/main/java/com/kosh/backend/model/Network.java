@@ -15,24 +15,32 @@ public class Network {
     private String address;
     private String createdAt;
     private String phone;
-    private String panNumber; // ⭐ Added PAN Number field
+    private String panNumber;
 
     private Integer staffCount;
     private Integer userCount;
 
-    // Package management fields
-    private String packageType; // "basic", "premium", or "custom"
-    private Double packagePrice; // Total price of the package in रु
+    private String packageType;
+    private Double packagePrice;
     
-    // Document field
-    private String documentPath; // Stores the filename of uploaded document
+    // ⭐ Store document as binary data
+    @Lob
+    @Column(name = "document_data", columnDefinition = "LONGBLOB")
+    private byte[] documentData;
     
-    // ⭐ Logo field
-    private String logoPath; // Stores the filename of uploaded logo
+    private String documentName; // Original filename
+    private String documentType; // MIME type (e.g., "application/pdf")
     
-    // Limits
-    private Integer adminLimit; // Maximum number of admins allowed
-    private Integer userLimit;  // Maximum number of users allowed
+    // ⭐ Store logo as binary data
+    @Lob
+    @Column(name = "logo_data", columnDefinition = "LONGBLOB")
+    private byte[] logoData;
+    
+    private String logoName; // Original filename
+    private String logoType; // MIME type (e.g., "image/png")
+    
+    private Integer adminLimit;
+    private Integer userLimit;
 
     // Getters & Setters
     public Long getId() { return id; }
@@ -68,36 +76,27 @@ public class Network {
     public Double getPackagePrice() { return packagePrice; }
     public void setPackagePrice(Double packagePrice) { this.packagePrice = packagePrice; }
 
-    public String getDocumentPath() { return documentPath; }
-    public void setDocumentPath(String documentPath) { this.documentPath = documentPath; }
+    public byte[] getDocumentData() { return documentData; }
+    public void setDocumentData(byte[] documentData) { this.documentData = documentData; }
 
-    public String getLogoPath() { return logoPath; }
-    public void setLogoPath(String logoPath) { this.logoPath = logoPath; }
+    public String getDocumentName() { return documentName; }
+    public void setDocumentName(String documentName) { this.documentName = documentName; }
+
+    public String getDocumentType() { return documentType; }
+    public void setDocumentType(String documentType) { this.documentType = documentType; }
+
+    public byte[] getLogoData() { return logoData; }
+    public void setLogoData(byte[] logoData) { this.logoData = logoData; }
+
+    public String getLogoName() { return logoName; }
+    public void setLogoName(String logoName) { this.logoName = logoName; }
+
+    public String getLogoType() { return logoType; }
+    public void setLogoType(String logoType) { this.logoType = logoType; }
 
     public Integer getAdminLimit() { return adminLimit; }
     public void setAdminLimit(Integer adminLimit) { this.adminLimit = adminLimit; }
 
     public Integer getUserLimit() { return userLimit; }
     public void setUserLimit(Integer userLimit) { this.userLimit = userLimit; }
-
-    @Override
-    public String toString() {
-        return "Network{" +
-                "id=" + id +
-                ", registeredId='" + registeredId + '\'' +
-                ", name='" + name + '\'' +
-                ", address='" + address + '\'' +
-                ", createdAt='" + createdAt + '\'' +
-                ", phone='" + phone + '\'' +
-                ", panNumber='" + panNumber + '\'' +
-                ", staffCount=" + staffCount +
-                ", userCount=" + userCount +
-                ", packageType='" + packageType + '\'' +
-                ", packagePrice=" + packagePrice +
-                ", documentPath='" + documentPath + '\'' +
-                ", logoPath='" + logoPath + '\'' +
-                ", adminLimit=" + adminLimit +
-                ", userLimit=" + userLimit +
-                '}';
-    }
 }

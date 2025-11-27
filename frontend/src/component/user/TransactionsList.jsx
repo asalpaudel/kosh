@@ -39,30 +39,13 @@ function TransactionsList() {
         }
         
         const data = await res.json();
-        
-        // Filter for current user and sort by date descending (most recent first)
+
+        // Filter & sort user transactions
         const myTxns = data
           .filter(t => String(t.userId) === String(userId))
           .sort((a, b) => new Date(b.date) - new Date(a.date));
 
-        // Calculate running balance for each transaction
-        let currentBalance = 0;
-        const sortedAsc = [...myTxns].sort((a, b) => new Date(a.date) - new Date(b.date));
-        
-        const balanceMap = {};
-        sortedAsc.forEach(t => {
-          const amount = parseAmount(t.amount || t.amountValue);
-          
-          if (t.type === 'Withdrawal' || (t.type && t.type.includes('Debit'))) {
-            currentBalance -= amount;
-          } else {
-            currentBalance += amount;
-          }
-          
-          balanceMap[t.id || t.transactionId] = currentBalance;
-        });
-
-        // Process transactions with balance info
+        // Process WITHOUT BALANCE
         const processedTxns = myTxns.slice(0, 5).map(t => {
           const amount = parseAmount(t.amount || t.amountValue);
           const isDebit = t.type === 'Withdrawal' || (t.type && t.type.includes('Debit'));
@@ -70,14 +53,15 @@ function TransactionsList() {
           return {
             id: t.id || t.transactionId,
             description: t.type || 'Transaction',
-            date: t.date ? new Date(t.date).toLocaleDateString('en-GB', {
-              day: 'numeric',
-              month: 'short',
-              year: 'numeric'
-            }).replace(/ /g, '-') : '-',
+            date: t.date
+              ? new Date(t.date).toLocaleDateString('en-GB', {
+                  day: 'numeric',
+                  month: 'short',
+                  year: 'numeric'
+                }).replace(/ /g, '-')
+              : '-',
             isDebit,
-            amount: formatAmount(amount),
-            balance: formatAmount(balanceMap[t.id || t.transactionId] || 0)
+            amount: formatAmount(amount)
           };
         });
 
@@ -118,7 +102,6 @@ function TransactionsList() {
                 <span className={`${transaction.isDebit ? 'text-red-500' : 'text-green-500'} font-semibold`}>
                   {transaction.isDebit ? '-' : '+'}{transaction.amount}
                 </span>
-                <span className="text-gray-600 text-sm">{transaction.balance}</span>
               </div>
             </div>
           ))
