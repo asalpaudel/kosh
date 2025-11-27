@@ -18,9 +18,77 @@ const API_BASE = "http://localhost:8080/api";
 
 const TransactionVoucher = ({ transaction, onClose, onStatusUpdate }) => {
   const voucherRef = useRef(null);
+
+  const [sahakariInfo, setSahakariInfo] = useState({
+    name: "",
+    address: "",
+    panNumber: "",
+    logoUrl: "",
+  });
+  const [sahakariLoading, setSahakariLoading] = useState(false);
+
+  // Inside TransactionVoucher component in src/pages/admin/Transactions.jsx
+
+useEffect(() => {
+  const fetchSahakari = async () => {
+    setSahakariLoading(true);
+    try {
+      // 1. Get Session
+      const sessionRes = await fetch(`${API_BASE}/session`, { credentials: "include" });
+      const sessionData = await sessionRes.json();
+      const sahakariId = Number(sessionData.sahakariId);
+
+      if (!sahakariId) {
+        console.warn("No sahakariId in session");
+        setSahakariInfo(prev => ({ ...prev, name: sessionData.sahakari }));
+        return;
+      }
+
+      // 2. Get Network Info
+      const networkRes = await fetch(`${API_BASE}/networks/${sahakariId}`, { credentials: "include" });
+      const network = await networkRes.json();
+
+      let logoUrl = "";
+
+      // 3. Get Logo
+      if (network.hasLogo) {
+        try {
+          const logoRes = await fetch(`${API_BASE}/networks/${sahakariId}/logo/base64`, { credentials: "include" });
+          if (logoRes.ok) {
+            const logoJson = await logoRes.json();
+            console.log("Logo Response:", logoJson); // Check this log!
+
+            // Ensure data is not empty
+            if (logoJson.data && logoJson.data.length > 0) {
+              logoUrl = `data:${logoJson.type};base64,${logoJson.data}`;
+            } else {
+              console.warn("Logo data is empty string");
+            }
+          }
+        } catch (e) {
+          console.error("Logo fetch error:", e);
+        }
+      }
+
+      setSahakariInfo({
+        name: network.name,
+        address: network.address,
+        panNumber: network.panNumber,
+        logoUrl: logoUrl, // If this is empty string, fallback icon shows
+      });
+
+    } catch (err) {
+      console.error("Setup error:", err);
+    } finally {
+      setSahakariLoading(false);
+    }
+  };
+
+  fetchSahakari();
+}, []);
+
   if (!transaction) return null;
 
-  // Calculate raw amount to determine color
   const rawAmount = transaction.amount || transaction.amountValue || 0;
 
   const isFrozen =
@@ -79,13 +147,24 @@ const TransactionVoucher = ({ transaction, onClose, onStatusUpdate }) => {
 
         <div className="flex justify-between items-start border-b-2 border-gray-800 pb-4">
           <div className="flex items-center gap-3">
-            <Logo className="w-12 h-12 text-teal-600" />
+            {sahakariInfo.logoUrl ? (
+              <img
+                src={sahakariInfo.logoUrl}
+                alt={sahakariInfo.name || "Sahakari Logo"}
+                className="w-12 h-12"
+              />
+            ) : (
+              <Logo className="w-12 h-12 text-teal-600" />
+            )}
             <div>
               <h2 className="text-xl font-bold uppercase tracking-wide">
-                Sahakari Name
+                {sahakariInfo.name || "Sahakari Name"}
               </h2>
               <p className="text-xs text-gray-500">
-                Kathmandu, Nepal | Pan No: 123456789
+                {sahakariInfo.address || "Kathmandu, Nepal"}
+                {sahakariInfo.panNumber
+                  ? ` | Pan No: ${sahakariInfo.panNumber}`
+                  : ""}
               </p>
             </div>
           </div>

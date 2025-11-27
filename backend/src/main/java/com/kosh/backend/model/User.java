@@ -18,6 +18,7 @@ public class User {
     private String phone;
     private String role;
     private String sahakari;
+    private Long sahakariId; 
     private String password;
     private String documentPath;
     private String status = "Pending";
@@ -59,6 +60,9 @@ public class User {
     public void setRole(String role) {
         this.role = role;
     }
+
+    public Long getSahakariId() { return sahakariId; }
+    public void setSahakariId(Long sahakariId) { this.sahakariId = sahakariId; }
 
     public String getSahakari() {
         return sahakari;
