@@ -101,7 +101,7 @@ const CustomCalendar = ({ selectedDate, onChange, onClose }) => {
           onClick={() => setCurrentMonth(new Date(year, month + 1, 1))}
           className="p-1 hover:bg-gray-100 rounded text-gray-600"
         >
-          →
+          → 
         </button>
       </div>
 
@@ -159,23 +159,67 @@ const CustomCalendar = ({ selectedDate, onChange, onClose }) => {
   );
 };
 
+// --- Helper: auto narration based on head/category ---
+const getAutoNarration = (category, head) => {
+  if (!head) return "";
+  const base = `${category}: ${head}`;
+
+  if (category === "Income") {
+    if (head === "Interest Income") return "Income: Interest Income (interest received).";
+    if (head === "Service Charge") return "Income: Service Charge collected.";
+    if (head === "Penalty Fee") return "Income: Penalty fee received.";
+    if (head === "Other Income") return "Income: Other income received.";
+  }
+
+  if (category === "Expense") {
+    if (head === "Office Rent") return "Expense: Office Rent payment.";
+    if (head === "Utilities") return "Expense: Utilities payment.";
+    if (head === "Maintenance") return "Expense: Maintenance expense.";
+    if (head === "Stationery") return "Expense: Stationery purchase.";
+    if (head === "Miscellaneous") return "Expense: Miscellaneous expense.";
+  }
+
+  return base;
+};
+
+// Common heads
+const INCOME_HEADS = [
+  "Interest Income",
+  "Service Charge",
+  "Penalty Fee",
+  "Other Income",
+  "Others",
+];
+
+const EXPENSE_HEADS = [
+  "Office Rent",
+  "Utilities",
+  "Maintenance",
+  "Stationery",
+  "Miscellaneous",
+  "Others",
+];
+
 function AddTransactionForm({ onAdded, onClose, prefilledData }) {
   const [mode, setMode] = useState(prefilledData ? "member" : "member");
   const [showCalendar, setShowCalendar] = useState(false);
   const calendarRef = useRef(null);
 
   const [formData, setFormData] = useState({
-    voucherId: prefilledData?.voucherId || `V-${Math.floor(Math.random() * 10000)}`,
+    voucherId:
+      prefilledData?.voucherId || `V-${Math.floor(Math.random() * 10000)}`,
     date: prefilledData?.date || new Date().toISOString().split("T")[0],
     fyType: "Current FY",
 
     userId: prefilledData?.userId || null,
     userName: prefilledData?.userName || "",
     userProduct: prefilledData?.userProduct || "Savings",
+
     internalHead: "",
-    headCategory: "Expense",
+    headCategory: "Expense", // will be auto-set for network based on transactionType
+
     networkLedger: "Cash",
-    transactionType: prefilledData?.transactionType || "Credit",
+    transactionType: prefilledData?.transactionType || "Credit", // Credit = Income, Debit = Expense (for network)
     amountValue: prefilledData?.amountValue || "",
     paymentMethod: "Cash",
     chequeNo: "",
@@ -186,6 +230,7 @@ function AddTransactionForm({ onAdded, onClose, prefilledData }) {
     applicationType: prefilledData?.applicationType || null,
   });
 
+  const [internalHeadPreset, setInternalHeadPreset] = useState("");
   const [balances, setBalances] = useState({ current: 0, projected: 0 });
   const [userSearch, setUserSearch] = useState(prefilledData?.userName || "");
   const [userResults, setUserResults] = useState([]);
@@ -197,6 +242,11 @@ function AddTransactionForm({ onAdded, onClose, prefilledData }) {
 
   // Disable mode switching if data is prefilled
   const isPrefilledMode = !!prefilledData;
+
+  const isNetworkIncome =
+    mode === "network" && formData.transactionType === "Credit";
+  const isNetworkExpense =
+    mode === "network" && formData.transactionType === "Debit";
 
   // Close popups when clicking outside
   useEffect(() => {
@@ -236,9 +286,34 @@ function AddTransactionForm({ onAdded, onClose, prefilledData }) {
     mode,
   ]);
 
+  // For NETWORK mode: tie headCategory = Income/Expense to transactionType
+  useEffect(() => {
+    if (mode === "network") {
+      setFormData((prev) => ({
+        ...prev,
+        headCategory: prev.transactionType === "Credit" ? "Income" : "Expense",
+      }));
+    }
+  }, [mode, formData.transactionType]);
+
+  // For Interest Income in network: force Cash ledger
+  useEffect(() => {
+    if (
+      mode === "network" &&
+      formData.headCategory === "Income" &&
+      formData.internalHead === "Interest Income" &&
+      formData.networkLedger !== "Cash"
+    ) {
+      setFormData((prev) => ({ ...prev, networkLedger: "Cash" }));
+    }
+  }, [mode, formData.headCategory, formData.internalHead, formData.networkLedger]);
+
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
+    setFormData((prev) => ({
+      ...prev,
+      [name]: value,
+    }));
   };
 
   const handleDateInput = (e) => {
@@ -262,7 +337,6 @@ function AddTransactionForm({ onAdded, onClose, prefilledData }) {
 
     searchTimeoutRef.current = setTimeout(async () => {
       try {
-        console.log("🔍 Searching for:", query);
         const response = await fetch(
           `${apiBase}/users?search=${encodeURIComponent(query)}`,
           {
@@ -270,12 +344,8 @@ function AddTransactionForm({ onAdded, onClose, prefilledData }) {
           }
         );
 
-        console.log("📡 Response status:", response.status);
-
         if (!response.ok) {
           const errorData = await response.json();
-          console.error("❌ Search error:", errorData);
-
           if (response.status === 401) {
             setError("Session expired. Please login again.");
           }
@@ -283,10 +353,9 @@ function AddTransactionForm({ onAdded, onClose, prefilledData }) {
         }
 
         const data = await response.json();
-        console.log("✅ Search results:", data);
         setUserResults(data);
       } catch (err) {
-        console.error("💥 User search error:", err);
+        console.error("User search error:", err);
         setUserResults([]);
       }
     }, 300);
@@ -296,6 +365,53 @@ function AddTransactionForm({ onAdded, onClose, prefilledData }) {
     setFormData((prev) => ({ ...prev, userId: user.id, userName: user.name }));
     setUserSearch(user.name);
     setShowUserResults(false);
+  };
+
+  // Internal head preset dropdown change (network)
+  const handleInternalHeadPresetChange = (e) => {
+    const value = e.target.value;
+    setInternalHeadPreset(value);
+
+    setFormData((prev) => {
+      if (value === "Others") {
+        // leave internalHead empty, user will type
+        return {
+          ...prev,
+          internalHead: "",
+        };
+      }
+
+      const category =
+        mode === "network"
+          ? prev.transactionType === "Credit"
+            ? "Income"
+            : "Expense"
+          : prev.headCategory;
+
+      let narration = prev.narration;
+      if (!narration || narration.trim() === "") {
+        narration = getAutoNarration(category, value);
+      }
+
+      return {
+        ...prev,
+        internalHead: value,
+        narration,
+      };
+    });
+  };
+
+  const handleInternalHeadCustomChange = (e) => {
+    const value = e.target.value;
+    setFormData((prev) => ({
+      ...prev,
+      internalHead: value,
+      // if narration is empty, also keep it descriptive
+      narration:
+        prev.narration && prev.narration.trim() !== ""
+          ? prev.narration
+          : getAutoNarration(prev.headCategory, value),
+    }));
   };
 
   const handleSubmit = async (e) => {
@@ -314,7 +430,24 @@ function AddTransactionForm({ onAdded, onClose, prefilledData }) {
       return;
     }
 
+    const cleanInternalHead =
+      mode === "network" && !formData.internalHead && internalHeadPreset
+        ? internalHeadPreset
+        : formData.internalHead;
+
     try {
+      const headCategoryFinal =
+        mode === "network"
+          ? formData.transactionType === "Credit"
+            ? "Income"
+            : "Expense"
+          : formData.headCategory;
+
+      const accountHead =
+        mode === "member"
+          ? formData.userProduct
+          : `${headCategoryFinal}: ${cleanInternalHead || "Unspecified"}`;
+
       const payload = {
         voucherId: mode === "member" ? formData.voucherId : null,
         date: formData.date,
@@ -324,19 +457,25 @@ function AddTransactionForm({ onAdded, onClose, prefilledData }) {
         details: {
           mode,
           fyType: formData.fyType,
-          accountHead: mode === "member" ? formData.userProduct : `${formData.headCategory}: ${formData.internalHead}`,
+          accountHead, // this is what will show in details column
+          headCategory: headCategoryFinal, // Income / Expense
+          internalHead: cleanInternalHead,
           networkLedger: formData.networkLedger,
-          direction: formData.transactionType,
+          direction: formData.transactionType, // Credit / Debit
           paymentMethod: formData.paymentMethod,
           chequeNo: formData.chequeNo,
           bankName: formData.bankName,
           receivedBy: formData.receivedBy,
         },
-        type: mode === "member" 
-          ? `${formData.userProduct} (${formData.transactionType})` 
-          : `${formData.headCategory} (${formData.transactionType})`,
+        type:
+          mode === "member"
+            ? `${formData.userProduct} (${formData.transactionType})`
+            : headCategoryFinal, // "Income" or "Expense" only for network
         amountValue: parseFloat(formData.amountValue),
-        narration: formData.narration,
+        narration:
+          formData.narration && formData.narration.trim() !== ""
+            ? formData.narration
+            : accountHead, // fallback: keep details in narration as well
         applicationId: formData.applicationId,
         applicationType: formData.applicationType,
       };
@@ -344,15 +483,15 @@ function AddTransactionForm({ onAdded, onClose, prefilledData }) {
       const response = await fetch(`${apiBase}/transactions`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        credentials: 'include',
+        credentials: "include",
         body: JSON.stringify(payload),
       });
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.error || await response.text());
+        throw new Error(errorData.error || (await response.text()));
       }
-      
+
       onAdded();
     } catch (err) {
       setError(err.message);
@@ -380,8 +519,14 @@ function AddTransactionForm({ onAdded, onClose, prefilledData }) {
 
         <div
           className="relative bg-gray-200 p-1 rounded-full flex items-center w-48 h-10 cursor-pointer shadow-inner"
-          onClick={() => !isPrefilledMode && setMode(mode === "member" ? "network" : "member")}
-          style={{ opacity: isPrefilledMode ? 0.5 : 1, cursor: isPrefilledMode ? 'not-allowed' : 'pointer' }}
+          onClick={() =>
+            !isPrefilledMode &&
+            setMode((prev) => (prev === "member" ? "network" : "member"))
+          }
+          style={{
+            opacity: isPrefilledMode ? 0.5 : 1,
+            cursor: isPrefilledMode ? "not-allowed" : "pointer",
+          }}
         >
           <div
             className={`absolute top-1 bottom-1 w-[calc(50%-4px)] bg-teal-500 rounded-full shadow-md transition-all duration-300 ease-in-out z-0 ${
@@ -425,7 +570,8 @@ function AddTransactionForm({ onAdded, onClose, prefilledData }) {
 
       {isPrefilledMode && (
         <div className="bg-teal-50 border-l-4 border-teal-500 text-teal-700 p-3 text-sm rounded">
-          <strong>✓ Application Pre-filled:</strong> Review the details below and complete the transaction to approve this application.
+          <strong>✓ Application Pre-filled:</strong> Review the details below
+          and complete the transaction to approve this application.
         </div>
       )}
 
@@ -472,7 +618,9 @@ function AddTransactionForm({ onAdded, onClose, prefilledData }) {
           {showCalendar && (
             <CustomCalendar
               selectedDate={formData.date}
-              onChange={(date) => setFormData((prev) => ({ ...prev, date }))}
+              onChange={(date) =>
+                setFormData((prev) => ({ ...prev, date }))
+              }
               onClose={() => setShowCalendar(false)}
             />
           )}
@@ -496,7 +644,7 @@ function AddTransactionForm({ onAdded, onClose, prefilledData }) {
 
       {/* MIDDLE SECTION: Mapping */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {/* User Side */}
+        {/* User / Network Side */}
         <div
           className={`flex flex-col gap-3 p-4 rounded-xl border-l-4 ${
             mode === "member"
@@ -522,7 +670,9 @@ function AddTransactionForm({ onAdded, onClose, prefilledData }) {
                   value={userSearch}
                   onChange={handleUserSearchChange}
                   onFocus={() =>
-                    userSearch.length > 1 && !isPrefilledMode && setShowUserResults(true)
+                    userSearch.length > 1 &&
+                    !isPrefilledMode &&
+                    setShowUserResults(true)
                   }
                   placeholder="Search Member..."
                   disabled={isPrefilledMode}
@@ -559,41 +709,79 @@ function AddTransactionForm({ onAdded, onClose, prefilledData }) {
             </>
           ) : (
             <>
-              <select
-                name="headCategory"
-                value={formData.headCategory}
-                onChange={handleChange}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none focus:border-orange-500"
-              >
-                <option value="Expense">Expense</option>
-                <option value="Income">Income</option>
-              </select>
-              <input
-                type="text"
-                name="internalHead"
-                value={formData.internalHead}
-                onChange={handleChange}
-                placeholder="e.g., Office Rent"
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none focus:border-orange-500"
-              />
+              <div className="flex flex-col gap-1">
+                <span className="block text-xs font-bold text-gray-500 uppercase">
+                  {isNetworkIncome
+                    ? "Income Head"
+                    : isNetworkExpense
+                    ? "Expense Head"
+                    : "Head"}
+                </span>
+
+                {!isNetworkIncome && !isNetworkExpense && (
+                  <span className="text-[11px] text-orange-700 mb-1">
+                    Choose <strong>Income / Expense</strong> on the right first.
+                  </span>
+                )}
+
+                <select
+                  value={internalHeadPreset}
+                  onChange={handleInternalHeadPresetChange}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none focus:border-orange-500 disabled:bg-gray-100"
+                  disabled={!isNetworkIncome && !isNetworkExpense}
+                >
+                  <option value="">
+                    {isNetworkIncome
+                      ? "Select Income head..."
+                      : isNetworkExpense
+                      ? "Select Expense head..."
+                      : "Select head..."}
+                  </option>
+                  {(isNetworkIncome ? INCOME_HEADS : EXPENSE_HEADS).map(
+                    (head) => (
+                      <option key={head} value={head}>
+                        {head}
+                      </option>
+                    )
+                  )}
+                </select>
+              </div>
+
+              {internalHeadPreset === "Others" && (
+                <input
+                  type="text"
+                  name="internalHead"
+                  value={formData.internalHead}
+                  onChange={handleInternalHeadCustomChange}
+                  placeholder="Enter custom head..."
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none focus:border-orange-500"
+                />
+              )}
             </>
           )}
         </div>
 
-        {/* Network Side */}
+        {/* Network / Sahakari Ledger Side */}
         <div className="flex flex-col gap-3 p-4 rounded-xl border-l-4 border-blue-500 bg-blue-50">
           <label className="text-sm font-bold text-blue-700 flex items-center gap-2">
             Sahakari Ledger
           </label>
+
           <select
             name="networkLedger"
             value={formData.networkLedger}
             onChange={handleChange}
-            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none focus:border-blue-500"
+            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none focus:border-blue-500 disabled:bg-gray-100"
+            disabled={
+              mode === "network" &&
+              formData.headCategory === "Income" &&
+              formData.internalHead === "Interest Income"
+            }
           >
             <option value="Cash">Cash Account</option>
             <option value="Bank">Bank Account (Global IME)</option>
           </select>
+
           <div className="flex gap-2">
             <button
               type="button"
@@ -606,7 +794,7 @@ function AddTransactionForm({ onAdded, onClose, prefilledData }) {
                   : "bg-white border-gray-200 text-gray-500 hover:bg-gray-50"
               }`}
             >
-              Deposit (+)
+              {mode === "network" ? "Income (+)" : "Deposit (+)"}
             </button>
             <button
               type="button"
@@ -619,7 +807,7 @@ function AddTransactionForm({ onAdded, onClose, prefilledData }) {
                   : "bg-white border-gray-200 text-gray-500 hover:bg-gray-50"
               }`}
             >
-              Withdraw (-)
+              {mode === "network" ? "Expense (-)" : "Withdraw (-)"}
             </button>
           </div>
         </div>
@@ -648,7 +836,7 @@ function AddTransactionForm({ onAdded, onClose, prefilledData }) {
         </div>
       )}
 
-      {/* New Payment Details */}
+      {/* Payment Details */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 bg-gray-50 p-4 rounded-xl border border-gray-200">
         <div>
           <label className="block text-xs font-bold text-gray-500 uppercase mb-1">
@@ -759,8 +947,8 @@ function AddTransactionForm({ onAdded, onClose, prefilledData }) {
         >
           {loading
             ? "Processing..."
-            : isPrefilledMode 
-            ? "Approve Application & Save Transaction" 
+            : isPrefilledMode
+            ? "Approve Application & Save Transaction"
             : `Save ${mode === "member" ? "Member" : "Network"} Voucher`}
         </button>
       </div>
