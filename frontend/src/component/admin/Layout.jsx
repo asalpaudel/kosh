@@ -3,7 +3,6 @@ import { Outlet, useLocation } from "react-router-dom";
 import React from "react";
 import Header from "./Header";
 import Sidebar from "./Sidebar";
-import Footer from "../user/Footer"; // Reusing the footer from user, matching your superadmin structure
 
 function Layout() {
   const location = useLocation();
@@ -24,7 +23,6 @@ function Layout() {
           <main className="flex-1">
             <Outlet />
           </main>
-          <Footer />
         </div>
       </div>
     </div>

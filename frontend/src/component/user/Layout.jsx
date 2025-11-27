@@ -2,7 +2,6 @@ import { Outlet, useLocation } from "react-router-dom";
 import React from "react";
 import Header from "./Header";
 import Sidebar from "./Sidebar";
-import Footer from "./Footer";
 
 function Layout() {
   const location = useLocation();
@@ -22,7 +21,6 @@ function Layout() {
           <main className="flex-1 p-6">
             <Outlet />
           </main>
-          <Footer />
         </div>
       </div>
     </div>
