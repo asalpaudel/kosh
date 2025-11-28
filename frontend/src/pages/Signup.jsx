@@ -87,9 +87,9 @@ export default function Signup() {
     sahakari: "",
     password: "",
     confirm: "",
-    document1: null,
-    document2: null,
-    document3: null,
+    citizenship: null, // ⭐ Changed from document1
+    signature: null, // ⭐ Changed from document2
+    photo: null, // ⭐ Changed from document3
   });
 
   // Load sahakari list from database
@@ -130,14 +130,46 @@ export default function Signup() {
     setLoading(true);
 
     // Final validation
-    const { name, email, password, confirm, sahakari } = formData;
-    if (!name || !email || !password || !confirm || !sahakari) {
+    const {
+      name,
+      email,
+      phone,
+      dob,
+      address,
+      password,
+      confirm,
+      sahakari,
+      citizenship,
+      signature,
+      photo,
+    } = formData;
+
+    if (
+      !name ||
+      !email ||
+      !phone ||
+      !dob ||
+      !address ||
+      !password ||
+      !confirm ||
+      !sahakari
+    ) {
       setError("Please fill in all required fields.");
       setLoading(false);
       return;
     }
+
     if (password !== confirm) {
       setError("Passwords do not match!");
+      setLoading(false);
+      return;
+    }
+
+    // Validate documents in Step 3
+    if (!citizenship || !signature || !photo) {
+      setError(
+        "Please upload all required documents (Citizenship, Signature, and Photo)."
+      );
       setLoading(false);
       return;
     }
@@ -147,20 +179,22 @@ export default function Signup() {
       const submitData = new FormData();
       submitData.append("name", formData.name);
       submitData.append("email", formData.email);
-      submitData.append("phone", formData.phone || "");
+      submitData.append("phone", formData.phone);
+      submitData.append("dob", formData.dob);
+      submitData.append("address", formData.address);
       submitData.append("role", "member");
       submitData.append("sahakari", formData.sahakari);
       submitData.append("password", formData.password);
 
-      // Append all three documents
-      if (formData.document1) {
-        submitData.append("document1", formData.document1);
+      // ⭐ Append documents with correct field names
+      if (formData.citizenship) {
+        submitData.append("citizenship", formData.citizenship);
       }
-      if (formData.document2) {
-        submitData.append("document2", formData.document2);
+      if (formData.signature) {
+        submitData.append("signature", formData.signature);
       }
-      if (formData.document3) {
-        submitData.append("document3", formData.document3);
+      if (formData.photo) {
+        submitData.append("photo", formData.photo);
       }
 
       console.log("Submitting signup data...");
@@ -171,8 +205,12 @@ export default function Signup() {
       });
 
       if (!res.ok) {
-        const text = await res.text();
-        throw new Error(`Signup failed: ${text}`);
+        const errorData = await res
+          .json()
+          .catch(() => ({ error: "Unknown error" }));
+        throw new Error(
+          errorData.error || `Signup failed with status: ${res.status}`
+        );
       }
 
       const savedUser = await res.json();
@@ -199,8 +237,14 @@ export default function Signup() {
 
     // Validate Step 1
     if (step === 1) {
-      if (!formData.name || !formData.email) {
-        setError("Please fill in your name and email.");
+      if (
+        !formData.name ||
+        !formData.email ||
+        !formData.phone ||
+        !formData.dob ||
+        !formData.address
+      ) {
+        setError("Please fill in all required fields.");
         return;
       }
     }
@@ -331,37 +375,10 @@ export default function Signup() {
                   />
                 </div>
 
-                {/* Date of Birth */}
-                <div>
-                  <label className="block font-semibold mb-2">
-                    Date of Birth
-                  </label>
-                  <input
-                    type="date"
-                    name="dob"
-                    value={formData.dob}
-                    onChange={handleChange}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-full focus:outline-none focus:border-black"
-                  />
-                </div>
-
-                {/* Address */}
-                <div>
-                  <label className="block font-semibold mb-2">Address</label>
-                  <input
-                    type="text"
-                    name="address"
-                    value={formData.address}
-                    onChange={handleChange}
-                    placeholder="Enter your address"
-                    className="w-full px-4 py-3 border border-gray-300 rounded-full focus:outline-none focus:border-black"
-                  />
-                </div>
-
                 {/* Phone Number */}
                 <div>
                   <label className="block font-semibold mb-2">
-                    Phone Number
+                    Phone Number <span className="text-red-500">*</span>
                   </label>
                   <input
                     type="tel"
@@ -370,8 +387,44 @@ export default function Signup() {
                     onChange={handleChange}
                     placeholder="98XXXXXXXX"
                     className="w-full px-4 py-3 border border-gray-300 rounded-full focus:outline-none focus:border-black"
+                    required
                   />
                 </div>
+
+                {/* Date of Birth */}
+                <div>
+                  <label className="block font-semibold mb-2">
+                    Date of Birth <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="date"
+                    name="dob"
+                    value={formData.dob}
+                    onChange={handleChange}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-full focus:outline-none focus:border-black"
+                    required
+                  />
+                </div>
+
+                {/* Address */}
+                <div>
+                  <label className="block font-semibold mb-2">
+                    Address <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    name="address"
+                    value={formData.address}
+                    onChange={handleChange}
+                    placeholder="Enter your full address"
+                    className="w-full px-4 py-3 border border-gray-300 rounded-full focus:outline-none focus:border-black"
+                    required
+                  />
+                </div>
+
+                <p className="text-xs text-gray-500 text-center -mt-2">
+                  <span className="text-red-500">*</span> All fields are
+                  required
+                </p>
               </>
             )}
 
@@ -452,66 +505,69 @@ export default function Signup() {
                 <h3 className="text-lg font-semibold text-gray-700 -mb-2 text-center">
                   Verification Documents
                 </h3>
-                
-                {/* Document 1 */}
+
+                {/* Citizenship Document */}
                 <div>
                   <label className="block font-semibold mb-2">
-                    Document 1 (PDF / Image)
+                    Citizenship/NID Card (PDF / Image){" "}
+                    <span className="text-red-500">*</span>
                   </label>
                   <input
                     type="file"
-                    name="document1"
+                    name="citizenship"
                     accept=".pdf, .png, .jpg, .jpeg"
                     onChange={handleChange}
                     className="w-full border border-gray-300 rounded-full px-4 py-2 text-gray-700 file:mr-3 file:py-2 file:px-4 file:rounded-full file:border-0 file:bg-[#00FFB2] file:text-black file:font-semibold hover:file:bg-[#00e6a0] transition"
                   />
-                  {formData.document1 && (
+                  {formData.citizenship && (
                     <p className="text-xs text-green-600 mt-1 px-2">
-                      ✓ {formData.document1.name}
+                      ✓ {formData.citizenship.name}
                     </p>
                   )}
                 </div>
 
-                {/* Document 2 */}
+                {/* Signature */}
                 <div>
                   <label className="block font-semibold mb-2">
-                    Document 2 (PDF / Image)
+                    Signature (Image) <span className="text-red-500">*</span>
                   </label>
                   <input
                     type="file"
-                    name="document2"
-                    accept=".pdf, .png, .jpg, .jpeg"
+                    name="signature"
+                    accept=".png, .jpg, .jpeg"
                     onChange={handleChange}
                     className="w-full border border-gray-300 rounded-full px-4 py-2 text-gray-700 file:mr-3 file:py-2 file:px-4 file:rounded-full file:border-0 file:bg-[#00FFB2] file:text-black file:font-semibold hover:file:bg-[#00e6a0] transition"
                   />
-                  {formData.document2 && (
+                  {formData.signature && (
                     <p className="text-xs text-green-600 mt-1 px-2">
-                      ✓ {formData.document2.name}
+                      ✓ {formData.signature.name}
                     </p>
                   )}
                 </div>
 
-                {/* Document 3 */}
+                {/* Photo */}
                 <div>
                   <label className="block font-semibold mb-2">
-                    Document 3 (PDF / Image)
+                    Passport Size Photo (Image){" "}
+                    <span className="text-red-500">*</span>
                   </label>
                   <input
                     type="file"
-                    name="document3"
-                    accept=".pdf, .png, .jpg, .jpeg"
+                    name="photo"
+                    accept=".png, .jpg, .jpeg"
                     onChange={handleChange}
                     className="w-full border border-gray-300 rounded-full px-4 py-2 text-gray-700 file:mr-3 file:py-2 file:px-4 file:rounded-full file:border-0 file:bg-[#00FFB2] file:text-black file:font-semibold hover:file:bg-[#00e6a0] transition"
                   />
-                  {formData.document3 && (
+                  {formData.photo && (
                     <p className="text-xs text-green-600 mt-1 px-2">
-                      ✓ {formData.document3.name}
+                      ✓ {formData.photo.name}
                     </p>
                   )}
                 </div>
 
-                <p className="text-xs text-gray-500 px-2">
-                  Please upload verification documents such as citizenship, ID card, or other identifying documents.
+                <p className="text-xs text-gray-500 text-center -mt-2">
+                  <span className="text-red-500">*</span> All documents are
+                  required for verification
                 </p>
               </>
             )}

@@ -1,10 +1,6 @@
 package com.kosh.backend.model;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
+import jakarta.persistence.*;
 
 @Entity
 public class User {
@@ -20,12 +16,41 @@ public class User {
     private String sahakari;
     private Long sahakariId; 
     private String password;
-    private String documentPath;
     private String status = "Pending";
+    private String dob; 
+    private String address;
 
     @Column(nullable = false, columnDefinition = "DOUBLE DEFAULT 0.0")
     private Double balance = 0.0;
 
+    // ⭐ Photo as BLOB
+    @Lob
+    @Basic(fetch = FetchType.LAZY)
+    @Column(name = "photo_data", columnDefinition = "LONGBLOB")
+    private byte[] photoData;
+    
+    private String photoName;
+    private String photoType;
+
+    // ⭐ Citizenship as BLOB
+    @Lob
+    @Basic(fetch = FetchType.LAZY)
+    @Column(name = "citizenship_data", columnDefinition = "LONGBLOB")
+    private byte[] citizenshipData;
+    
+    private String citizenshipName;
+    private String citizenshipType;
+
+    // ⭐ Signature as BLOB
+    @Lob
+    @Basic(fetch = FetchType.LAZY)
+    @Column(name = "signature_data", columnDefinition = "LONGBLOB")
+    private byte[] signatureData;
+    
+    private String signatureName;
+    private String signatureType;
+
+    // Existing getters and setters
     public Long getId() {
         return id;  
     }
@@ -54,6 +79,20 @@ public class User {
         this.phone = phone;
     }
 
+    public String getDob() {
+        return dob;
+    }
+    public void setDob(String dob) {
+        this.dob = dob;
+    }
+    
+    public String getAddress() {
+        return address;
+    }
+    public void setAddress(String address) {
+        this.address = address;
+    }
+
     public String getRole() {
         return role;
     }
@@ -61,8 +100,12 @@ public class User {
         this.role = role;
     }
 
-    public Long getSahakariId() { return sahakariId; }
-    public void setSahakariId(Long sahakariId) { this.sahakariId = sahakariId; }
+    public Long getSahakariId() { 
+        return sahakariId; 
+    }
+    public void setSahakariId(Long sahakariId) { 
+        this.sahakariId = sahakariId; 
+    }
 
     public String getSahakari() {
         return sahakari;
@@ -77,18 +120,10 @@ public class User {
     public void setPassword(String password) {
         this.password = password;
     }
-
-    public String getDocumentPath() {
-        return documentPath;
-    }
-    public void setDocumentPath(String documentPath) {
-        this.documentPath = documentPath;
-    }
     
     public String getStatus() {
         return status;
     }
-    
     public void setStatus(String status) {
         this.status = status;
     }
@@ -96,8 +131,71 @@ public class User {
     public Double getBalance() {
         return balance != null ? balance : 0.0;
     }
-    
     public void setBalance(Double balance) {
         this.balance = balance != null ? balance : 0.0;
+    }
+
+    // ⭐ New getters and setters for BLOB fields
+    public byte[] getPhotoData() {
+        return photoData;
+    }
+    public void setPhotoData(byte[] photoData) {
+        this.photoData = photoData;
+    }
+
+    public String getPhotoName() {
+        return photoName;
+    }
+    public void setPhotoName(String photoName) {
+        this.photoName = photoName;
+    }
+
+    public String getPhotoType() {
+        return photoType;
+    }
+    public void setPhotoType(String photoType) {
+        this.photoType = photoType;
+    }
+
+    public byte[] getCitizenshipData() {
+        return citizenshipData;
+    }
+    public void setCitizenshipData(byte[] citizenshipData) {
+        this.citizenshipData = citizenshipData;
+    }
+
+    public String getCitizenshipName() {
+        return citizenshipName;
+    }
+    public void setCitizenshipName(String citizenshipName) {
+        this.citizenshipName = citizenshipName;
+    }
+
+    public String getCitizenshipType() {
+        return citizenshipType;
+    }
+    public void setCitizenshipType(String citizenshipType) {
+        this.citizenshipType = citizenshipType;
+    }
+
+    public byte[] getSignatureData() {
+        return signatureData;
+    }
+    public void setSignatureData(byte[] signatureData) {
+        this.signatureData = signatureData;
+    }
+
+    public String getSignatureName() {
+        return signatureName;
+    }
+    public void setSignatureName(String signatureName) {
+        this.signatureName = signatureName;
+    }
+
+    public String getSignatureType() {
+        return signatureType;
+    }
+    public void setSignatureType(String signatureType) {
+        this.signatureType = signatureType;
     }
 }

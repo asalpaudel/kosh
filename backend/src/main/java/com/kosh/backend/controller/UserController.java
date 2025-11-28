@@ -1,11 +1,15 @@
 package com.kosh.backend.controller;
 
+import java.util.Base64;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+import org.springframework.http.ContentDisposition;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -43,11 +47,15 @@ public class UserController {
             @RequestParam("name") String name,
             @RequestParam("email") String email,
             @RequestParam("phone") String phone,
+            @RequestParam("dob") String dob,
+            @RequestParam("address") String address,  
             @RequestParam("role") String role,
             @RequestParam("sahakari") String sahakari,
             @RequestParam("password") String password,
             @RequestParam(value = "status", required = false) String status,
-            @RequestParam(value = "document", required = false) MultipartFile document) {
+            @RequestParam(value = "photo", required = false) MultipartFile photo,
+            @RequestParam(value = "citizenship", required = false) MultipartFile citizenship,
+            @RequestParam(value = "signature", required = false) MultipartFile signature) {
 
         System.out.println("POST /api/users hit!");
         System.out.println("User: " + name + ", " + email);
@@ -101,22 +109,50 @@ public class UserController {
             }
         }
 
-        User user = new User();
-        user.setName(name);
-        user.setEmail(email);
-        user.setPhone(phone);
-        user.setRole(role);
-        user.setSahakari(sahakari);
-        user.setPassword(password);
+        try {
+            User user = new User();
+            user.setName(name);
+            user.setEmail(email);
+            user.setPhone(phone);
+            user.setDob(dob);
+            user.setAddress(address); 
+            user.setRole(role);
+            user.setSahakari(sahakari);
+            user.setPassword(password);
+            user.setStatus((status != null && !status.isBlank()) ? status : "Pending");
 
-        user.setStatus((status != null && !status.isBlank()) ? status : "Pending");
+            // ⭐ Handle photo upload
+            if (photo != null && !photo.isEmpty()) {
+                user.setPhotoData(photo.getBytes());
+                user.setPhotoName(photo.getOriginalFilename());
+                user.setPhotoType(photo.getContentType());
+                System.out.println("Photo uploaded: " + photo.getOriginalFilename());
+            }
 
-        if (document != null && !document.isEmpty()) {
-            System.out.println("Received document: " + document.getOriginalFilename());
+            // ⭐ Handle citizenship upload
+            if (citizenship != null && !citizenship.isEmpty()) {
+                user.setCitizenshipData(citizenship.getBytes());
+                user.setCitizenshipName(citizenship.getOriginalFilename());
+                user.setCitizenshipType(citizenship.getContentType());
+                System.out.println("Citizenship uploaded: " + citizenship.getOriginalFilename());
+            }
+
+            // ⭐ Handle signature upload
+            if (signature != null && !signature.isEmpty()) {
+                user.setSignatureData(signature.getBytes());
+                user.setSignatureName(signature.getOriginalFilename());
+                user.setSignatureType(signature.getContentType());
+                System.out.println("Signature uploaded: " + signature.getOriginalFilename());
+            }
+
+            User saved = repo.save(user);
+            return ResponseEntity.ok(saved);
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.badRequest()
+                    .body(Map.of("error", "Failed to create user: " + e.getMessage()));
         }
-
-        User saved = repo.save(user);
-        return ResponseEntity.ok(saved);
     }
 
     @GetMapping("/network/{networkId}")
@@ -142,8 +178,136 @@ public class UserController {
     }
 
     @GetMapping("/{id}")
-    public User getUserById(@PathVariable int id) {
-        return repo.findById(id).orElse(null);
+    public ResponseEntity<?> getUserById(@PathVariable int id) {
+        User user = repo.findById(id).orElse(null);
+        
+        if (user == null) {
+            return ResponseEntity.notFound().build();
+        }
+
+        // Return user without binary data
+        Map<String, Object> userData = new HashMap<>();
+        userData.put("id", user.getId());
+        userData.put("name", user.getName());
+        userData.put("email", user.getEmail());
+        userData.put("phone", user.getPhone());
+        userData.put("role", user.getRole());
+        userData.put("sahakari", user.getSahakari());
+        userData.put("sahakariId", user.getSahakariId());
+        userData.put("status", user.getStatus());
+        userData.put("balance", user.getBalance());
+        
+        // Include metadata about files
+        userData.put("hasPhoto", user.getPhotoData() != null);
+        userData.put("photoName", user.getPhotoName());
+        userData.put("hasCitizenship", user.getCitizenshipData() != null);
+        userData.put("citizenshipName", user.getCitizenshipName());
+        userData.put("hasSignature", user.getSignatureData() != null);
+        userData.put("signatureName", user.getSignatureName());
+
+        return ResponseEntity.ok(userData);
+    }
+
+    // ⭐ Get User Photo
+    @GetMapping("/{id}/photo")
+    public ResponseEntity<byte[]> getUserPhoto(@PathVariable int id) {
+        return repo.findById(id)
+                .filter(user -> user.getPhotoData() != null)
+                .map(user -> {
+                    HttpHeaders headers = new HttpHeaders();
+                    headers.setContentType(MediaType.parseMediaType(user.getPhotoType()));
+                    headers.setContentDisposition(
+                        ContentDisposition.inline()
+                            .filename(user.getPhotoName())
+                            .build()
+                    );
+                    return new ResponseEntity<>(user.getPhotoData(), headers, HttpStatus.OK);
+                })
+                .orElse(ResponseEntity.notFound().build());
+    }
+
+    // ⭐ Get User Citizenship
+    @GetMapping("/{id}/citizenship")
+    public ResponseEntity<byte[]> getUserCitizenship(@PathVariable int id) {
+        return repo.findById(id)
+                .filter(user -> user.getCitizenshipData() != null)
+                .map(user -> {
+                    HttpHeaders headers = new HttpHeaders();
+                    headers.setContentType(MediaType.parseMediaType(user.getCitizenshipType()));
+                    headers.setContentDisposition(
+                        ContentDisposition.inline()
+                            .filename(user.getCitizenshipName())
+                            .build()
+                    );
+                    return new ResponseEntity<>(user.getCitizenshipData(), headers, HttpStatus.OK);
+                })
+                .orElse(ResponseEntity.notFound().build());
+    }
+
+    // ⭐ Get User Signature
+    @GetMapping("/{id}/signature")
+    public ResponseEntity<byte[]> getUserSignature(@PathVariable int id) {
+        return repo.findById(id)
+                .filter(user -> user.getSignatureData() != null)
+                .map(user -> {
+                    HttpHeaders headers = new HttpHeaders();
+                    headers.setContentType(MediaType.parseMediaType(user.getSignatureType()));
+                    headers.setContentDisposition(
+                        ContentDisposition.inline()
+                            .filename(user.getSignatureName())
+                            .build()
+                    );
+                    return new ResponseEntity<>(user.getSignatureData(), headers, HttpStatus.OK);
+                })
+                .orElse(ResponseEntity.notFound().build());
+    }
+
+    // ⭐ Get Photo as Base64
+    @GetMapping("/{id}/photo/base64")
+    public ResponseEntity<?> getUserPhotoBase64(@PathVariable int id) {
+        return repo.findById(id)
+                .filter(user -> user.getPhotoData() != null)
+                .map(user -> {
+                    String base64 = Base64.getEncoder().encodeToString(user.getPhotoData());
+                    Map<String, String> response = new HashMap<>();
+                    response.put("data", base64);
+                    response.put("filename", user.getPhotoName());
+                    response.put("type", user.getPhotoType());
+                    return ResponseEntity.ok(response);
+                })
+                .orElse(ResponseEntity.notFound().build());
+    }
+
+    // ⭐ Get Citizenship as Base64
+    @GetMapping("/{id}/citizenship/base64")
+    public ResponseEntity<?> getUserCitizenshipBase64(@PathVariable int id) {
+        return repo.findById(id)
+                .filter(user -> user.getCitizenshipData() != null)
+                .map(user -> {
+                    String base64 = Base64.getEncoder().encodeToString(user.getCitizenshipData());
+                    Map<String, String> response = new HashMap<>();
+                    response.put("data", base64);
+                    response.put("filename", user.getCitizenshipName());
+                    response.put("type", user.getCitizenshipType());
+                    return ResponseEntity.ok(response);
+                })
+                .orElse(ResponseEntity.notFound().build());
+    }
+
+    // ⭐ Get Signature as Base64
+    @GetMapping("/{id}/signature/base64")
+    public ResponseEntity<?> getUserSignatureBase64(@PathVariable int id) {
+        return repo.findById(id)
+                .filter(user -> user.getSignatureData() != null)
+                .map(user -> {
+                    String base64 = Base64.getEncoder().encodeToString(user.getSignatureData());
+                    Map<String, String> response = new HashMap<>();
+                    response.put("data", base64);
+                    response.put("filename", user.getSignatureName());
+                    response.put("type", user.getSignatureType());
+                    return ResponseEntity.ok(response);
+                })
+                .orElse(ResponseEntity.notFound().build());
     }
 
     @PutMapping("/{id}")
@@ -290,22 +454,18 @@ public class UserController {
         repo.deleteById(id);
     }
 
-    // FIXED: Search endpoint with proper session handling
     @GetMapping
     public ResponseEntity<?> getAllUsers(
             @RequestParam(value = "search", required = false) String search,
             HttpSession session) {
 
-        // Debug logging
         System.out.println("=== User Search Request ===");
         System.out.println("Search param: " + search);
         System.out.println("Session ID: " + session.getId());
 
-        // Get sahakari from session
         String sahakari = (String) session.getAttribute("sahakari");
         System.out.println("Session sahakari: " + sahakari);
 
-        // If sahakari is not in session, return error with helpful message
         if (sahakari == null) {
             System.out.println("ERROR: Sahakari not found in session");
             return ResponseEntity.status(401)
@@ -317,7 +477,6 @@ public class UserController {
         if (search != null && !search.trim().isEmpty()) {
             System.out.println("Searching for: '" + search + "' in network: " + sahakari);
 
-            // Search by name or phone, filtered by sahakari
             users = repo.findAll().stream()
                     .filter(u -> sahakari.equals(u.getSahakari()))
                     .filter(u -> {
@@ -332,7 +491,6 @@ public class UserController {
 
             System.out.println("Found " + users.size() + " matching users");
         } else {
-            // Return all users in the sahakari
             users = repo.findAll().stream()
                     .filter(u -> sahakari.equals(u.getSahakari()))
                     .collect(Collectors.toList());
@@ -343,7 +501,6 @@ public class UserController {
         return ResponseEntity.ok(users);
     }
 
-    // Add this new endpoint for super admin
     @GetMapping("/all")
     public ResponseEntity<?> getAllUsersForSuperAdmin(
             @RequestParam(value = "search", required = false) String search) {
@@ -373,8 +530,6 @@ public class UserController {
         return ResponseEntity.ok(users);
     }
 
-    // Add this method to your UserController.java
-
     @GetMapping("/me")
     public ResponseEntity<?> getCurrentUser(HttpSession session) {
         Long userId = (Long) session.getAttribute("userId");
@@ -397,7 +552,6 @@ public class UserController {
         System.out.println("User: " + user.getName());
         System.out.println("Balance: " + user.getBalance());
 
-        // Return user data including balance
         return ResponseEntity.ok(Map.of(
                 "id", user.getId(),
                 "name", user.getName(),
@@ -406,7 +560,10 @@ public class UserController {
                 "role", user.getRole(),
                 "sahakari", user.getSahakari(),
                 "balance", user.getBalance() != null ? user.getBalance() : 0.0,
-                "status", user.getStatus()));
+                "status", user.getStatus(),
+                "hasPhoto", user.getPhotoData() != null,
+                "hasCitizenship", user.getCitizenshipData() != null,
+                "hasSignature", user.getSignatureData() != null));
     }
 
     @GetMapping("/count")
@@ -423,5 +580,4 @@ public class UserController {
 
         return ResponseEntity.ok(map);
     }
-
 }
