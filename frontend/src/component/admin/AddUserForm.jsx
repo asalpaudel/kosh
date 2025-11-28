@@ -51,11 +51,13 @@ function AddUserForm({
     name: "",
     email: "",
     phone: "",
+    dob: "",
+    address: "",
     role: "member",
     password: "",
-    photo: null,
     citizenship: null,
     signature: null,
+    photo: null,
   });
 
   const [adminSahakari, setAdminSahakari] = useState(null);
@@ -65,7 +67,6 @@ function AddUserForm({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
-  // ⭐ Fetch admin's sahakari and capacity info from session
   useEffect(() => {
     const fetchAdminSahakari = async () => {
       try {
@@ -76,11 +77,8 @@ function AddUserForm({
 
         if (res.ok) {
           const data = await res.json();
-
-          // Clean the sahakariId
           let cleanId = String(data.sahakariId).replace(/[^0-9]/g, "");
 
-          // Get network details
           const networkRes = await fetch(`${apiBase}/networks/${cleanId}`, {
             credentials: "include",
           });
@@ -89,9 +87,7 @@ function AddUserForm({
             const network = await networkRes.json();
             setAdminSahakari(network.name);
             setNetworkData(network);
-            console.log("Network data:", network);
 
-            // Get current user count for this sahakari
             const usersRes = await fetch(
               `${apiBase}/users/network/${cleanId}`,
               {
@@ -101,12 +97,10 @@ function AddUserForm({
 
             if (usersRes.ok) {
               const users = await usersRes.json();
-              // Count only ACTIVE members (not staff/admin)
               const memberCount = users.filter(
                 (u) => u.role === "member" && u.status === "Active"
               ).length;
               setCurrentUserCount(memberCount);
-              console.log("Current active member count:", memberCount);
             }
           } else {
             setError("Failed to load sahakari information");
@@ -125,25 +119,17 @@ function AddUserForm({
     fetchAdminSahakari();
   }, [apiBase]);
 
-  // Check if capacity limit reached
   const isCapacityReached = () => {
     if (!networkData || !networkData.userLimit) return false;
-
-    // If userLimit is null or 0, it's unlimited
     if (networkData.userLimit === null || networkData.userLimit === 0)
       return false;
-
-    // Check if current count >= max allowed
     return currentUserCount >= networkData.userLimit;
   };
 
   const getRemainingSlots = () => {
     if (!networkData || !networkData.userLimit) return "Unlimited";
-
-    // If unlimited
     if (networkData.userLimit === null || networkData.userLimit === 0)
       return "Unlimited";
-
     const remaining = networkData.userLimit - currentUserCount;
     return remaining > 0 ? remaining : 0;
   };
@@ -164,11 +150,23 @@ function AddUserForm({
       return;
     }
 
-    // Check capacity before submitting
     if (isCapacityReached()) {
       setError(
         "Member capacity limit reached. Please contact support to upgrade your package."
       );
+      return;
+    }
+
+    // Final validation
+    const { name, email, phone, dob, address, password, citizenship, signature, photo } = formData;
+
+    if (!name || !email || !phone || !dob || !address || !password) {
+      setError("Please fill in all required fields in Step 1.");
+      return;
+    }
+
+    if (!citizenship || !signature || !photo) {
+      setError("Please upload all required documents (Citizenship, Signature, and Photo).");
       return;
     }
 
@@ -180,20 +178,22 @@ function AddUserForm({
       form.append("name", formData.name);
       form.append("email", formData.email);
       form.append("phone", formData.phone);
+      form.append("dob", formData.dob);
+      form.append("address", formData.address);
       form.append("role", formData.role);
       form.append("sahakari", adminSahakari);
       form.append("password", formData.password);
-
-      // Admin-created users are immediately Active
       form.append("status", "Active");
 
-      // Upload documents
+      // Append documents with correct field names
       if (formData.citizenship) {
-        form.append("document", formData.citizenship);
-      } else if (formData.photo) {
-        form.append("document", formData.photo);
-      } else if (formData.signature) {
-        form.append("document", formData.signature);
+        form.append("citizenship", formData.citizenship);
+      }
+      if (formData.signature) {
+        form.append("signature", formData.signature);
+      }
+      if (formData.photo) {
+        form.append("photo", formData.photo);
       }
 
       const res = await fetch(`${apiBase}/users`, {
@@ -221,7 +221,7 @@ function AddUserForm({
       console.log("Saved user:", saved);
 
       onUserAdded?.(saved);
-      alert(`User "${saved.name}" added successfully to ${adminSahakari}!`);
+      alert(`User "${saved.name}" added successfully to ${adminSahakari}!\n\nThe account is now active and the user can log in immediately.`);
       onClose?.();
     } catch (err) {
       console.error("Error adding user:", err);
@@ -233,7 +233,7 @@ function AddUserForm({
 
   const nextStep = () => {
     if (step === 1) {
-      if (!formData.name || !formData.email || !formData.password) {
+      if (!formData.name || !formData.email || !formData.phone || !formData.dob || !formData.address || !formData.password) {
         setError("Please fill in all required fields.");
         return;
       }
@@ -254,7 +254,7 @@ function AddUserForm({
   if (loadingSahakari) {
     return (
       <div className="flex justify-center items-center py-12">
-        <p className="text-gray-500">Loading...</p>
+        <div className="animate-pulse text-gray-500">Loading...</div>
       </div>
     );
   }
@@ -273,20 +273,20 @@ function AddUserForm({
   const remainingSlots = getRemainingSlots();
 
   return (
-    <form onSubmit={handleSubmit} className="flex flex-col gap-5">
+     <div className="flex flex-col gap-5 max-h-[80vh] overflow-y-auto pr-2">
       <div className="flex justify-center">
         <UserCircleIcon className="w-16 h-16 text-teal-500" />
       </div>
 
       <Stepper currentStep={step} />
 
+      {/* Step 1: User Details */}
       {step === 1 && (
         <>
           <h3 className="text-lg font-semibold text-gray-700 -mb-2 text-center">
             User Details
           </h3>
 
-          {/* Show which Sahakari this user will be added to */}
           <div className="bg-teal-50 border border-teal-200 rounded-lg px-4 py-3">
             <p className="text-sm text-teal-700">
               <span className="font-semibold">Adding user to:</span>{" "}
@@ -294,7 +294,7 @@ function AddUserForm({
             </p>
           </div>
 
-          {/* ⭐ Capacity Display */}
+          {/* Capacity Display */}
           <div
             className={`border rounded-lg px-4 py-3 ${
               capacityReached
@@ -361,7 +361,6 @@ function AddUserForm({
               </span>
             </div>
 
-            {/* Progress Bar */}
             {networkData?.userLimit && networkData.userLimit > 0 && (
               <div className="mt-3">
                 <div className="w-full bg-gray-200 rounded-full h-2">
@@ -399,7 +398,6 @@ function AddUserForm({
               onChange={handleChange}
               placeholder="Enter user's full name"
               className="w-full px-4 py-3 border border-gray-300 rounded-full focus:outline-none focus:border-black"
-              required
               disabled={capacityReached}
             />
           </div>
@@ -415,19 +413,48 @@ function AddUserForm({
               onChange={handleChange}
               placeholder="Enter user's email"
               className="w-full px-4 py-3 border border-gray-300 rounded-full focus:outline-none focus:border-black"
-              required
               disabled={capacityReached}
             />
           </div>
 
           <div>
-            <label className="block font-semibold mb-2">Phone Number</label>
+            <label className="block font-semibold mb-2">
+              Phone Number <span className="text-red-500">*</span>
+            </label>
             <input
               type="tel"
               name="phone"
               value={formData.phone}
               onChange={handleChange}
               placeholder="98XXXXXXXX"
+              className="w-full px-4 py-3 border border-gray-300 rounded-full focus:outline-none focus:border-black"
+              disabled={capacityReached}
+            />
+          </div>
+
+          <div>
+            <label className="block font-semibold mb-2">
+              Date of Birth <span className="text-red-500">*</span>
+            </label>
+            <input
+              type="date"
+              name="dob"
+              value={formData.dob}
+              onChange={handleChange}
+              className="w-full px-4 py-3 border border-gray-300 rounded-full focus:outline-none focus:border-black"
+              disabled={capacityReached}
+            />
+          </div>
+
+          <div>
+            <label className="block font-semibold mb-2">
+              Address <span className="text-red-500">*</span>
+            </label>
+            <input
+              name="address"
+              value={formData.address}
+              onChange={handleChange}
+              placeholder="Enter user's full address"
               className="w-full px-4 py-3 border border-gray-300 rounded-full focus:outline-none focus:border-black"
               disabled={capacityReached}
             />
@@ -444,34 +471,32 @@ function AddUserForm({
               onChange={handleChange}
               placeholder="Enter a temporary password"
               className="w-full px-4 py-3 border border-gray-300 rounded-full focus:outline-none focus:border-black"
-              required
               disabled={capacityReached}
             />
+            <p className="text-xs text-gray-500 mt-1 px-2">
+              User can change this password after first login
+            </p>
+          </div>
+
+          <div className="bg-yellow-50 border border-yellow-200 rounded-lg px-4 py-3">
+            <p className="text-sm text-yellow-800">
+              <span className="font-semibold">Note:</span> This account will be immediately active. The user can log in right away.
+            </p>
           </div>
         </>
       )}
 
+      {/* Step 2: Documents */}
       {step === 2 && (
         <>
           <h3 className="text-lg font-semibold text-gray-700 -mb-2 text-center">
             User Documents
           </h3>
-          <div>
-            <label className="block font-semibold mb-2">
-              User's Photo (Image)
-            </label>
-            <input
-              type="file"
-              name="photo"
-              accept=".png, .jpg, .jpeg"
-              onChange={handleChange}
-              className="w-full border border-gray-300 rounded-full px-4 py-2 text-gray-700 file:mr-3 file:py-2 file:px-4 file:rounded-full file:border-0 file:bg-teal-500 file:text-white file:font-semibold hover:file:bg-teal-600 transition"
-            />
-          </div>
 
           <div>
             <label className="block font-semibold mb-2">
-              Citizenship (PDF / Image)
+              Citizenship/NID Card (PDF / Image){" "}
+              <span className="text-red-500">*</span>
             </label>
             <input
               type="file"
@@ -480,11 +505,16 @@ function AddUserForm({
               onChange={handleChange}
               className="w-full border border-gray-300 rounded-full px-4 py-2 text-gray-700 file:mr-3 file:py-2 file:px-4 file:rounded-full file:border-0 file:bg-teal-500 file:text-white file:font-semibold hover:file:bg-teal-600 transition"
             />
+            {formData.citizenship && (
+              <p className="text-xs text-green-600 mt-1 px-2">
+                ✓ {formData.citizenship.name}
+              </p>
+            )}
           </div>
 
           <div>
             <label className="block font-semibold mb-2">
-              User's Signature (Image)
+              User's Signature (Image) <span className="text-red-500">*</span>
             </label>
             <input
               type="file"
@@ -493,12 +523,46 @@ function AddUserForm({
               onChange={handleChange}
               className="w-full border border-gray-300 rounded-full px-4 py-2 text-gray-700 file:mr-3 file:py-2 file:px-4 file:rounded-full file:border-0 file:bg-teal-500 file:text-white file:font-semibold hover:file:bg-teal-600 transition"
             />
+            {formData.signature && (
+              <p className="text-xs text-green-600 mt-1 px-2">
+                ✓ {formData.signature.name}
+              </p>
+            )}
           </div>
+
+          <div>
+            <label className="block font-semibold mb-2">
+              User's Photo (Image) <span className="text-red-500">*</span>
+            </label>
+            <input
+              type="file"
+              name="photo"
+              accept=".png, .jpg, .jpeg"
+              onChange={handleChange}
+              className="w-full border border-gray-300 rounded-full px-4 py-2 text-gray-700 file:mr-3 file:py-2 file:px-4 file:rounded-full file:border-0 file:bg-teal-500 file:text-white file:font-semibold hover:file:bg-teal-600 transition"
+            />
+            {formData.photo && (
+              <p className="text-xs text-green-600 mt-1 px-2">
+                ✓ {formData.photo.name}
+              </p>
+            )}
+          </div>
+
+          <p className="text-xs text-gray-500 text-center -mt-2">
+            <span className="text-red-500">*</span> All documents are required
+            for verification
+          </p>
         </>
       )}
 
-      {error && <p className="text-sm text-red-600">{error}</p>}
+      {/* Error Message */}
+      {error && (
+        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
+          {error}
+        </div>
+      )}
 
+      {/* Navigation Buttons */}
       <div className="flex justify-between mt-6">
         {step > 1 ? (
           <button
@@ -526,7 +590,8 @@ function AddUserForm({
 
         {step === 2 ? (
           <button
-            type="submit"
+            type="button"
+            onClick={handleSubmit}
             disabled={saving || capacityReached}
             className="w-full bg-teal-500 text-white font-semibold py-3 rounded-full hover:bg-teal-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
@@ -534,7 +599,7 @@ function AddUserForm({
           </button>
         ) : null}
       </div>
-    </form>
+    </div>
   );
 }
 

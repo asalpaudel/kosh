@@ -87,9 +87,9 @@ export default function Signup() {
     sahakari: "",
     password: "",
     confirm: "",
-    citizenship: null, // ⭐ Changed from document1
-    signature: null, // ⭐ Changed from document2
-    photo: null, // ⭐ Changed from document3
+    citizenship: null,
+    signature: null,
+    photo: null,
   });
 
   // Load sahakari list from database
