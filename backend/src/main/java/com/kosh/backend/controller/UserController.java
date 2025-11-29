@@ -561,18 +561,22 @@ public class UserController {
         System.out.println("User: " + user.getName());
         System.out.println("Balance: " + user.getBalance());
 
-        return ResponseEntity.ok(Map.of(
-                "id", user.getId(),
-                "name", user.getName(),
-                "email", user.getEmail(),
-                "phone", user.getPhone(),
-                "role", user.getRole(),
-                "sahakari", user.getSahakari(),
-                "balance", user.getBalance() != null ? user.getBalance() : 0.0,
-                "status", user.getStatus(),
-                "hasPhoto", user.getPhotoData() != null,
-                "hasCitizenship", user.getCitizenshipData() != null,
-                "hasSignature", user.getSignatureData() != null));
+        Map<String, Object> response = new HashMap<>();
+        
+        response.put("id", user.getId());
+        response.put("name", user.getName());
+        response.put("email", user.getEmail());
+        response.put("phone", user.getPhone());
+        response.put("role", user.getRole());
+        response.put("sahakari", user.getSahakari());
+        response.put("balance", user.getBalance() != null ? user.getBalance() : 0.0);
+        response.put("status", user.getStatus());
+        response.put("hasPhoto", user.getPhotoData() != null);
+        response.put("hasCitizenship", user.getCitizenshipData() != null);
+        response.put("hasSignature", user.getSignatureData() != null);
+
+        return ResponseEntity.ok(response);
+
     }
 
     @GetMapping("/count")
