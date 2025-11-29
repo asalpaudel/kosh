@@ -7,6 +7,7 @@ import {
   PlusCircleIcon,
   UserCircleIcon,
   DocumentIcon,
+  XIcon,
 } from "../../component/icons.jsx";
 
 import Modal from "../../component/superadmin/Modal.jsx";
@@ -22,17 +23,229 @@ const DetailItem = ({ label, value }) => (
   </div>
 );
 
-const DocumentLink = ({ doc }) => (
-  <a
-    href={doc.url}
-    target="_blank"
-    rel="noopener noreferrer"
-    className="flex items-center gap-2 text-teal-600 hover:text-teal-800 hover:underline"
-  >
-    <DocumentIcon className="w-4 h-4" />
-    <span className="text-sm font-medium">{doc.name}</span>
-  </a>
-);
+// ⭐ Updated Component: Document Viewer Modal
+const UserDocumentsModal = ({ userId, onClose }) => {
+  const [loading, setLoading] = useState(true);
+  const [documents, setDocuments] = useState({
+    citizenship: null,
+    photo: null,
+    signature: null,
+  });
+
+  useEffect(() => {
+    const loadDocuments = async () => {
+      try {
+        setLoading(true);
+        
+        // Fetch user details to check which documents exist
+        const userRes = await fetch(`${API_BASE}/users/${userId}`, {
+          credentials: "include",
+        });
+        
+        if (userRes.ok) {
+          const userData = await userRes.json();
+          
+          console.log("User documents data:", userData); // Debug log
+          
+          setDocuments({
+            hasCitizenship: userData.hasCitizenship,
+            hasPhoto: userData.hasPhoto,
+            hasSignature: userData.hasSignature,
+            citizenshipName: userData.citizenshipName,
+            photoName: userData.photoName,
+            signatureName: userData.signatureName,
+            citizenshipType: userData.citizenshipType,
+            photoType: userData.photoType,
+            signatureType: userData.signatureType,
+          });
+        }
+      } catch (error) {
+        console.error("Error loading documents:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadDocuments();
+  }, [userId]);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-teal-500 mx-auto mb-4"></div>
+          <p className="text-gray-500">Loading documents...</p>
+        </div>
+      </div>
+    );
+  }
+
+  const hasAnyDocument = documents.hasCitizenship || documents.hasPhoto || documents.hasSignature;
+
+  // Helper function to check if file is PDF based on filename or MIME type
+  const isPDF = (mimeType, filename) => {
+    const isPDFMime = mimeType && mimeType.includes('pdf');
+    const isPDFFile = filename && filename.toLowerCase().endsWith('.pdf');
+    return isPDFMime || isPDFFile;
+  };
+
+  return (
+    <div className="max-h-[85vh] overflow-y-auto space-y-6 pr-2">
+      {!hasAnyDocument && (
+        <div className="text-center py-12">
+          <DocumentIcon className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+          <p className="text-gray-500 text-lg">No documents uploaded</p>
+        </div>
+      )}
+
+      {/* Citizenship Document */}
+      {documents.hasCitizenship && (
+        <div className="border border-gray-200 rounded-lg p-4">
+          <h3 className="text-lg font-bold text-gray-800 mb-3 flex items-center gap-2">
+            <DocumentIcon className="w-5 h-5 text-teal-600" />
+            Citizenship / NID Card
+          </h3>
+          
+          {isPDF(documents.citizenshipType, documents.citizenshipName) ? (
+            // PDF Document Display
+            <div className="space-y-4">
+              {/* PDF Preview Card */}
+              <div className="bg-gradient-to-br from-red-50 to-orange-50 rounded-lg p-6 border border-red-200">
+                <div className="flex items-center gap-4">
+                  <div className="flex-shrink-0">
+                    <div className="w-16 h-16 bg-red-500 rounded-lg flex items-center justify-center">
+                      <svg className="w-8 h-8 text-white" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm2 6a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1zm1 3a1 1 0 100 2h6a1 1 0 100-2H7z" clipRule="evenodd" />
+                      </svg>
+                    </div>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold text-gray-900 truncate">
+                      {documents.citizenshipName}
+                    </p>
+                    <p className="text-xs text-gray-600 mt-1">PDF Document</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex gap-3">
+                
+                <a  href={`${API_BASE}/users/${userId}/citizenship`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-3 bg-teal-500 text-white rounded-lg hover:bg-teal-600 transition-colors font-medium"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                  </svg>
+                  View PDF
+                </a>
+              </div>
+
+              {/* Embedded PDF Viewer */}
+              <div className="border-2 border-gray-200 rounded-lg overflow-hidden bg-white">
+                <object
+                  data={`${API_BASE}/users/${userId}/citizenship`}
+                  type="application/pdf"
+                  className="w-full h-96"
+                >
+                  <iframe
+                    src={`${API_BASE}/users/${userId}/citizenship`}
+                    className="w-full h-96"
+                    title="Citizenship Document"
+                  >
+                    <p className="p-4 text-center text-gray-500">
+                      Your browser does not support PDF viewing. 
+                      <a 
+                        href={`${API_BASE}/users/${userId}/citizenship`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-teal-600 hover:underline ml-1"
+                      >
+                        Click here to download the PDF
+                      </a>
+                    </p>
+                  </iframe>
+                </object>
+              </div>
+            </div>
+          ) : (
+            // Image Display
+            <div>
+              <div className="bg-gray-50 rounded-lg overflow-hidden p-4 flex justify-center">
+                <img
+                  src={`${API_BASE}/users/${userId}/citizenship`}
+                  alt="Citizenship"
+                  className="max-w-full h-auto max-h-96 object-contain rounded"
+                />
+              </div>
+              <div className="mt-3 flex justify-between items-center">
+                <span className="text-sm text-gray-600">
+                  {documents.citizenshipName || 'citizenship'}
+                </span>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Photo */}
+      {documents.hasPhoto && (
+        <div className="border border-gray-200 rounded-lg p-4">
+          <h3 className="text-lg font-bold text-gray-800 mb-3 flex items-center gap-2">
+            <UserCircleIcon className="w-5 h-5 text-teal-600" />
+            Passport Size Photo
+          </h3>
+          <div className="bg-gray-50 rounded-lg overflow-hidden flex justify-center p-4">
+            <img
+              src={`${API_BASE}/users/${userId}/photo`}
+              alt="User Photo"
+              className="h-64 w-auto object-contain rounded shadow-lg"
+            />
+          </div>
+          <div className="mt-3 flex justify-between items-center">
+            <span className="text-sm text-gray-600">
+              {documents.photoName || 'photo.jpg'}
+            </span>
+          </div>
+        </div>
+      )}
+
+      {/* Signature */}
+      {documents.hasSignature && (
+        <div className="border border-gray-200 rounded-lg p-4">
+          <h3 className="text-lg font-bold text-gray-800 mb-3 flex items-center gap-2">
+            <PencilIcon className="w-5 h-5 text-teal-600" />
+            Signature
+          </h3>
+          <div className="bg-gray-50 rounded-lg overflow-hidden flex justify-center p-4">
+            <img
+              src={`${API_BASE}/users/${userId}/signature`}
+              alt="Signature"
+              className="h-32 w-auto object-contain border-b-2 border-gray-300"
+            />
+          </div>
+          <div className="mt-3 flex justify-between items-center">
+            <span className="text-sm text-gray-600">
+              {documents.signatureName || 'signature.jpg'}
+            </span>
+          </div>
+        </div>
+      )}
+
+      <div className="flex justify-end pt-4">
+        <button
+          onClick={onClose}
+          className="px-6 py-2.5 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 transition-colors font-medium"
+        >
+          Close
+        </button>
+      </div>
+    </div>
+  );
+};
 
 const UserDetails = ({
   item,
@@ -41,10 +254,22 @@ const UserDetails = ({
   handleDeny,
   handleEdit,
   handleDelete,
+  handleViewDocuments,
 }) => (
   <div className="flex flex-col">
     <div className="flex flex-col sm:flex-row gap-6 sm:gap-8">
-      <div className="flex-shrink-0 w-full sm:w-48 h-48 bg-gray-100 rounded-full flex items-center justify-center">
+      <div className="flex-shrink-0 w-full sm:w-48 h-48 bg-gray-100 rounded-full flex items-center justify-center overflow-hidden">
+        {item.hasPhoto ? (
+          <img
+            src={`${API_BASE}/users/${item.id}/photo`}
+            alt={item.name}
+            className="w-full h-full object-cover"
+            onError={(e) => {
+              e.target.style.display = 'none';
+              e.target.nextSibling.style.display = 'flex';
+            }}
+          />
+        ) : null}
         <UserCircleIcon className="w-28 h-28 text-gray-400" />
       </div>
       <div className="flex-1 space-y-5">
@@ -72,28 +297,26 @@ const UserDetails = ({
           </div>
           <DetailItem label="Email" value={item.email} />
           <DetailItem label="Phone" value={item.phone} />
+          <DetailItem label="Date of Birth" value={item.dob} />
+          <DetailItem label="Address" value={item.address} />
           <div className="col-span-2">
             <DetailItem label="Associated Sahakari" value={item.sahakari} />
           </div>
         </div>
-        
-        {!!item.documents?.length && (
-          <div>
-            <span className="text-sm font-semibold text-gray-500 block mb-2">
-              Uploaded Documents
-            </span>
-            <div className="flex flex-col gap-1.5">
-              {item.documents.map((doc, index) => (
-                <DocumentLink key={index} doc={doc} />
-              ))}
-            </div>
-          </div>
-        )}
       </div>
     </div>
 
     {item.role !== "admin" && (
       <div className="flex items-center justify-end gap-3 mt-6 pt-6 border-t border-gray-200">
+        {/* ⭐ View Documents Button */}
+        <button
+          onClick={() => handleViewDocuments(item.id)}
+          className="flex items-center gap-2 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
+        >
+          <DocumentIcon className="w-5 h-5" />
+          <span className="font-medium">View Documents</span>
+        </button>
+
         <button
           onClick={() => handleEdit(item)}
           className="flex items-center gap-2 px-4 py-2 bg-teal-500 text-white rounded-lg hover:bg-teal-600 transition-colors"
@@ -126,11 +349,13 @@ function AdminUsers() {
   const [isAddUserModalOpen, setIsAddUserModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [currentUserToEdit, setCurrentUserToEdit] = useState(null);
+  
+  // ⭐ New state for documents modal
+  const [documentsModalUserId, setDocumentsModalUserId] = useState(null);
 
   const [activeFilter, setActiveFilter] = useState("All");
   const [searchQuery, setSearchQuery] = useState("");
 
-  // hook to handle incoming search
   const location = useLocation();
 
   useEffect(() => {
@@ -146,7 +371,6 @@ function AdminUsers() {
       window.history.replaceState({}, document.title);
     }
   }, [location]);
-  // ---------------------------------------------------------------------
 
   useEffect(() => {
     const fetchSession = async () => {
@@ -187,7 +411,6 @@ function AdminUsers() {
     fetchSession();
   }, []);
 
-  // ⭐ Load only users from admin's sahakari
   const loadUsers = async () => {
     if (!adminSahakari) return;
 
@@ -294,6 +517,12 @@ function AdminUsers() {
       console.error("Delete failed:", e);
       alert("Failed to delete user");
     }
+  };
+
+  // ⭐ New handler for viewing documents
+  const handleViewDocuments = (userId) => {
+    setDocumentsModalUserId(userId);
+    setViewModalItem(null); // Close user details modal
   };
 
   const handleUserAddSuccess = (savedUser) => {
@@ -477,6 +706,7 @@ function AdminUsers() {
         </button>
       </div>
 
+      {/* User Details Modal */}
       <Modal
         isOpen={!!viewModalItem}
         onClose={handleCloseViewModal}
@@ -491,10 +721,27 @@ function AdminUsers() {
             handleDeny={handleDeny}
             handleEdit={handleEdit}
             handleDelete={handleDelete}
+            handleViewDocuments={handleViewDocuments}
           />
         )}
       </Modal>
 
+      {/* ⭐ Documents Modal */}
+      <Modal
+        isOpen={!!documentsModalUserId}
+        onClose={() => setDocumentsModalUserId(null)}
+        title="User Documents"
+        size="3xl"
+      >
+        {documentsModalUserId && (
+          <UserDocumentsModal
+            userId={documentsModalUserId}
+            onClose={() => setDocumentsModalUserId(null)}
+          />
+        )}
+      </Modal>
+
+      {/* Add User Modal */}
       <Modal
         isOpen={isAddUserModalOpen}
         onClose={() => setIsAddUserModalOpen(false)}
@@ -508,6 +755,7 @@ function AdminUsers() {
         />
       </Modal>
 
+      {/* Edit User Modal */}
       <Modal
         isOpen={isEditModalOpen}
         onClose={() => setIsEditModalOpen(false)}

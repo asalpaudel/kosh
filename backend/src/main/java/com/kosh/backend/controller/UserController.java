@@ -226,19 +226,28 @@ public class UserController {
                 .orElse(ResponseEntity.notFound().build());
     }
 
-    // ⭐ Get User Citizenship
     @GetMapping("/{id}/citizenship")
     public ResponseEntity<byte[]> getUserCitizenship(@PathVariable int id) {
         return repo.findById(id)
                 .filter(user -> user.getCitizenshipData() != null)
                 .map(user -> {
                     HttpHeaders headers = new HttpHeaders();
-                    headers.setContentType(MediaType.parseMediaType(user.getCitizenshipType()));
+                    
+                    // Set proper content type
+                    if (user.getCitizenshipType() != null) {
+                        headers.setContentType(MediaType.parseMediaType(user.getCitizenshipType()));
+                    }
+                    
+                    // For inline viewing (PDF in iframe)
                     headers.setContentDisposition(
                         ContentDisposition.inline()
                             .filename(user.getCitizenshipName())
                             .build()
                     );
+                    
+                    // Allow embedding
+                    headers.add("X-Frame-Options", "SAMEORIGIN");
+                    
                     return new ResponseEntity<>(user.getCitizenshipData(), headers, HttpStatus.OK);
                 })
                 .orElse(ResponseEntity.notFound().build());
