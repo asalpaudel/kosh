@@ -170,6 +170,21 @@ function AddUserForm({
       return;
     }
 
+    // Check file sizes (limit to 5MB each)
+    const maxSize = 5 * 1024 * 1024; // 5MB
+    if (citizenship.size > maxSize) {
+      setError(`Citizenship file is too large (${(citizenship.size / 1024 / 1024).toFixed(2)}MB). Maximum size is 5MB.`);
+      return;
+    }
+    if (signature.size > maxSize) {
+      setError(`Signature file is too large (${(signature.size / 1024 / 1024).toFixed(2)}MB). Maximum size is 5MB.`);
+      return;
+    }
+    if (photo.size > maxSize) {
+      setError(`Photo file is too large (${(photo.size / 1024 / 1024).toFixed(2)}MB). Maximum size is 5MB.`);
+      return;
+    }
+
     setSaving(true);
     setError("");
 
@@ -186,17 +201,37 @@ function AddUserForm({
       form.append("status", "Active");
 
       // Append documents with correct field names
-      if (formData.citizenship) {
-        form.append("citizenship", formData.citizenship);
-      }
-      if (formData.signature) {
-        form.append("signature", formData.signature);
-      }
-      if (formData.photo) {
-        form.append("photo", formData.photo);
-      }
+      form.append("citizenship", formData.citizenship);
+      form.append("signature", formData.signature);
+      form.append("photo", formData.photo);
 
-      const res = await fetch(`${apiBase}/users`, {
+      console.log("=== SENDING USER DATA ===");
+      console.log("API Base:", apiBase);
+      console.log("Sahakari:", adminSahakari);
+      console.log("FormData contents:");
+      for (let [key, value] of form.entries()) {
+        if (value instanceof File) {
+          console.log(`  ${key}: [File] ${value.name} (${value.type}, ${(value.size / 1024).toFixed(2)} KB)`);
+        } else {
+          console.log(`  ${key}: ${value}`);
+        }
+      }
+      
+      const totalSize = (
+        formData.citizenship.size + 
+        formData.signature.size + 
+        formData.photo.size
+      ) / 1024 / 1024;
+      console.log(`Total upload size: ${totalSize.toFixed(2)} MB`);
+      console.log("========================");
+
+      // Clean the apiBase to ensure no trailing slashes
+      const cleanApiBase = apiBase.replace(/\/+$/, '');
+      const endpoint = `${cleanApiBase}/users`;
+      
+      console.log("Full endpoint URL:", endpoint);
+
+      const res = await fetch(endpoint, {
         method: "POST",
         credentials: "include",
         body: form,
@@ -206,26 +241,44 @@ function AddUserForm({
         const contentType = res.headers.get("content-type");
         let errorMessage;
 
+        console.error("Response status:", res.status);
+        console.error("Response headers:", [...res.headers.entries()]);
+
         if (contentType && contentType.includes("application/json")) {
           const errorData = await res.json();
-          errorMessage = errorData.error || `HTTP ${res.status}: Unknown error`;
+          console.error("Error data:", errorData);
+          errorMessage = errorData.error || errorData.message || `HTTP ${res.status}: Unknown error`;
         } else {
           const text = await res.text();
-          errorMessage = `HTTP ${res.status}: ${text}`;
+          console.error("Error text:", text);
+          errorMessage = `HTTP ${res.status}: ${text || 'Unknown error'}`;
         }
 
         throw new Error(errorMessage);
       }
 
       const saved = await res.json();
+      console.log("=== RECEIVED RESPONSE ===");
       console.log("Saved user:", saved);
+      console.log("========================");
 
       onUserAdded?.(saved);
       alert(`User "${saved.name}" added successfully to ${adminSahakari}!\n\nThe account is now active and the user can log in immediately.`);
       onClose?.();
     } catch (err) {
       console.error("Error adding user:", err);
-      setError(err.message || "Failed to save user");
+      
+      // Provide more specific error messages
+      let displayError = err.message;
+      
+      if (err.message.includes("Failed to fetch") || err.message.includes("ERR_CONNECTION_RESET")) {
+        displayError = "Connection failed. This might be due to:\n" +
+          "• Files being too large (try reducing file sizes)\n" +
+          "• Network timeout (try again)\n" +
+          "• Server not responding (check if backend is running)";
+      }
+      
+      setError(displayError);
     } finally {
       setSaving(false);
     }
@@ -493,6 +546,12 @@ function AddUserForm({
             User Documents
           </h3>
 
+          <div className="bg-blue-50 border border-blue-200 rounded-lg px-4 py-3 text-sm">
+            <p className="text-blue-800">
+              <span className="font-semibold">💡 Tip:</span> Keep file sizes under 2MB each for faster upload. Compress large PDFs or images before uploading.
+            </p>
+          </div>
+
           <div>
             <label className="block font-semibold mb-2">
               Citizenship/NID Card (PDF / Image){" "}
@@ -507,7 +566,7 @@ function AddUserForm({
             />
             {formData.citizenship && (
               <p className="text-xs text-green-600 mt-1 px-2">
-                ✓ {formData.citizenship.name}
+                ✓ {formData.citizenship.name} ({(formData.citizenship.size / 1024).toFixed(2)} KB)
               </p>
             )}
           </div>
@@ -525,7 +584,7 @@ function AddUserForm({
             />
             {formData.signature && (
               <p className="text-xs text-green-600 mt-1 px-2">
-                ✓ {formData.signature.name}
+                ✓ {formData.signature.name} ({(formData.signature.size / 1024).toFixed(2)} KB)
               </p>
             )}
           </div>
@@ -543,7 +602,7 @@ function AddUserForm({
             />
             {formData.photo && (
               <p className="text-xs text-green-600 mt-1 px-2">
-                ✓ {formData.photo.name}
+                ✓ {formData.photo.name} ({(formData.photo.size / 1024).toFixed(2)} KB)
               </p>
             )}
           </div>
@@ -557,7 +616,7 @@ function AddUserForm({
 
       {/* Error Message */}
       {error && (
-        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
+        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm whitespace-pre-line">
           {error}
         </div>
       )}
@@ -595,7 +654,7 @@ function AddUserForm({
             disabled={saving || capacityReached}
             className="w-full bg-teal-500 text-white font-semibold py-3 rounded-full hover:bg-teal-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {saving ? "Saving..." : "Add User"}
+            {saving ? "Uploading..." : "Add User"}
           </button>
         ) : null}
       </div>

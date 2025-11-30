@@ -23,8 +23,8 @@ const DetailItem = ({ label, value }) => (
   </div>
 );
 
-// ⭐ Updated Component: Document Viewer Modal
-const UserDocumentsModal = ({ userId, onClose }) => {
+// ⭐ Updated Component: Document Viewer Modal (Fixed for PDF viewing)
+const UserDocumentsModal = ({ userId, onClose, API_BASE }) => {
   const [loading, setLoading] = useState(true);
   const [documents, setDocuments] = useState({
     citizenship: null,
@@ -36,17 +36,17 @@ const UserDocumentsModal = ({ userId, onClose }) => {
     const loadDocuments = async () => {
       try {
         setLoading(true);
-        
+
         // Fetch user details to check which documents exist
         const userRes = await fetch(`${API_BASE}/users/${userId}`, {
           credentials: "include",
         });
-        
+
         if (userRes.ok) {
           const userData = await userRes.json();
-          
+
           console.log("User documents data:", userData); // Debug log
-          
+
           setDocuments({
             hasCitizenship: userData.hasCitizenship,
             hasPhoto: userData.hasPhoto,
@@ -67,7 +67,7 @@ const UserDocumentsModal = ({ userId, onClose }) => {
     };
 
     loadDocuments();
-  }, [userId]);
+  }, [userId, API_BASE]);
 
   if (loading) {
     return (
@@ -80,12 +80,13 @@ const UserDocumentsModal = ({ userId, onClose }) => {
     );
   }
 
-  const hasAnyDocument = documents.hasCitizenship || documents.hasPhoto || documents.hasSignature;
+  const hasAnyDocument =
+    documents.hasCitizenship || documents.hasPhoto || documents.hasSignature;
 
   // Helper function to check if file is PDF based on filename or MIME type
   const isPDF = (mimeType, filename) => {
-    const isPDFMime = mimeType && mimeType.includes('pdf');
-    const isPDFFile = filename && filename.toLowerCase().endsWith('.pdf');
+    const isPDFMime = mimeType && mimeType.includes("pdf");
+    const isPDFFile = filename && filename.toLowerCase().endsWith(".pdf");
     return isPDFMime || isPDFFile;
   };
 
@@ -93,7 +94,19 @@ const UserDocumentsModal = ({ userId, onClose }) => {
     <div className="max-h-[85vh] overflow-y-auto space-y-6 pr-2">
       {!hasAnyDocument && (
         <div className="text-center py-12">
-          <DocumentIcon className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+          <svg
+            className="w-16 h-16 text-gray-300 mx-auto mb-4"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+            />
+          </svg>
           <p className="text-gray-500 text-lg">No documents uploaded</p>
         </div>
       )}
@@ -102,10 +115,22 @@ const UserDocumentsModal = ({ userId, onClose }) => {
       {documents.hasCitizenship && (
         <div className="border border-gray-200 rounded-lg p-4">
           <h3 className="text-lg font-bold text-gray-800 mb-3 flex items-center gap-2">
-            <DocumentIcon className="w-5 h-5 text-teal-600" />
+            <svg
+              className="w-5 h-5 text-teal-600"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+              />
+            </svg>
             Citizenship / NID Card
           </h3>
-          
+
           {isPDF(documents.citizenshipType, documents.citizenshipName) ? (
             // PDF Document Display
             <div className="space-y-4">
@@ -114,8 +139,16 @@ const UserDocumentsModal = ({ userId, onClose }) => {
                 <div className="flex items-center gap-4">
                   <div className="flex-shrink-0">
                     <div className="w-16 h-16 bg-red-500 rounded-lg flex items-center justify-center">
-                      <svg className="w-8 h-8 text-white" fill="currentColor" viewBox="0 0 20 20">
-                        <path fillRule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm2 6a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1zm1 3a1 1 0 100 2h6a1 1 0 100-2H7z" clipRule="evenodd" />
+                      <svg
+                        className="w-8 h-8 text-white"
+                        fill="currentColor"
+                        viewBox="0 0 20 20"
+                      >
+                        <path
+                          fillRule="evenodd"
+                          d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm2 6a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1zm1 3a1 1 0 100 2h6a1 1 0 100-2H7z"
+                          clipRule="evenodd"
+                        />
                       </svg>
                     </div>
                   </div>
@@ -130,45 +163,41 @@ const UserDocumentsModal = ({ userId, onClose }) => {
 
               {/* Action Buttons */}
               <div className="flex gap-3">
-                
-                <a  href={`${API_BASE}/users/${userId}/citizenship`}
+                <a
+                  href={`${API_BASE}/users/${userId}/citizenship`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-3 bg-teal-500 text-white rounded-lg hover:bg-teal-600 transition-colors font-medium"
                 >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                  <svg
+                    className="w-5 h-5"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+                    />
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
+                    />
                   </svg>
-                  View PDF
+                  View PDF in New Tab
                 </a>
               </div>
 
-              {/* Embedded PDF Viewer */}
-              <div className="border-2 border-gray-200 rounded-lg overflow-hidden bg-white">
-                <object
-                  data={`${API_BASE}/users/${userId}/citizenship`}
-                  type="application/pdf"
-                  className="w-full h-96"
-                >
-                  <iframe
-                    src={`${API_BASE}/users/${userId}/citizenship`}
-                    className="w-full h-96"
-                    title="Citizenship Document"
-                  >
-                    <p className="p-4 text-center text-gray-500">
-                      Your browser does not support PDF viewing. 
-                      <a 
-                        href={`${API_BASE}/users/${userId}/citizenship`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-teal-600 hover:underline ml-1"
-                      >
-                        Click here to download the PDF
-                      </a>
-                    </p>
-                  </iframe>
-                </object>
+              {/* Info message */}
+              <div className="bg-blue-50 border border-blue-200 rounded-lg px-4 py-3">
+                <p className="text-sm text-blue-800">
+                  <span className="font-semibold">💡 Note:</span> Click "View
+                  PDF in New Tab" to see the full document in your browser.
+                </p>
               </div>
             </div>
           ) : (
@@ -183,7 +212,7 @@ const UserDocumentsModal = ({ userId, onClose }) => {
               </div>
               <div className="mt-3 flex justify-between items-center">
                 <span className="text-sm text-gray-600">
-                  {documents.citizenshipName || 'citizenship'}
+                  {documents.citizenshipName || "citizenship"}
                 </span>
               </div>
             </div>
@@ -195,7 +224,19 @@ const UserDocumentsModal = ({ userId, onClose }) => {
       {documents.hasPhoto && (
         <div className="border border-gray-200 rounded-lg p-4">
           <h3 className="text-lg font-bold text-gray-800 mb-3 flex items-center gap-2">
-            <UserCircleIcon className="w-5 h-5 text-teal-600" />
+            <svg
+              className="w-5 h-5 text-teal-600"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
+              />
+            </svg>
             Passport Size Photo
           </h3>
           <div className="bg-gray-50 rounded-lg overflow-hidden flex justify-center p-4">
@@ -207,7 +248,7 @@ const UserDocumentsModal = ({ userId, onClose }) => {
           </div>
           <div className="mt-3 flex justify-between items-center">
             <span className="text-sm text-gray-600">
-              {documents.photoName || 'photo.jpg'}
+              {documents.photoName || "photo.jpg"}
             </span>
           </div>
         </div>
@@ -217,7 +258,19 @@ const UserDocumentsModal = ({ userId, onClose }) => {
       {documents.hasSignature && (
         <div className="border border-gray-200 rounded-lg p-4">
           <h3 className="text-lg font-bold text-gray-800 mb-3 flex items-center gap-2">
-            <PencilIcon className="w-5 h-5 text-teal-600" />
+            <svg
+              className="w-5 h-5 text-teal-600"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"
+              />
+            </svg>
             Signature
           </h3>
           <div className="bg-gray-50 rounded-lg overflow-hidden flex justify-center p-4">
@@ -229,7 +282,7 @@ const UserDocumentsModal = ({ userId, onClose }) => {
           </div>
           <div className="mt-3 flex justify-between items-center">
             <span className="text-sm text-gray-600">
-              {documents.signatureName || 'signature.jpg'}
+              {documents.signatureName || "signature.jpg"}
             </span>
           </div>
         </div>
@@ -265,8 +318,8 @@ const UserDetails = ({
             alt={item.name}
             className="w-full h-full object-cover"
             onError={(e) => {
-              e.target.style.display = 'none';
-              e.target.nextSibling.style.display = 'flex';
+              e.target.style.display = "none";
+              e.target.nextSibling.style.display = "flex";
             }}
           />
         ) : null}
@@ -324,7 +377,7 @@ const UserDetails = ({
           <PencilIcon className="w-5 h-5" />
           <span className="font-medium">Edit</span>
         </button>
-        
+
         {item.status !== "Pending" && (
           <button
             onClick={() => handleDelete(item.id)}
@@ -349,7 +402,7 @@ function AdminUsers() {
   const [isAddUserModalOpen, setIsAddUserModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [currentUserToEdit, setCurrentUserToEdit] = useState(null);
-  
+
   // ⭐ New state for documents modal
   const [documentsModalUserId, setDocumentsModalUserId] = useState(null);
 
@@ -363,8 +416,8 @@ function AdminUsers() {
       if (location.state.searchQuery) {
         setSearchQuery(location.state.searchQuery);
       }
-      
-      if (location.state.action === 'openAddUser') {
+
+      if (location.state.action === "openAddUser") {
         setIsAddUserModalOpen(true);
       }
 
@@ -388,12 +441,12 @@ function AdminUsers() {
             return;
           }
 
-          let cleanId = String(data.sahakariId).replace(/[^0-9]/g, '');
+          let cleanId = String(data.sahakariId).replace(/[^0-9]/g, "");
 
           const networkRes = await fetch(`${API_BASE}/networks/${cleanId}`, {
             credentials: "include",
           });
-          
+
           if (networkRes.ok) {
             const networkData = await networkRes.json();
             if (networkData && networkData.name) {
@@ -498,7 +551,7 @@ function AdminUsers() {
 
   const handleEdit = (user) => {
     setCurrentUserToEdit(user);
-    setViewModalItem(null); 
+    setViewModalItem(null);
     setIsEditModalOpen(true);
   };
 
@@ -572,7 +625,9 @@ function AdminUsers() {
   if (!adminSahakari) {
     return (
       <div className="bg-white p-6 min-h-[calc(100vh-8.5rem)] flex items-center justify-center">
-        <p className="text-red-500">Unable to load sahakari. Please login again.</p>
+        <p className="text-red-500">
+          Unable to load sahakari. Please login again.
+        </p>
       </div>
     );
   }
@@ -597,25 +652,33 @@ function AdminUsers() {
           <div className="flex items-center gap-3">
             <button
               onClick={() => setActiveFilter("All")}
-              className={`font-medium py-3 px-6 rounded-full transition-colors text-base ${getButtonClass("All")}`}
+              className={`font-medium py-3 px-6 rounded-full transition-colors text-base ${getButtonClass(
+                "All"
+              )}`}
             >
               All
             </button>
             <button
               onClick={() => setActiveFilter("Pending")}
-              className={`font-medium py-3 px-6 rounded-full transition-colors text-base ${getButtonClass("Pending")}`}
+              className={`font-medium py-3 px-6 rounded-full transition-colors text-base ${getButtonClass(
+                "Pending"
+              )}`}
             >
               Pending
             </button>
             <button
               onClick={() => setActiveFilter("Admin")}
-              className={`font-medium py-3 px-6 rounded-full transition-colors text-base ${getButtonClass("Admin")}`}
+              className={`font-medium py-3 px-6 rounded-full transition-colors text-base ${getButtonClass(
+                "Admin"
+              )}`}
             >
               Admin
             </button>
             <button
               onClick={() => setActiveFilter("Members")}
-              className={`font-medium py-3 px-6 rounded-full transition-colors text-base ${getButtonClass("Members")}`}
+              className={`font-medium py-3 px-6 rounded-full transition-colors text-base ${getButtonClass(
+                "Members"
+              )}`}
             >
               Members
             </button>
@@ -635,12 +698,24 @@ function AdminUsers() {
             <table className="min-w-full text-left">
               <thead>
                 <tr className="bg-gray-50 border-b border-gray-200">
-                  <th className="py-4 px-3 text-sm font-semibold text-gray-600">ID</th>
-                  <th className="py-4 px-3 text-sm font-semibold text-gray-600">Name</th>
-                  <th className="py-4 px-3 text-sm font-semibold text-gray-600">Email</th>
-                  <th className="py-4 px-3 text-sm font-semibold text-gray-600">Phone</th>
-                  <th className="py-4 px-3 text-sm font-semibold text-gray-600">Role</th>
-                  <th className="py-4 px-3 text-sm font-semibold text-gray-600">Status</th>
+                  <th className="py-4 px-3 text-sm font-semibold text-gray-600">
+                    ID
+                  </th>
+                  <th className="py-4 px-3 text-sm font-semibold text-gray-600">
+                    Name
+                  </th>
+                  <th className="py-4 px-3 text-sm font-semibold text-gray-600">
+                    Email
+                  </th>
+                  <th className="py-4 px-3 text-sm font-semibold text-gray-600">
+                    Phone
+                  </th>
+                  <th className="py-4 px-3 text-sm font-semibold text-gray-600">
+                    Role
+                  </th>
+                  <th className="py-4 px-3 text-sm font-semibold text-gray-600">
+                    Status
+                  </th>
                 </tr>
               </thead>
 
@@ -651,11 +726,19 @@ function AdminUsers() {
                     onClick={() => handleRowClick(user)}
                     className="bg-white border-b border-gray-200 hover:bg-gray-50 transition-colors cursor-pointer"
                   >
-                    <td className="py-4 px-3 text-gray-600 font-medium">{index + 1}</td>
-                    <td className="py-4 px-3 text-gray-800 font-bold">{user.name}</td>
-                    <td className="py-4 px-3 text-gray-700 truncate">{user.email}</td>
+                    <td className="py-4 px-3 text-gray-600 font-medium">
+                      {index + 1}
+                    </td>
+                    <td className="py-4 px-3 text-gray-800 font-bold">
+                      {user.name}
+                    </td>
+                    <td className="py-4 px-3 text-gray-700 truncate">
+                      {user.email}
+                    </td>
                     <td className="py-4 px-3 text-gray-700">{user.phone}</td>
-                    <td className="py-4 px-3 text-gray-700 capitalize">{user.role}</td>
+                    <td className="py-4 px-3 text-gray-700 capitalize">
+                      {user.role}
+                    </td>
                     <td className="py-4 px-3">
                       <span
                         className={`font-bold
@@ -676,7 +759,9 @@ function AdminUsers() {
 
         {!loading && filteredUsers.length === 0 && (
           <div className="text-center py-12">
-            <h3 className="text-lg font-semibold text-gray-500">No users found</h3>
+            <h3 className="text-lg font-semibold text-gray-500">
+              No users found
+            </h3>
             <p className="text-gray-400">
               Try adjusting your filters or search query.
             </p>
@@ -737,6 +822,7 @@ function AdminUsers() {
           <UserDocumentsModal
             userId={documentsModalUserId}
             onClose={() => setDocumentsModalUserId(null)}
+            API_BASE={API_BASE}
           />
         )}
       </Modal>
