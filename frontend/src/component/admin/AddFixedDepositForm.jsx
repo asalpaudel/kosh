@@ -10,13 +10,28 @@ function AddFixedDepositForm({ onAdded, onClose, networkId }) {
     minDuration: "",
     minAmount: "",
     description: "",
+    banner: null,
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [bannerPreview, setBannerPreview] = useState(null);
 
   const handleChange = (e) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
+    const { name, value, files } = e.target;
+
+    if (name === "banner" && files && files[0]) {
+      const file = files[0];
+      setFormData((prev) => ({ ...prev, banner: file }));
+
+      // Create preview
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setBannerPreview(reader.result);
+      };
+      reader.readAsDataURL(file);
+    } else {
+      setFormData((prev) => ({ ...prev, [name]: value }));
+    }
   };
 
   const handleSubmit = async (e) => {
@@ -24,26 +39,29 @@ function AddFixedDepositForm({ onAdded, onClose, networkId }) {
     setLoading(true);
     setError("");
 
-    console.log("Form Data:", formData);
-    console.log("Network ID:", networkId);
-    console.log("URL:", `${apiBase}/finance/fixed-deposits/${networkId}`);
-
     try {
+      // Create FormData for multipart upload
+      const submitData = new FormData();
+      submitData.append("name", formData.name);
+      submitData.append("interestRate", formData.interestRate);
+      submitData.append("minAmount", formData.minAmount);
+      submitData.append("minDuration", formData.minDuration);
+      submitData.append("description", formData.description);
+
+      if (formData.banner) {
+        submitData.append("banner", formData.banner);
+      }
+
       const response = await fetch(
         `${apiBase}/finance/fixed-deposits/${networkId}`,
         {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(formData),
+          body: submitData, // Don't set Content-Type, browser will set it
         }
       );
 
-      console.log("Response status:", response.status);
-      console.log("Response ok:", response.ok);
-
       if (!response.ok) {
         const errorText = await response.text();
-        console.error("Error response:", errorText);
         throw new Error(`Failed to add: ${response.status} - ${errorText}`);
       }
 
@@ -51,6 +69,7 @@ function AddFixedDepositForm({ onAdded, onClose, networkId }) {
       console.log("Success! Response data:", data);
 
       onAdded();
+      onClose();
     } catch (err) {
       console.error("Error:", err);
       setError(err.message);
@@ -70,6 +89,54 @@ function AddFixedDepositForm({ onAdded, onClose, networkId }) {
           {error}
         </div>
       )}
+
+      {/* Banner Image Upload */}
+      <div>
+        <label className="block font-semibold mb-2">
+          Package Banner (Optional)
+        </label>
+        {bannerPreview && (
+          <div className="mb-3 relative">
+            <img
+              src={bannerPreview}
+              alt="Banner Preview"
+              className="w-full h-48 object-cover rounded-lg"
+            />
+            <button
+              type="button"
+              onClick={() => {
+                setFormData((prev) => ({ ...prev, banner: null }));
+                setBannerPreview(null);
+              }}
+              className="absolute top-2 right-2 bg-red-500 text-white p-2 rounded-full hover:bg-red-600"
+            >
+              <svg
+                className="w-4 h-4"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M6 18L18 6M6 6l12 12"
+                />
+              </svg>
+            </button>
+          </div>
+        )}
+        <input
+          type="file"
+          name="banner"
+          accept="image/*"
+          onChange={handleChange}
+          className="w-full border border-gray-300 rounded-full px-4 py-2 text-gray-700 file:mr-3 file:py-2 file:px-4 file:rounded-full file:border-0 file:bg-teal-500 file:text-white file:font-semibold hover:file:bg-teal-600 transition"
+        />
+        <p className="text-xs text-gray-500 mt-1">
+          Upload an attractive banner image for this package
+        </p>
+      </div>
 
       {/* Package Name */}
       <div>

@@ -1,5 +1,7 @@
 package com.kosh.backend.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+
 import jakarta.persistence.*;
 
 @Entity
@@ -22,6 +24,15 @@ public class FixedDeposit {
     @JoinColumn(name = "network_id", nullable = false)
     private Network network;
 
+    @Lob
+    @Basic(fetch = FetchType.LAZY)
+    @Column(name = "banner_data", columnDefinition = "LONGBLOB")
+    @JsonIgnore
+    private byte[] bannerData;
+    
+    private String bannerName;
+    private String bannerType;
+
     // Getters & Setters
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
@@ -43,4 +54,13 @@ public class FixedDeposit {
 
     public Network getNetwork() { return network; }
     public void setNetwork(Network network) { this.network = network; }
+
+    public byte[] getBannerData() { return bannerData; }
+    public void setBannerData(byte[] bannerData) { this.bannerData = bannerData; }
+
+    public String getBannerName() { return bannerName; }
+    public void setBannerName(String bannerName) { this.bannerName = bannerName; }
+
+    public String getBannerType() { return bannerType; }
+    public void setBannerType(String bannerType) { this.bannerType = bannerType; }
 }
