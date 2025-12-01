@@ -74,7 +74,7 @@ useEffect(() => {
         name: network.name,
         address: network.address,
         panNumber: network.panNumber,
-        logoUrl: logoUrl, // If this is empty string, fallback icon shows
+        logoUrl: logoUrl, 
       });
 
     } catch (err) {
