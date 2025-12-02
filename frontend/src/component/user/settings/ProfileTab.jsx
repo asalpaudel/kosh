@@ -17,6 +17,7 @@ function ProfileTab() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [photoError, setPhotoError] = useState(false);
 
   useEffect(() => {
     const fetchUser = async () => {
@@ -76,6 +77,14 @@ function ProfileTab() {
     }
   };
 
+  // Get the photo URL for the user
+  const getPhotoUrl = () => {
+    if (!user || !user.hasPhoto) return null;
+    return `${API_BASE}/users/${user.id}/photo`;
+  };
+
+  const photoUrl = getPhotoUrl();
+
   if (loading) return <div className="p-5 text-gray-500">Loading profile...</div>;
   if (error) return <div className="p-5 text-red-500">Error: {error}</div>;
   if (!user) return <div className="p-5 text-gray-500">No user data found.</div>;
@@ -84,9 +93,20 @@ function ProfileTab() {
     <>
       <div className="space-y-10">
         <div className="flex items-center gap-5 p-5 border border-gray-200 rounded-lg">
-          <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center flex-shrink-0">
-             <UserCircleIcon className="w-12 h-12 text-gray-400" />
+          {/* User Photo or Default Icon */}
+          <div className="w-20 h-20 rounded-full flex items-center justify-center flex-shrink-0 overflow-hidden bg-gray-100 ring-2 ring-gray-200">
+            {photoUrl && !photoError ? (
+              <img
+                src={photoUrl}
+                alt={user.name}
+                className="w-full h-full object-cover"
+                onError={() => setPhotoError(true)}
+              />
+            ) : (
+              <UserCircleIcon className="w-16 h-16 text-gray-400" />
+            )}
           </div>
+          
           <div>
             <h2 className="text-2xl font-bold">{user.name}</h2>
             <p className="text-gray-600">
@@ -131,6 +151,59 @@ function ProfileTab() {
             <InfoItem label="Secondary Contact Info" value={user.secondaryContact} />
           </div>
         </div>
+
+        {/* Documents Section */}
+        {(user.hasPhoto || user.hasCitizenship || user.hasSignature) && (
+          <div className="p-5 border border-gray-200 rounded-lg">
+            <h3 className="text-xl font-semibold mb-6">Documents</h3>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {user.hasPhoto && (
+                <div className="p-4 bg-gray-50 rounded-lg border border-gray-200">
+                  <p className="text-sm font-medium text-gray-600 mb-2">Profile Photo</p>
+                  <a
+                    href={`${API_BASE}/users/${user.id}/photo`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-teal-600 hover:text-teal-800 text-sm font-semibold"
+                  >
+                    View Photo
+                  </a>
+                  <p className="text-xs text-gray-400 mt-1">{user.photoName}</p>
+                </div>
+              )}
+              
+              {user.hasCitizenship && (
+                <div className="p-4 bg-gray-50 rounded-lg border border-gray-200">
+                  <p className="text-sm font-medium text-gray-600 mb-2">Citizenship Document</p>
+                  <a
+                    href={`${API_BASE}/users/${user.id}/citizenship`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-teal-600 hover:text-teal-800 text-sm font-semibold"
+                  >
+                    View Document
+                  </a>
+                  <p className="text-xs text-gray-400 mt-1">{user.citizenshipName}</p>
+                </div>
+              )}
+              
+              {user.hasSignature && (
+                <div className="p-4 bg-gray-50 rounded-lg border border-gray-200">
+                  <p className="text-sm font-medium text-gray-600 mb-2">Signature</p>
+                  <a
+                    href={`${API_BASE}/users/${user.id}/signature`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-teal-600 hover:text-teal-800 text-sm font-semibold"
+                  >
+                    View Signature
+                  </a>
+                  <p className="text-xs text-gray-400 mt-1">{user.signatureName}</p>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
       </div>
 
       <Modal
