@@ -114,6 +114,26 @@ export default function ApplyPackageForm({
     purpose: '',
   });
 
+  const [bannerError, setBannerError] = useState(false);
+
+  // Get banner URL based on package type
+  const getBannerUrl = () => {
+    if (!packageData.id) return null;
+    
+    switch (packageType) {
+      case 'fixed-deposit':
+        return `${apiBase}/finance/fixed-deposits/${packageData.id}/banner`;
+      case 'saving-account':
+        return `${apiBase}/finance/saving-accounts/${packageData.id}/banner`;
+      case 'loan-package':
+        return `${apiBase}/finance/loan-packages/${packageData.id}/banner`;
+      default:
+        return null;
+    }
+  };
+
+  const bannerUrl = getBannerUrl();
+
   // Configuration for different form types
   const formConfig = {
     'fixed-deposit': {
@@ -214,7 +234,19 @@ export default function ApplyPackageForm({
         </div>
       ) : (
         <form onSubmit={handleSubmit} className="flex flex-col gap-5">
-          <div className="flex justify-center">{currentConfig.icon}</div>
+          {/* Banner Image */}
+          {bannerUrl && !bannerError ? (
+            <div className="w-full h-56 rounded-xl overflow-hidden bg-gray-100 shadow-lg">
+              <img
+                src={bannerUrl}
+                alt={`${packageData.name} banner`}
+                className="w-full h-full object-cover"
+                onError={() => setBannerError(true)}
+              />
+            </div>
+          ) : (
+            <div className="flex justify-center">{currentConfig.icon}</div>
+          )}
 
           <h1 className="text-3xl font-bold text-gray-900 text-center -mb-2">
             {currentConfig.title}
@@ -249,7 +281,7 @@ export default function ApplyPackageForm({
             >
               {isSubmitting ? 'Submitting...' : 'Submit Application'}
             </button>
-          </div>
+          </div>  
         </form>
       )}
     </div>
