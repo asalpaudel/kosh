@@ -23,8 +23,10 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
+import com.kosh.backend.model.ActivityLog;
 import com.kosh.backend.model.Network;
 import com.kosh.backend.model.User;
+import com.kosh.backend.repository.ActivityLogRepository;
 import com.kosh.backend.repository.NetworkRepository;
 import com.kosh.backend.repository.UserRepository;
 
@@ -36,10 +38,12 @@ public class UserController {
 
     private final UserRepository repo;
     private final NetworkRepository networkRepo;
+    private final ActivityLogRepository logRepo;
 
-    public UserController(UserRepository repo, NetworkRepository networkRepo) {
+    public UserController(UserRepository repo, NetworkRepository networkRepo, ActivityLogRepository logRepo) {
         this.repo = repo;
         this.networkRepo = networkRepo;
+        this.logRepo = logRepo;
     }
 
     @PostMapping
@@ -47,15 +51,16 @@ public class UserController {
             @RequestParam("name") String name,
             @RequestParam("email") String email,
             @RequestParam("phone") String phone,
-            @RequestParam("dob") String dob,
-            @RequestParam("address") String address,  
+            @RequestParam(value = "dob", required = false) String dob, // Made optional to prevent errors if missing in some flows
+            @RequestParam(value = "address", required = false) String address,  
             @RequestParam("role") String role,
             @RequestParam("sahakari") String sahakari,
             @RequestParam("password") String password,
             @RequestParam(value = "status", required = false) String status,
             @RequestParam(value = "photo", required = false) MultipartFile photo,
             @RequestParam(value = "citizenship", required = false) MultipartFile citizenship,
-            @RequestParam(value = "signature", required = false) MultipartFile signature) {
+            @RequestParam(value = "signature", required = false) MultipartFile signature,
+            HttpSession session) { // Added HttpSession for logging
 
         System.out.println("POST /api/users hit!");
         System.out.println("User: " + name + ", " + email);
@@ -118,6 +123,8 @@ public class UserController {
             user.setAddress(address); 
             user.setRole(role);
             user.setSahakari(sahakari);
+            // Link sahakari ID immediately if available
+            user.setSahakariId(network.getId());
             user.setPassword(password);
             user.setStatus((status != null && !status.isBlank()) ? status : "Pending");
 
@@ -146,6 +153,29 @@ public class UserController {
             }
 
             User saved = repo.save(user);
+
+            // --- ACTIVITY LOGGING START ---
+            // Only log if an Admin/Superadmin is logged in (creating the user)
+            String adminName = (String) session.getAttribute("userName");
+            String userRole = (String) session.getAttribute("userRole");
+            
+            if (adminName != null && ("admin".equals(userRole) || "superadmin".equals(userRole))) {
+                try {
+                    Long sahakariId = (Long) session.getAttribute("sahakariId");
+                    ActivityLog log = new ActivityLog(
+                        adminName, 
+                        userRole, 
+                        sahakariId, 
+                        "CREATE_USER", 
+                        "Created user: " + saved.getName() + " (" + saved.getRole() + ")"
+                    );
+                    logRepo.save(log);
+                } catch (Exception e) {
+                    System.out.println("Failed to log user creation: " + e.getMessage());
+                }
+            }
+            // --- ACTIVITY LOGGING END ---
+
             return ResponseEntity.ok(saved);
 
         } catch (Exception e) {
@@ -320,7 +350,11 @@ public class UserController {
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<?> updateUser(@PathVariable int id, @RequestBody User updatedUser) {
+    public ResponseEntity<?> updateUser(
+            @PathVariable int id, 
+            @RequestBody User updatedUser,
+            HttpSession session) { // Added HttpSession for logging
+
         User existingUser = repo.findById(id)
                 .orElseThrow(() -> new RuntimeException("User not found with id: " + id));
 
@@ -398,11 +432,31 @@ public class UserController {
             existingUser.setPassword(updatedUser.getPassword());
         }
 
-        return ResponseEntity.ok(repo.save(existingUser));
+        User saved = repo.save(existingUser);
+
+        String adminName = (String) session.getAttribute("userName");
+        String userRole = (String) session.getAttribute("userRole");
+        if (adminName != null && ("admin".equals(userRole) || "superadmin".equals(userRole))) {
+            try {
+                Long sahakariId = (Long) session.getAttribute("sahakariId");
+                ActivityLog log = new ActivityLog(
+                    adminName, 
+                    userRole, 
+                    sahakariId, 
+                    "UPDATE_USER", 
+                    "Updated user details: " + saved.getName()
+                );
+                logRepo.save(log);
+            } catch (Exception e) {
+                System.out.println("Failed to log user update: " + e.getMessage());
+            }
+        }
+
+        return ResponseEntity.ok(saved);
     }
 
     @PatchMapping("/{id}/approve")
-    public ResponseEntity<?> approveUser(@PathVariable int id) {
+    public ResponseEntity<?> approveUser(@PathVariable int id, HttpSession session) { // Added HttpSession for logging
         User user = repo.findById(id).orElseThrow();
 
         Network network = networkRepo.findAll().stream()
@@ -448,19 +502,87 @@ public class UserController {
         }
 
         user.setStatus("Active");
-        return ResponseEntity.ok(repo.save(user));
+        // Also update the Sahakari ID if it's not set
+        if (user.getSahakariId() == null && network != null) {
+            user.setSahakariId(network.getId());
+        }
+        
+        User saved = repo.save(user);
+
+        // --- ACTIVITY LOGGING START ---
+        String adminName = (String) session.getAttribute("userName");
+        if (adminName != null) {
+            try {
+                Long sahakariId = (Long) session.getAttribute("sahakariId");
+                ActivityLog log = new ActivityLog(
+                    adminName, 
+                    "admin", 
+                    sahakariId, 
+                    "APPROVE_USER", 
+                    "Approved user: " + saved.getName()
+                );
+                logRepo.save(log);
+            } catch (Exception e) {
+                System.out.println("Failed to log user approval: " + e.getMessage());
+            }
+        }
+
+        return ResponseEntity.ok(saved);
     }
 
     @PatchMapping("/{id}/reject")
-    public User rejectUser(@PathVariable int id) {
+    public User rejectUser(@PathVariable int id, HttpSession session) { // Added HttpSession for logging
         User user = repo.findById(id).orElseThrow();
         user.setStatus("Rejected");
-        return repo.save(user);
+        User saved = repo.save(user);
+
+        String adminName = (String) session.getAttribute("userName");
+        if (adminName != null) {
+            try {
+                Long sahakariId = (Long) session.getAttribute("sahakariId");
+                ActivityLog log = new ActivityLog(
+                    adminName, 
+                    "admin", 
+                    sahakariId, 
+                    "REJECT_USER", 
+                    "Rejected user: " + saved.getName()
+                );
+                logRepo.save(log);
+            } catch (Exception e) {
+                System.out.println("Failed to log user rejection: " + e.getMessage());
+            }
+        }
+
+        return saved;
     }
 
     @DeleteMapping("/{id}")
-    public void deleteUser(@PathVariable int id) {
+    public ResponseEntity<?> deleteUser(@PathVariable int id, HttpSession session) { // Added HttpSession for logging
+        User user = repo.findById(id).orElse(null);
+        if (user == null) {
+            return ResponseEntity.notFound().build();
+        }
+
+        // --- ACTIVITY LOGGING START ---
+        String adminName = (String) session.getAttribute("userName");
+        if (adminName != null) {
+            try {
+                Long sahakariId = (Long) session.getAttribute("sahakariId");
+                ActivityLog log = new ActivityLog(
+                    adminName, 
+                    "admin", 
+                    sahakariId, 
+                    "DELETE_USER", 
+                    "Deleted user: " + user.getName() + " (ID: " + id + ")"
+                );
+                logRepo.save(log);
+            } catch (Exception e) {
+                System.out.println("Failed to log user deletion: " + e.getMessage());
+            }
+        }
+
         repo.deleteById(id);
+        return ResponseEntity.ok().build();
     }
 
     @GetMapping

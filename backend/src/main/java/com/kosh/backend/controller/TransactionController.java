@@ -1,18 +1,25 @@
 package com.kosh.backend.controller;
 
+import java.util.HashMap;
+import java.util.Map;
+
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.kosh.backend.model.ActivityLog;
 import com.kosh.backend.model.Transaction;
 import com.kosh.backend.model.User;
+import com.kosh.backend.repository.ActivityLogRepository;
 import com.kosh.backend.repository.TransactionRepository;
 import com.kosh.backend.repository.UserRepository;
 
 import jakarta.servlet.http.HttpSession;
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
-
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
 
 @RestController
 @RequestMapping("/api/transactions")
@@ -20,11 +27,13 @@ public class TransactionController {
 
     private final TransactionRepository repo;
     private final UserRepository userRepo;
+    private final ActivityLogRepository logRepo;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
-    public TransactionController(TransactionRepository repo, UserRepository userRepo) {
+    public TransactionController(TransactionRepository repo, UserRepository userRepo, ActivityLogRepository logRepo) {
         this.repo = repo;
         this.userRepo = userRepo;
+        this.logRepo = logRepo;
     }
 
     @PostMapping
@@ -164,6 +173,40 @@ public class TransactionController {
         repo.save(tx);
         System.out.println("Transaction saved with ID: " + tx.getId());
         System.out.println("==============================================");
+
+        // --- ACTIVITY LOGGING START ---
+        try {
+            String adminName = (String) session.getAttribute("userName");
+            String userRole = (String) session.getAttribute("userRole");
+            
+            // Log only if an admin or superadmin performed the transaction
+            if (adminName != null && ("admin".equals(userRole) || "superadmin".equals(userRole))) {
+                
+                // Determine action text based on amount sign
+                String actionWord = (amount < 0) ? "Withdrawn" : "Deposited";
+                
+                // Construct clear message
+                // Example: "Withdrawn Rs. 2000.00 (Savings) for Ram"
+                String logDetails = String.format("%s Rs. %.2f (%s) for %s", 
+                    actionWord, 
+                    Math.abs(amount), 
+                    tx.getType(), 
+                    tx.getUserName()
+                );
+
+                ActivityLog log = new ActivityLog(
+                    adminName, 
+                    userRole, 
+                    sahakariId, 
+                    "ADD_TRANSACTION", 
+                    logDetails
+                );
+                logRepo.save(log);
+            }
+        } catch (Exception e) {
+            System.out.println("Failed to log transaction activity: " + e.getMessage());
+        }
+        // --- ACTIVITY LOGGING END ---
 
         Map<String, Object> response = new HashMap<>();
         response.put("message", "Transaction created successfully");

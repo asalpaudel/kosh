@@ -8,8 +8,10 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.kosh.backend.model.ActivityLog;
 import com.kosh.backend.model.Network;
 import com.kosh.backend.model.User;
+import com.kosh.backend.repository.ActivityLogRepository;
 import com.kosh.backend.repository.NetworkRepository;
 import com.kosh.backend.repository.UserRepository;
 
@@ -21,10 +23,12 @@ public class AuthController {
 
     private final UserRepository repo;
     private final NetworkRepository networkRepo;
+    private final ActivityLogRepository logRepo;
 
-    public AuthController(UserRepository repo, NetworkRepository networkRepo) {
+    public AuthController(UserRepository repo, NetworkRepository networkRepo, ActivityLogRepository logRepo) {
         this.repo = repo;
         this.networkRepo = networkRepo;
+        this.logRepo = logRepo;
     }
 
     public static class LoginRequest {
@@ -58,7 +62,7 @@ public class AuthController {
         }
     }
 
-   @PostMapping("/login")
+    @PostMapping("/login")
     public LoginResponse login(@RequestBody LoginRequest req, HttpSession session) {
 
         User user = repo.findByEmail(req.email);
@@ -116,6 +120,23 @@ public class AuthController {
         System.out.println("Session sahakariId: " + session.getAttribute("sahakariId"));
         System.out.println("=========================================");
 
+        // --- ACTIVITY LOGGING START ---
+        if ("admin".equals(user.getRole()) || "superadmin".equals(user.getRole())) {
+            try {
+                ActivityLog log = new ActivityLog(
+                    user.getName(), 
+                    user.getRole(), 
+                    networkId, 
+                    "LOGIN", 
+                    user.getRole() + " logged in successfully."
+                );
+                logRepo.save(log);
+            } catch (Exception e) {
+                System.out.println("Failed to save login activity log: " + e.getMessage());
+            }
+        }
+        // --- ACTIVITY LOGGING END ---
+
         return new LoginResponse(
                 true,
                 "Login successful",
@@ -126,6 +147,31 @@ public class AuthController {
 
     @PostMapping("/logout")
     public Map<String, String> logout(HttpSession session) {
+        
+        try {
+            String userRole = (String) session.getAttribute("userRole");
+            if (userRole != null && ("admin".equals(userRole) || "superadmin".equals(userRole))) {
+                Object sahakariIdObj = session.getAttribute("sahakariId");
+                Long sahakariId = null;
+                if (sahakariIdObj instanceof Long) sahakariId = (Long) sahakariIdObj;
+                else if (sahakariIdObj instanceof Integer) sahakariId = ((Integer) sahakariIdObj).longValue();
+                
+                String userName = (String) session.getAttribute("userName");
+                if (userName == null) userName = "Unknown User";
+                
+                ActivityLog log = new ActivityLog(
+                    userName, 
+                    userRole, 
+                    sahakariId, 
+                    "LOGOUT", 
+                    userRole + " logged out."
+                );
+                logRepo.save(log);
+            }
+        } catch (Exception e) {
+            System.out.println("Failed to save logout activity log: " + e.getMessage());
+        }
+
         session.invalidate();
         System.out.println("User logged out, session invalidated");
         

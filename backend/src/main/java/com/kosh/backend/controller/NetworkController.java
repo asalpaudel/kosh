@@ -11,10 +11,20 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
+import com.kosh.backend.model.ActivityLog;
 import com.kosh.backend.model.Network;
+import com.kosh.backend.repository.ActivityLogRepository;
 import com.kosh.backend.repository.NetworkRepository;
 
 @RestController
@@ -22,9 +32,11 @@ import com.kosh.backend.repository.NetworkRepository;
 public class NetworkController {
 
     private final NetworkRepository networkRepository;
+    private final ActivityLogRepository logRepo;
 
-    public NetworkController(NetworkRepository networkRepository) {
+    public NetworkController(NetworkRepository networkRepository, ActivityLogRepository logRepo) {
         this.networkRepository = networkRepository;
+        this.logRepo = logRepo;
     }
 
     // ⭐ Base64 Upload Endpoint
@@ -66,6 +78,20 @@ public class NetworkController {
             }
 
             Network saved = networkRepository.save(network);
+
+            try {
+                ActivityLog log = new ActivityLog(
+                    "Super Admin", 
+                    "superadmin", 
+                    saved.getId(), 
+                    "CREATE_NETWORK", 
+                    "Created new network: " + saved.getName() + " (" + saved.getPackageType() + ")"
+                );
+                logRepo.save(log);
+            } catch (Exception e) {
+                System.out.println("Failed to log network creation: " + e.getMessage());
+            }
+
             return ResponseEntity.ok(saved);
 
         } catch (Exception e) {
@@ -122,7 +148,22 @@ public class NetworkController {
                 network.setLogoType(logo.getContentType());
             }
 
-            return ResponseEntity.ok(networkRepository.save(network));
+            Network saved = networkRepository.save(network);
+
+            try {
+                ActivityLog log = new ActivityLog(
+                    "Super Admin", 
+                    "superadmin", 
+                    saved.getId(), 
+                    "CREATE_NETWORK", 
+                    "Created new network: " + saved.getName() + " (" + saved.getPackageType() + ")"
+                );
+                logRepo.save(log);
+            } catch (Exception e) {
+                System.out.println("Failed to log network creation: " + e.getMessage());
+            }
+
+            return ResponseEntity.ok(saved);
 
         } catch (Exception e) {
             return ResponseEntity.badRequest().body("Error creating network: " + e.getMessage());
@@ -234,7 +275,22 @@ public class NetworkController {
             existing.setAdminLimit(updatedNetwork.getAdminLimit());
             existing.setUserLimit(updatedNetwork.getUserLimit());
 
-            return ResponseEntity.ok(networkRepository.save(existing));
+            Network saved = networkRepository.save(existing);
+
+            try {
+                ActivityLog log = new ActivityLog(
+                    "Super Admin", 
+                    "superadmin", 
+                    saved.getId(), 
+                    "UPDATE_NETWORK", 
+                    "Updated network: " + saved.getName()
+                );
+                logRepo.save(log);
+            } catch (Exception e) {
+                System.out.println("Failed to log network update: " + e.getMessage());
+            }
+
+            return ResponseEntity.ok(saved);
         }).orElse(ResponseEntity.notFound().build());
     }
 
@@ -244,6 +300,22 @@ public class NetworkController {
         if (!networkRepository.existsById(id)) {
             return ResponseEntity.notFound().build();
         }
+        
+        try {
+            String networkName = networkRepository.findById(id).map(Network::getName).orElse("Unknown Network");
+            
+            ActivityLog log = new ActivityLog(
+                "Super Admin", 
+                "superadmin", 
+                id, 
+                "DELETE_NETWORK", 
+                "Deleted network: " + networkName + " (ID: " + id + ")"
+            );
+            logRepo.save(log);
+        } catch (Exception e) {
+            System.out.println("Failed to log network deletion: " + e.getMessage());
+        }
+
         networkRepository.deleteById(id);
         return ResponseEntity.ok().build();
     }
