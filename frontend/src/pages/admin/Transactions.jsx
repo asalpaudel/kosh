@@ -27,69 +27,70 @@ const TransactionVoucher = ({ transaction, onClose, onStatusUpdate }) => {
   });
   const [sahakariLoading, setSahakariLoading] = useState(false);
 
-  // Inside TransactionVoucher component in src/pages/admin/Transactions.jsx
+  useEffect(() => {
+    const fetchSahakari = async () => {
+      setSahakariLoading(true);
+      try {
+        // 1. Get Session
+        const sessionRes = await fetch(`${API_BASE}/session`, { credentials: "include" });
+        const sessionData = await sessionRes.json();
+        const sahakariId = Number(sessionData.sahakariId);
 
-useEffect(() => {
-  const fetchSahakari = async () => {
-    setSahakariLoading(true);
-    try {
-      // 1. Get Session
-      const sessionRes = await fetch(`${API_BASE}/session`, { credentials: "include" });
-      const sessionData = await sessionRes.json();
-      const sahakariId = Number(sessionData.sahakariId);
-
-      if (!sahakariId) {
-        console.warn("No sahakariId in session");
-        setSahakariInfo(prev => ({ ...prev, name: sessionData.sahakari }));
-        return;
-      }
-
-      // 2. Get Network Info
-      const networkRes = await fetch(`${API_BASE}/networks/${sahakariId}`, { credentials: "include" });
-      const network = await networkRes.json();
-
-      let logoUrl = "";
-
-      // 3. Get Logo
-      if (network.hasLogo) {
-        try {
-          const logoRes = await fetch(`${API_BASE}/networks/${sahakariId}/logo/base64`, { credentials: "include" });
-          if (logoRes.ok) {
-            const logoJson = await logoRes.json();
-            console.log("Logo Response:", logoJson); // Check this log!
-
-            // Ensure data is not empty
-            if (logoJson.data && logoJson.data.length > 0) {
-              logoUrl = `data:${logoJson.type};base64,${logoJson.data}`;
-            } else {
-              console.warn("Logo data is empty string");
-            }
-          }
-        } catch (e) {
-          console.error("Logo fetch error:", e);
+        if (!sahakariId) {
+          console.warn("No sahakariId in session");
+          setSahakariInfo(prev => ({ ...prev, name: sessionData.sahakari }));
+          return;
         }
+
+        // 2. Get Network Info
+        const networkRes = await fetch(`${API_BASE}/networks/${sahakariId}`, { credentials: "include" });
+        const network = await networkRes.json();
+
+        let logoUrl = "";
+
+        // 3. Get Logo
+        if (network.hasLogo) {
+          try {
+            const logoRes = await fetch(`${API_BASE}/networks/${sahakariId}/logo/base64`, { credentials: "include" });
+            if (logoRes.ok) {
+              const logoJson = await logoRes.json();
+              
+              // Ensure data is not empty
+              if (logoJson.data && logoJson.data.length > 0) {
+                logoUrl = `data:${logoJson.type};base64,${logoJson.data}`;
+              } else {
+                console.warn("Logo data is empty string");
+              }
+            }
+          } catch (e) {
+            console.error("Logo fetch error:", e);
+          }
+        }
+
+        setSahakariInfo({
+          name: network.name,
+          address: network.address,
+          panNumber: network.panNumber,
+          logoUrl: logoUrl, 
+        });
+
+      } catch (err) {
+        console.error("Setup error:", err);
+      } finally {
+        setSahakariLoading(false);
       }
+    };
 
-      setSahakariInfo({
-        name: network.name,
-        address: network.address,
-        panNumber: network.panNumber,
-        logoUrl: logoUrl, 
-      });
-
-    } catch (err) {
-      console.error("Setup error:", err);
-    } finally {
-      setSahakariLoading(false);
-    }
-  };
-
-  fetchSahakari();
-}, []);
+    fetchSahakari();
+  }, []);
 
   if (!transaction) return null;
 
   const rawAmount = transaction.amount || transaction.amountValue || 0;
+  
+  // Determine if Credit or Debit for color coding in Voucher
+  const isCredit = transaction.details?.direction === "Credit" || 
+                   (transaction.type && transaction.type.toLowerCase().includes("credit"));
 
   const isFrozen =
     transaction.status === "Frozen" || transaction.status === "Disputed";
@@ -260,7 +261,7 @@ useEffect(() => {
           <span className="text-gray-600 font-medium">Total Amount</span>
           <span
             className={`text-3xl font-bold ${
-              rawAmount > 0 ? "text-green-600" : "text-red-600"
+              isCredit ? "text-green-600" : "text-red-600"
             }`}
           >
             Rs. {Math.abs(rawAmount).toLocaleString()}
@@ -645,6 +646,10 @@ function AdminTransactions() {
                   const isFrozen =
                     log.status === "Frozen" || log.status === "Disputed";
                   const rawAmount = log.amount || log.amountValue || 0;
+                  
+                  // NEW: Determine Credit vs Debit based on direction or type
+                  const isCredit = log.details?.direction === "Credit" || 
+                                   (log.type && log.type.toLowerCase().includes("credit"));
 
                   return (
                     <tr
@@ -690,7 +695,7 @@ function AdminTransactions() {
                       </td>
                       <td
                         className={`py-4 px-4 font-bold text-right text-sm ${
-                          rawAmount > 0 ? "text-green-600" : "text-red-600"
+                          isCredit ? "text-green-600" : "text-red-600"
                         }`}
                       >
                         Rs. {Math.abs(rawAmount).toLocaleString()}

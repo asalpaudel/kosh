@@ -1,21 +1,25 @@
 package com.kosh.backend.controller;
 
+import java.time.LocalDate;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.kosh.backend.model.ActivityLog;
+import com.kosh.backend.model.Network;
 import com.kosh.backend.model.Transaction;
 import com.kosh.backend.model.User;
 import com.kosh.backend.repository.ActivityLogRepository;
+import com.kosh.backend.repository.NetworkRepository;
 import com.kosh.backend.repository.TransactionRepository;
 import com.kosh.backend.repository.UserRepository;
 
@@ -25,338 +29,199 @@ import jakarta.servlet.http.HttpSession;
 @RequestMapping("/api/transactions")
 public class TransactionController {
 
-    private final TransactionRepository repo;
+    private final TransactionRepository transactionRepo;
     private final UserRepository userRepo;
+    private final NetworkRepository networkRepo;
     private final ActivityLogRepository logRepo;
-    private final ObjectMapper objectMapper = new ObjectMapper();
 
-    public TransactionController(TransactionRepository repo, UserRepository userRepo, ActivityLogRepository logRepo) {
-        this.repo = repo;
+    public TransactionController(TransactionRepository transactionRepo, UserRepository userRepo, NetworkRepository networkRepo, ActivityLogRepository logRepo) {
+        this.transactionRepo = transactionRepo;
         this.userRepo = userRepo;
+        this.networkRepo = networkRepo;
         this.logRepo = logRepo;
     }
 
     @PostMapping
-    public ResponseEntity<?> createTransaction(@RequestBody Map<String, Object> rawTx,
-            HttpSession session)
-            throws Exception {
-
-        System.out.println("========== TRANSACTION CREATE DEBUG ==========");
-        System.out.println("Session ID: " + session.getId());
-
-        // Get session attributes with detailed logging
-        Object sahakariIdObj = session.getAttribute("sahakariId");
-        String sahakari = (String) session.getAttribute("sahakari");
-        String userEmail = (String) session.getAttribute("userEmail");
-
-        System.out.println("Session userEmail: " + userEmail);
-        System.out.println("Session sahakari: " + sahakari);
-        System.out.println("Session sahakariId: " + sahakariIdObj);
-
-        // Check if user is logged in first
-        if (userEmail == null) {
-            return ResponseEntity.status(401)
-                    .body(Map.of("error", "Not authenticated. Please login again."));
-        }
-
-        // Convert sahakariId properly
-        Long sahakariId = null;
-        if (sahakariIdObj != null) {
-            if (sahakariIdObj instanceof Integer) {
-                sahakariId = ((Integer) sahakariIdObj).longValue();
-            } else if (sahakariIdObj instanceof Long) {
-                sahakariId = (Long) sahakariIdObj;
-            }
-        }
-
-        // If sahakari is missing but user is logged in, try to get it from the user
-        if (sahakari == null) {
-            // Get current user's sahakari from database
-            User currentUser = userRepo.findByEmail(userEmail);
-            if (currentUser != null) {
-                sahakari = currentUser.getSahakari();
-                System.out.println("Retrieved sahakari from user database: " + sahakari);
-            }
-        }
-
-        // Final validation
-        if (sahakari == null) {
-            return ResponseEntity.status(401)
-                    .body(Map.of("error", "Sahakari information not found in session. Please logout and login again."));
-        }
-
-        // Extract details map first to determine transaction direction
-        @SuppressWarnings("unchecked")
-        Map<String, Object> details = (Map<String, Object>) rawTx.get("details");
-        String mode = details != null ? (String) details.get("mode") : "member";
-        String direction = details != null ? (String) details.get("direction") : "Credit";
-        String accountHead = details != null ? (String) details.get("accountHead") : "";
-
-        System.out.println("Mode: " + mode);
-        System.out.println("Direction: " + direction);
-        System.out.println("Account Head: " + accountHead);
-
-        // Determine transaction type (must be one of: Savings, Fixed Deposit, Loan,
-        // Interest)
-        String transactionType = determineTransactionType(mode, accountHead, direction);
-        System.out.println("Transaction Type: " + transactionType);
-
-        Transaction tx = new Transaction();
-        tx.setSahakariId(sahakariId);
-        tx.setNetworkId(sahakariId);
-        tx.setVoucherId((String) rawTx.get("voucherId"));
-        tx.setDate((String) rawTx.get("date"));
-        tx.setStatus("Success");
-        tx.setNarration((String) rawTx.get("narration"));
-        tx.setType(transactionType); // Set the normalized type
-
-        // Handle userId - could be null for network transactions
-        Object userIdObj = rawTx.get("userId");
-        if (userIdObj != null) {
-            tx.setUserId(((Number) userIdObj).intValue());
-        }
-        tx.setUserName((String) rawTx.get("userName"));
-
-        // Calculate amount with correct sign
-        double amount = rawTx.get("amountValue") != null
-                ? ((Number) rawTx.get("amountValue")).doubleValue()
-                : 0.0;
-
-        // Apply sign based on direction:
-        // Credit = Positive (money coming in)
-        // Debit = Negative (money going out)
-        if ("Debit".equals(direction)) {
-            amount = -Math.abs(amount);
-        } else { // Credit
-            amount = Math.abs(amount);
-        }
-
-        System.out.println("Amount after sign adjustment: " + amount);
-        tx.setAmountValue(amount);
-
-        // Store full JSON data
-        tx.setDetailsJson(objectMapper.writeValueAsString(rawTx));
-
-        // ---- Update User Balance (only for member transactions) ----
-        if (tx.getUserId() != null) {
-            User user = userRepo.findById(tx.getUserId()).orElse(null);
-
-            if (user != null) {
-                // Verify user belongs to the same sahakari
-                if (!user.getSahakari().equals(sahakari)) {
-                    return ResponseEntity.badRequest()
-                            .body(Map.of("error", "User does not belong to your network"));
-                }
-
-                double currentBalance = user.getBalance() != null ? user.getBalance() : 0.0;
-                double newBalance = currentBalance + amount;
-
-                System.out.println("Current Balance: " + currentBalance);
-                System.out.println("Transaction Amount: " + amount);
-                System.out.println("New Balance: " + newBalance);
-
-                // Prevent overdraft for withdrawals
-                if (amount < 0 && newBalance < 0) {
-                    return ResponseEntity.badRequest()
-                            .body(Map.of("error", "Insufficient balance. Current: Rs. " + currentBalance));
-                }
-
-                user.setBalance(newBalance);
-                userRepo.save(user);
-
-                System.out.println("User balance updated successfully");
-            } else {
-                return ResponseEntity.badRequest().body(Map.of("error", "User not found"));
-            }
-        }
-
-        repo.save(tx);
-        System.out.println("Transaction saved with ID: " + tx.getId());
-        System.out.println("==============================================");
-
-        // --- ACTIVITY LOGGING START ---
+    public ResponseEntity<?> addTransaction(@RequestBody Map<String, Object> payload, HttpSession session) {
         try {
+            Long adminId = (Long) session.getAttribute("userId");
+            Long networkId = (Long) session.getAttribute("sahakariId");
             String adminName = (String) session.getAttribute("userName");
-            String userRole = (String) session.getAttribute("userRole");
+
+            if (adminId == null || networkId == null) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("error", "Unauthorized access"));
+            }
+
+            Network network = networkRepo.findById(networkId)
+                    .orElseThrow(() -> new RuntimeException("Network not found"));
+
+            Transaction tx = new Transaction();
             
-            // Log only if an admin or superadmin performed the transaction
-            if (adminName != null && ("admin".equals(userRole) || "superadmin".equals(userRole))) {
-                
-                // Determine action text based on amount sign
-                String actionWord = (amount < 0) ? "Withdrawn" : "Deposited";
-                
-                // Construct clear message
-                // Example: "Withdrawn Rs. 2000.00 (Savings) for Ram"
-                String logDetails = String.format("%s Rs. %.2f (%s) for %s", 
-                    actionWord, 
-                    Math.abs(amount), 
-                    tx.getType(), 
-                    tx.getUserName()
-                );
+            // Basic Mapping
+            tx.setVoucherId((String) payload.get("voucherId"));
+            tx.setStatus((String) payload.getOrDefault("status", "Success"));
+            tx.setType((String) payload.get("type"));
+            tx.setAmount(Double.valueOf(payload.get("amountValue").toString()));
+            tx.setNarration((String) payload.get("narration"));
+            
+            String dateStr = (String) payload.get("date");
+            tx.setDate(dateStr != null ? LocalDate.parse(dateStr) : LocalDate.now());
 
-                ActivityLog log = new ActivityLog(
-                    adminName, 
-                    userRole, 
-                    sahakariId, 
-                    "ADD_TRANSACTION", 
-                    logDetails
-                );
+            if (payload.get("applicationId") != null) {
+                tx.setApplicationId(((Number) payload.get("applicationId")).longValue());
+                tx.setApplicationType((String) payload.get("applicationType"));
+            }
+
+            // Unpack Details
+            @SuppressWarnings("unchecked")
+            Map<String, String> details = (Map<String, String>) payload.get("details");
+            if (details != null) {
+                tx.setMode(details.get("mode"));
+                tx.setFyType(details.get("fyType"));
+                tx.setAccountHead(details.get("accountHead"));
+                tx.setNetworkLedger(details.get("networkLedger"));
+                tx.setDirection(details.get("direction"));
+                tx.setPaymentMethod(details.get("paymentMethod"));
+                tx.setChequeNo(details.get("chequeNo"));
+                tx.setBankName(details.get("bankName"));
+                tx.setReceivedBy(details.get("receivedBy"));
+            }
+
+            // Handle User Balance Logic
+            if (payload.get("userId") != null) {
+                Long targetUserId = Long.valueOf(payload.get("userId").toString());
+                User targetUser = userRepo.findById(targetUserId.intValue())
+                        .orElseThrow(() -> new RuntimeException("User not found"));
+                
+                tx.setUser(targetUser);
+                tx.setUserName(targetUser.getName());
+
+                Double currentBalance = targetUser.getBalance() != null ? targetUser.getBalance() : 0.0;
+                Double amount = tx.getAmount();
+
+                if ("Credit".equalsIgnoreCase(tx.getDirection())) {
+                    targetUser.setBalance(currentBalance + amount);
+                } else if ("Debit".equalsIgnoreCase(tx.getDirection())) {
+                    if (currentBalance < amount) {
+                        return ResponseEntity.badRequest().body(Map.of("error", "Insufficient user balance."));
+                    }
+                    targetUser.setBalance(currentBalance - amount);
+                }
+                userRepo.save(targetUser);
+            } else {
+                tx.setUserName((String) payload.get("userName"));
+            }
+
+            tx.setNetwork(network);
+
+            // --- CALCULATE & SET RESERVE ---
+            Double totalSavings = transactionRepo.getBalanceByHead(networkId, "Savings");
+            Double totalFD = transactionRepo.getBalanceByHead(networkId, "Fixed Deposit");
+            Double totalLoans = transactionRepo.getOutstandingLoans(networkId);
+            Double totalNetwork = transactionRepo.getNetworkBalance(networkId); // ⭐ Include Network Balance
+            
+            // Adjust current values based on THIS transaction before saving
+            String head = tx.getAccountHead();
+            String dir = tx.getDirection();
+            Double amt = tx.getAmount();
+            String mode = tx.getMode();
+
+            if ("Savings".equals(head)) {
+                totalSavings += ("Credit".equals(dir) ? amt : -amt);
+            } else if ("Fixed Deposit".equals(head)) {
+                totalFD += ("Credit".equals(dir) ? amt : -amt);
+            } else if ("Loan".equals(head)) {
+                totalLoans += ("Credit".equals(dir) ? amt : -amt);
+            }
+
+            // Adjust Network Balance
+            if ("network".equals(mode)) {
+                totalNetwork += ("Credit".equals(dir) ? amt : -amt);
+            }
+
+            // Reserve = (Member Deposits - Loans) + Network Net Position
+            Double reserve = (totalSavings + totalFD) - totalLoans + totalNetwork;
+            tx.setNetworkReserve(reserve);
+
+            Transaction savedTx = transactionRepo.save(tx);
+
+            // Log
+            try {
+                ActivityLog log = new ActivityLog(adminName, "admin", networkId, "ADD_TRANSACTION", 
+                    "Added " + tx.getType() + " of Rs. " + tx.getAmount());
                 logRepo.save(log);
-            }
+            } catch (Exception e) {}
+
+            return ResponseEntity.ok(mapTransactionToFrontend(savedTx));
+
         } catch (Exception e) {
-            System.out.println("Failed to log transaction activity: " + e.getMessage());
+            e.printStackTrace();
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         }
-        // --- ACTIVITY LOGGING END ---
-
-        Map<String, Object> response = new HashMap<>();
-        response.put("message", "Transaction created successfully");
-        response.put("transactionId", tx.getId());
-        if (tx.getUserId() != null) {
-            User updatedUser = userRepo.findById(tx.getUserId()).orElse(null);
-            if (updatedUser != null) {
-                response.put("newBalance", updatedUser.getBalance());
-            }
-        }
-
-        return ResponseEntity.ok(response);
-    }
-
-    /**
-     * Determines the transaction type based on mode, account head, and direction.
-     * Must return one of: "Savings", "Fixed Deposit", "Loan", "Interest"
-     */
-    private String determineTransactionType(String mode, String accountHead, String direction) {
-        if ("member".equals(mode)) {
-            // Member transactions - extract from accountHead
-            if (accountHead.toLowerCase().contains("savings")) {
-                return "Savings";
-            } else if (accountHead.toLowerCase().contains("fixed deposit")
-                    || accountHead.toLowerCase().contains("fd")) {
-                return "Fixed Deposit";
-            } else if (accountHead.toLowerCase().contains("recurring deposit")
-                    || accountHead.toLowerCase().contains("rd")) {
-                return "Interest"; // Treat RD as Fixed Deposit
-            } else if (accountHead.toLowerCase().contains("loan")) {
-                return "Loan";
-            } else {
-                return "Savings"; // Default for member transactions
-            }
-        } else {
-            // Network transactions - determine based on income/expense
-            if (accountHead.toLowerCase().contains("income")) {
-                return "Interest"; // Income is typically interest
-            } else if (accountHead.toLowerCase().contains("expense")) {
-                return "Savings"; // Expenses come from savings/cash
-            } else if (accountHead.toLowerCase().contains("interest")) {
-                return "Interest";
-            } else {
-                return "Savings"; // Default for network transactions
-            }
-        }
-    }
-
-    @GetMapping("/user/{userId}")
-    public ResponseEntity<?> getTransactionsForUser(@PathVariable Integer userId, HttpSession session) {
-        String sahakari = (String) session.getAttribute("sahakari");
-        String userEmail = (String) session.getAttribute("userEmail");
-
-        if (userEmail == null) {
-            return ResponseEntity.status(401).body(Map.of("error", "Not authenticated"));
-        }
-
-        if (sahakari == null) {
-            // Try to get from user database
-            User currentUser = userRepo.findByEmail(userEmail);
-            if (currentUser != null) {
-                sahakari = currentUser.getSahakari();
-            } else {
-                return ResponseEntity.status(401).body(Map.of("error", "Sahakari not found in session"));
-            }
-        }
-
-        // Verify user belongs to network
-        User user = userRepo.findById(userId).orElse(null);
-        if (user == null || !user.getSahakari().equals(sahakari)) {
-            return ResponseEntity.badRequest().body(Map.of("error", "User not found or access denied"));
-        }
-
-        return ResponseEntity.ok(repo.findByUserId(userId));
-    }
-
-    @GetMapping("/sahakari")
-    public ResponseEntity<?> getTransactionsForSahakari(HttpSession session) {
-        Object sahakariIdObj = session.getAttribute("sahakariId");
-
-        if (sahakariIdObj == null) {
-            return ResponseEntity.status(401).body(Map.of("error", "Session data not found"));
-        }
-
-        Long sahakariId = null;
-        if (sahakariIdObj instanceof Integer) {
-            sahakariId = ((Integer) sahakariIdObj).longValue();
-        } else if (sahakariIdObj instanceof Long) {
-            sahakariId = (Long) sahakariIdObj;
-        }
-
-        // Get transactions for this sahakari only
-        return ResponseEntity.ok(repo.findBySahakariId(sahakariId));
-    }
-
-    @GetMapping("/balance/{userId}")
-    public ResponseEntity<?> getBalance(@PathVariable Integer userId, HttpSession session) {
-        String sahakari = (String) session.getAttribute("sahakari");
-        String userEmail = (String) session.getAttribute("userEmail");
-
-        if (userEmail == null) {
-            return ResponseEntity.status(401).body(Map.of("error", "Not authenticated"));
-        }
-
-        if (sahakari == null) {
-            // Try to get from user database
-            User currentUser = userRepo.findByEmail(userEmail);
-            if (currentUser != null) {
-                sahakari = currentUser.getSahakari();
-            } else {
-                return ResponseEntity.status(401).body(Map.of("error", "Sahakari not found in session"));
-            }
-        }
-
-        User user = userRepo.findById(userId).orElse(null);
-        if (user == null) {
-            return ResponseEntity.badRequest().body(Map.of("error", "User not found"));
-        }
-
-        // Verify user belongs to network
-        if (!user.getSahakari().equals(sahakari)) {
-            return ResponseEntity.badRequest().body(Map.of("error", "Access denied"));
-        }
-
-        Map<String, Object> response = new HashMap<>();
-        response.put("balance", user.getBalance() != null ? user.getBalance() : 0.0);
-        response.put("userId", user.getId());
-        response.put("userName", user.getName());
-
-        return ResponseEntity.ok(response);
     }
 
     @GetMapping
-    public ResponseEntity<?> getAllTransactionsForLoggedSahakari(HttpSession session) {
-        Object sahakariIdObj = session.getAttribute("sahakariId");
-        String userEmail = (String) session.getAttribute("userEmail");
+    public ResponseEntity<?> getAllTransactions(HttpSession session) {
+        Long sessionUserId = (Long) session.getAttribute("userId");
+        String role = (String) session.getAttribute("userRole");
+        Long networkId = (Long) session.getAttribute("sahakariId");
 
-        if (userEmail == null) {
-            return ResponseEntity.status(401).body(Map.of("error", "Not authenticated"));
+        if (sessionUserId == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+
+        List<Transaction> transactions;
+        if ("admin".equals(role)) {
+            transactions = transactionRepo.findByNetworkIdOrderByDateDesc(networkId);
+        } else {
+            transactions = transactionRepo.findByUserIdOrderByDateDesc(sessionUserId);
         }
 
-        if (sahakariIdObj == null) {
-            return ResponseEntity.status(401).body(Map.of("error", "Sahakari ID missing in session"));
-        }
+        List<Map<String, Object>> response = transactions.stream()
+                .map(this::mapTransactionToFrontend)
+                .collect(Collectors.toList());
 
-        Long sahakariId = (sahakariIdObj instanceof Integer)
-                ? ((Integer) sahakariIdObj).longValue()
-                : (Long) sahakariIdObj;
-
-        return ResponseEntity.ok(repo.findBySahakariId(sahakariId));
+        return ResponseEntity.ok(response);
     }
 
+    @GetMapping("/sahakari")
+    public ResponseEntity<?> getSahakariTransactions(HttpSession session) {
+        Long networkId = (Long) session.getAttribute("sahakariId");
+        if (networkId == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+
+        List<Transaction> transactions = transactionRepo.findByNetworkIdOrderByDateDesc(networkId);
+        List<Map<String, Object>> response = transactions.stream()
+                .map(this::mapTransactionToFrontend)
+                .collect(Collectors.toList());
+        return ResponseEntity.ok(response);
+    }
+
+    private Map<String, Object> mapTransactionToFrontend(Transaction tx) {
+        Map<String, Object> map = new HashMap<>();
+        map.put("id", tx.getId());
+        map.put("voucherId", tx.getVoucherId());
+        map.put("date", tx.getDate());
+        map.put("status", tx.getStatus());
+        map.put("userId", tx.getUser() != null ? tx.getUser().getId() : null);
+        map.put("userName", tx.getUserName());
+        map.put("type", tx.getType());
+        map.put("amountValue", tx.getAmount());
+        map.put("amount", tx.getAmount());
+        map.put("narration", tx.getNarration());
+        map.put("applicationId", tx.getApplicationId());
+        map.put("networkReserve", tx.getNetworkReserve());
+        
+        Map<String, String> details = new HashMap<>();
+        details.put("mode", tx.getMode());
+        details.put("fyType", tx.getFyType());
+        details.put("accountHead", tx.getAccountHead());
+        details.put("networkLedger", tx.getNetworkLedger());
+        details.put("direction", tx.getDirection());
+        details.put("paymentMethod", tx.getPaymentMethod());
+        details.put("chequeNo", tx.getChequeNo());
+        details.put("bankName", tx.getBankName());
+        details.put("receivedBy", tx.getReceivedBy());
+        details.put("internalHead", tx.getAccountHead());
+
+        map.put("details", details);
+        return map;
+    }
 }
