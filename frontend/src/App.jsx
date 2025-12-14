@@ -2,6 +2,8 @@ import "./App.css";
 import React from "react";
 import { BrowserRouter, Route, Routes } from "react-router-dom";
 
+import Forgot from "./pages/Forgot.jsx"; 
+
 // User Imports
 import Layout from "./component/user/Layout.jsx";
 import Dashboard from "./pages/user/Dashboard.jsx";
@@ -37,6 +39,7 @@ function App() {
         <Routes>
           <Route path="/" element={<Login />} />
           <Route path="/signup" element={<Signup />} />
+          <Route path="/forgot" element={<Forgot />} />
 
           {/* User Routes */}
           <Route path="/home" element={<Layout />}>

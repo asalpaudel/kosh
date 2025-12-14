@@ -15,6 +15,7 @@ import com.kosh.backend.model.User;
 import com.kosh.backend.repository.ActivityLogRepository;
 import com.kosh.backend.repository.NetworkRepository;
 import com.kosh.backend.repository.UserRepository;
+import com.kosh.backend.service.EmailService;
 
 import jakarta.servlet.http.HttpSession;
 
@@ -26,12 +27,14 @@ public class AuthController {
     private final NetworkRepository networkRepo;
     private final ActivityLogRepository logRepo;
     private final PasswordEncoder passwordEncoder;
+    private final EmailService emailService;
 
-    public AuthController(UserRepository repo, NetworkRepository networkRepo, ActivityLogRepository logRepo, PasswordEncoder passwordEncoder) {
+    public AuthController(UserRepository repo, NetworkRepository networkRepo, ActivityLogRepository logRepo, PasswordEncoder passwordEncoder, EmailService emailService) {
         this.repo = repo;
         this.networkRepo = networkRepo;
         this.logRepo = logRepo;
         this.passwordEncoder = passwordEncoder;
+        this.emailService = emailService;
     }
 
     public static class LoginRequest {
@@ -100,18 +103,17 @@ public class AuthController {
         String sahakariName = null;
 
         if (!user.getRole().equals("superadmin")) {
-            sahakariName = user.getSahakari(); // Get the sahakari name from user
+            sahakariName = user.getSahakari(); 
             Network net = networkRepo.findByName(sahakariName);
             if (net != null) {
                 networkId = net.getId();
             }
         }
 
-        // Set all session attributes
         session.setAttribute("userEmail", user.getEmail());
         session.setAttribute("userId", user.getId());
         session.setAttribute("sahakariId", networkId);
-        session.setAttribute("sahakari", sahakariName); // ⭐ THIS IS THE CRITICAL LINE
+        session.setAttribute("sahakari", sahakariName); 
         session.setAttribute("userId", user.getId());
         session.setAttribute("userRole", user.getRole());
         session.setAttribute("userName", user.getName());
@@ -123,7 +125,6 @@ public class AuthController {
         System.out.println("Session sahakariId: " + session.getAttribute("sahakariId"));
         System.out.println("=========================================");
 
-        // --- ACTIVITY LOGGING START ---
         if ("admin".equals(user.getRole()) || "superadmin".equals(user.getRole())) {
             try {
                 ActivityLog log = new ActivityLog(
@@ -138,7 +139,6 @@ public class AuthController {
                 System.out.println("Failed to save login activity log: " + e.getMessage());
             }
         }
-        // --- ACTIVITY LOGGING END ---
 
         return new LoginResponse(
                 true,
@@ -182,5 +182,51 @@ public class AuthController {
         response.put("success", "true");
         response.put("message", "Logged out successfully");
         return response;
+    }
+
+    @PostMapping("/forgot-password")
+    public Map<String, Object> forgotPassword(@RequestBody Map<String, String> payload) {
+        String email = payload.get("email");
+        User user = repo.findByEmail(email);
+
+        if (user == null) {
+            return Map.of("success", false, "message", "Email not found");
+        }
+
+        Network network = null;
+        if (user.getSahakariId() != null) {
+            network = networkRepo.findById(user.getSahakariId()).orElse(null);
+        }
+
+        try {
+            String otp = emailService.generateOtp(email);
+            emailService.sendOtpEmail(email, user.getName(), otp, network);
+            return Map.of("success", true, "message", "OTP sent to your email");
+        } catch (Exception e) {
+            e.printStackTrace();
+            return Map.of("success", false, "message", "Failed to send email");
+        }
+    }
+
+    @PostMapping("/reset-password")
+    public Map<String, Object> resetPassword(@RequestBody Map<String, String> payload) {
+        String email = payload.get("email");
+        String otp = payload.get("otp");
+        String newPassword = payload.get("newPassword");
+
+        if (!emailService.validateOtp(email, otp)) {
+            return Map.of("success", false, "message", "Invalid or expired OTP");
+        }
+
+        User user = repo.findByEmail(email);
+        if (user != null) {
+            user.setPassword(passwordEncoder.encode(newPassword));
+            repo.save(user);
+            emailService.clearOtp(email); 
+            
+            return Map.of("success", true, "message", "Password changed successfully");
+        }
+
+        return Map.of("success", false, "message", "User not found");
     }
 }
