@@ -3,6 +3,7 @@ package com.kosh.backend.controller;
 import java.util.HashMap;
 import java.util.Map;
 
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -24,11 +25,13 @@ public class AuthController {
     private final UserRepository repo;
     private final NetworkRepository networkRepo;
     private final ActivityLogRepository logRepo;
+    private final PasswordEncoder passwordEncoder;
 
-    public AuthController(UserRepository repo, NetworkRepository networkRepo, ActivityLogRepository logRepo) {
+    public AuthController(UserRepository repo, NetworkRepository networkRepo, ActivityLogRepository logRepo, PasswordEncoder passwordEncoder) {
         this.repo = repo;
         this.networkRepo = networkRepo;
         this.logRepo = logRepo;
+        this.passwordEncoder = passwordEncoder;
     }
 
     public static class LoginRequest {
@@ -71,7 +74,7 @@ public class AuthController {
             return new LoginResponse(false, "Email not found", null, -1, null);
         }
 
-        if (!user.getPassword().equals(req.password)) {
+        if (!passwordEncoder.matches(req.password, user.getPassword())) {
             return new LoginResponse(false, "Incorrect password", null, -1, null);
         }
 

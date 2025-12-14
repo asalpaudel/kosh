@@ -11,6 +11,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -39,11 +40,13 @@ public class UserController {
     private final UserRepository repo;
     private final NetworkRepository networkRepo;
     private final ActivityLogRepository logRepo;
+    private final PasswordEncoder passwordEncoder;
 
-    public UserController(UserRepository repo, NetworkRepository networkRepo, ActivityLogRepository logRepo) {
+    public UserController(UserRepository repo, NetworkRepository networkRepo, ActivityLogRepository logRepo, PasswordEncoder passwordEncoder) {
         this.repo = repo;
         this.networkRepo = networkRepo;
         this.logRepo = logRepo;
+        this.passwordEncoder = passwordEncoder;
     }
 
     @PostMapping
@@ -125,7 +128,7 @@ public class UserController {
             user.setSahakari(sahakari);
             // Link sahakari ID immediately if available
             user.setSahakariId(network.getId());
-            user.setPassword(password);
+            user.setPassword(passwordEncoder.encode(password));
             user.setStatus((status != null && !status.isBlank()) ? status : "Pending");
 
             // ⭐ Handle photo upload
@@ -429,7 +432,7 @@ public class UserController {
         existingUser.setStatus(updatedUser.getStatus());
 
         if (updatedUser.getPassword() != null && !updatedUser.getPassword().isEmpty()) {
-            existingUser.setPassword(updatedUser.getPassword());
+            existingUser.setPassword(passwordEncoder.encode(updatedUser.getPassword()));
         }
 
         User saved = repo.save(existingUser);
