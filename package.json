@@ -1,5 +1,6 @@
 {
   "dependencies": {
+    "axios": "^1.13.2",
     "html2canvas-pro": "^1.5.13",
     "lucide-react": "^0.555.0"
   }
