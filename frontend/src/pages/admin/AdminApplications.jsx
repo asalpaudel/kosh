@@ -3,45 +3,26 @@ import {
   DocumentTextIcon,
   CurrencyDollarIcon,
   BanknotesIcon,
-  CheckCircleIcon,
-  XCircleIcon,
-  ClockIcon,
 } from "../../component/icons.jsx";
-import Modal from "../../component/superadmin/Modal.jsx";
-import AddTransactionForm from "../../component/admin/AddTransactionForm.jsx";
 
 const apiBase = "http://localhost:8080/api";
 
-const ApplicationCard = ({
-  application,
-  type,
-  onReview,
-  onOpenTransaction,
-}) => {
-  const getStatusBadge = (status) => {
-    const styles = {
-      PENDING: "bg-yellow-100 text-yellow-800",
-      APPROVED: "bg-green-100 text-green-800",
-      REJECTED: "bg-red-100 text-red-800",
-      WITHDRAWN: "bg-gray-100 text-gray-800",
-    };
-    return (
-      <span
-        className={`px-3 py-1 rounded-full text-xs font-semibold ${styles[status]}`}
-      >
-        {status}
-      </span>
-    );
-  };
+const STATUS_STYLES = {
+  PENDING: "bg-yellow-100 text-yellow-800",
+  APPROVED: "bg-green-100 text-green-800",
+  REJECTED: "bg-red-100 text-red-800",
+  WITHDRAWN: "bg-gray-100 text-gray-800",
+};
 
+const ApplicationCard = ({ application, type, onReview }) => {
   const getPackageName = () => {
     switch (type) {
       case "fixed-deposit":
-        return application.fixedDeposit?.name;
+        return application.fixedDeposit?.name || "N/A";
       case "saving-account":
-        return application.savingAccount?.name;
+        return application.savingAccount?.name || "N/A";
       case "loan":
-        return application.loanPackage?.name;
+        return application.loanPackage?.name || "N/A";
       default:
         return "N/A";
     }
@@ -52,32 +33,25 @@ const ApplicationCard = ({
       case "fixed-deposit":
         return (
           <>
-            <p>
-              <strong>Amount:</strong> Rs.{" "}
-              {application.depositAmount?.toLocaleString()}
+            <p className="text-sm">
+              Amount: Rs. {application.depositAmount?.toLocaleString()}
             </p>
-            <p>
-              <strong>Term:</strong> {application.depositTerm} months
-            </p>
+            <p className="text-sm">Term: {application.depositTerm} months</p>
           </>
         );
       case "saving-account":
         return (
-          <p>
-            <strong>Initial Deposit:</strong> Rs.{" "}
-            {application.initialDeposit?.toLocaleString()}
+          <p className="text-sm">
+            Initial Deposit: Rs. {application.initialDeposit?.toLocaleString()}
           </p>
         );
       case "loan":
         return (
           <>
-            <p>
-              <strong>Amount:</strong> Rs.{" "}
-              {application.requestedAmount?.toLocaleString()}
+            <p className="text-sm">
+              Amount: Rs. {application.requestedAmount?.toLocaleString()}
             </p>
-            <p>
-              <strong>Purpose:</strong> {application.purpose}
-            </p>
+            <p className="text-sm">Purpose: {application.purpose}</p>
           </>
         );
       default:
@@ -86,36 +60,39 @@ const ApplicationCard = ({
   };
 
   return (
-    <div className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
-      <div className="flex justify-between items-start mb-3">
+    <div className="border border-gray-200 rounded-xl p-4 shadow-sm hover:shadow-md transition flex flex-col justify-between">
+      <div className="flex justify-between items-start mb-2">
         <div>
           <h4 className="font-semibold text-gray-900">{getPackageName()}</h4>
-          <p className="text-sm text-gray-600">
+          <p className="text-xs text-gray-500">
             User: {application.user?.name || `ID: ${application.user?.id}`}
           </p>
         </div>
-        {getStatusBadge(application.status)}
+        <span
+          className={`px-2 py-1 rounded-full text-xs font-semibold ${
+            STATUS_STYLES[application.status]
+          }`}
+        >
+          {application.status}
+        </span>
       </div>
 
-      <div className="text-sm text-gray-700 space-y-1 mb-3">
-        {getDetails()}
-        <p className="text-xs text-gray-500 mt-2">
-          Applied: {new Date(application.applicationDate).toLocaleDateString()}
-        </p>
-      </div>
+      <div className="mb-2 space-y-1">{getDetails()}</div>
+      <p className="text-xs text-gray-400 mb-2">
+        Applied: {new Date(application.applicationDate).toLocaleDateString()}
+      </p>
 
       {application.status === "PENDING" && (
-        <div className="flex gap-2 mt-3">
+        <div className="flex gap-2 mt-2">
           <button
-            // ⭐ CHANGED: Now calls onReview directly for Approval (Backend handles logic)
             onClick={() => onReview(application, "APPROVED")}
-            className="flex-1 bg-green-500 text-white py-2 px-4 rounded-full hover:bg-green-600 transition-colors text-sm font-semibold"
+            className="flex-1 bg-green-500 text-white py-1.5 rounded-full text-sm font-semibold hover:bg-green-600 transition"
           >
             Approve
           </button>
           <button
             onClick={() => onReview(application, "REJECTED")}
-            className="flex-1 bg-red-500 text-white py-2 px-4 rounded-full hover:bg-red-600 transition-colors text-sm font-semibold"
+            className="flex-1 bg-red-500 text-white py-1.5 rounded-full text-sm font-semibold hover:bg-red-600 transition"
           >
             Reject
           </button>
@@ -123,418 +100,240 @@ const ApplicationCard = ({
       )}
 
       {application.status !== "PENDING" && application.reviewNotes && (
-        <div className="mt-3 p-2 bg-gray-50 rounded-lg text-xs text-gray-600">
-          <strong>Notes:</strong> {application.reviewNotes}
+        <div className="mt-2 p-2 bg-gray-50 rounded-lg text-xs text-gray-500">
+          Notes: {application.reviewNotes}
         </div>
       )}
     </div>
   );
 };
 
-const ReviewModal = ({ isOpen, onClose, application, type, onSubmit }) => {
-  const [status, setStatus] = useState("REJECTED");
-  const [notes, setNotes] = useState("");
+export default function AdminApplications() {
+  const [networkId, setNetworkId] = useState(null);
+  const [applications, setApplications] = useState({
+    fd: [],
+    sa: [],
+    loan: [],
+  });
+  const [loading, setLoading] = useState(true);
+  const [filter, setFilter] = useState("ALL");
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    onSubmit(application.id, status, notes);
-  };
-
-  return (
-    <Modal
-      isOpen={isOpen}
-      onClose={onClose}
-      title="Review Application"
-      size="lg"
-    >
-      <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-        <div>
-          <label className="block font-semibold mb-2">Decision *</label>
-          <select
-            value={status}
-            onChange={(e) => setStatus(e.target.value)}
-            className="w-full px-4 py-3 border border-gray-300 rounded-full focus:outline-none focus:border-teal-500"
-            required
-          >
-            <option value="REJECTED">Reject</option>
-            {/* Added Approve option here just in case modal is used for approvals later */}
-            <option value="APPROVED">Approve</option>
-          </select>
-        </div>
-
-        <div>
-          <label className="block font-semibold mb-2">
-            Review Notes (Optional)
-          </label>
-          <textarea
-            value={notes}
-            onChange={(e) => setNotes(e.target.value)}
-            placeholder="Add any comments or reasons for your decision..."
-            rows="4"
-            className="w-full px-4 py-3 border border-gray-300 rounded-2xl focus:outline-none focus:border-teal-500 resize-none"
-          />
-        </div>
-
-        <div className="flex gap-4 mt-4">
-          <button
-            type="button"
-            onClick={onClose}
-            className="w-1/2 bg-gray-200 text-gray-800 font-semibold py-3 rounded-full hover:bg-gray-300 transition-colors"
-          >
-            Cancel
-          </button>
-          <button
-            type="submit"
-            className="w-1/2 bg-teal-500 text-white font-semibold py-3 rounded-full hover:bg-teal-600 transition-colors"
-          >
-            Submit Review
-          </button>
-        </div>
-      </form>
-    </Modal>
-  );
-};
-
-function AdminApplications() {
-  const [selectedNetworkId, setSelectedNetworkId] = useState(null);
-  const [fdApplications, setFdApplications] = useState([]);
-  const [saApplications, setSaApplications] = useState([]);
-  const [loanApplications, setLoanApplications] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [sessionLoading, setSessionLoading] = useState(true);
-  const [filterStatus, setFilterStatus] = useState("ALL");
-
-  const [reviewModalOpen, setReviewModalOpen] = useState(false);
-  const [currentReviewApp, setCurrentReviewApp] = useState(null);
-  const [currentReviewType, setCurrentReviewType] = useState(null);
-
-  // Transaction form state (Left for manual usage, but disconnected from auto-approval)
-  const [transactionModalOpen, setTransactionModalOpen] = useState(false);
-  const [transactionData, setTransactionData] = useState(null);
+  const [collapseState, setCollapseState] = useState({
+    fd: false,
+    sa: false,
+    loan: false,
+  });
 
   useEffect(() => {
     const fetchSession = async () => {
       try {
-        const response = await fetch(`${apiBase}/session`, {
-          method: "GET",
+        const res = await fetch(`${apiBase}/session`, {
           credentials: "include",
         });
-
-        if (response.ok) {
-          const data = await response.json();
-          setSelectedNetworkId(data.sahakariId);
-        } else {
-          console.error("Failed to fetch session data");
+        if (res.ok) {
+          const data = await res.json();
+          setNetworkId(data.sahakariId);
         }
-      } catch (error) {
-        console.error("Error fetching session:", error);
-      } finally {
-        setSessionLoading(false);
+      } catch (err) {
+        console.error(err);
       }
     };
-
     fetchSession();
   }, []);
 
   const fetchApplications = async () => {
-    if (!selectedNetworkId) return;
+    if (!networkId) return;
     setLoading(true);
     try {
       const [fdRes, saRes, loanRes] = await Promise.all([
-        fetch(
-          `${apiBase}/applications/fixed-deposit/network/${selectedNetworkId}`,
-          {
-            credentials: "include",
-          }
-        ),
-        fetch(
-          `${apiBase}/applications/saving-account/network/${selectedNetworkId}`,
-          {
-            credentials: "include",
-          }
-        ),
-        fetch(`${apiBase}/applications/loan/network/${selectedNetworkId}`, {
+        fetch(`${apiBase}/applications/fixed-deposit/network/${networkId}`, {
+          credentials: "include",
+        }),
+        fetch(`${apiBase}/applications/saving-account/network/${networkId}`, {
+          credentials: "include",
+        }),
+        fetch(`${apiBase}/applications/loan/network/${networkId}`, {
           credentials: "include",
         }),
       ]);
-
-      setFdApplications(await fdRes.json());
-      setSaApplications(await saRes.json());
-      setLoanApplications(await loanRes.json());
-    } catch (error) {
-      console.error("Failed to fetch applications:", error);
+      setApplications({
+        fd: await fdRes.json(),
+        sa: await saRes.json(),
+        loan: await loanRes.json(),
+      });
+    } catch (err) {
+      console.error(err);
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    if (selectedNetworkId) {
-      fetchApplications();
-    }
-  }, [selectedNetworkId]);
+    if (networkId) fetchApplications();
+  }, [networkId]);
 
-  // ⭐ CHANGED: This function now handles both Approval and Rejection
-  const handleQuickReview = async (application, status, type) => {
+  const handleReview = async (app, status, type) => {
     try {
-      const endpoint = `${apiBase}/applications/${type}/${application.id}/review`;
-      const response = await fetch(endpoint, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        credentials: "include",
-        body: JSON.stringify({ 
-          status, 
-          reviewNotes: status === 'APPROVED' ? 'Approved automatically via dashboard' : 'Quick update' 
-        }),
-      });
-
-      if (response.ok) {
-        // Refresh list
-        fetchApplications();
-        alert(`Application ${status.toLowerCase()} successfully!`);
-      } else {
-        const errText = await response.text();
-        alert(`Failed to update: ${errText}`);
-      }
-    } catch (error) {
-      console.error("Error reviewing application:", error);
-      alert("An error occurred while reviewing the application");
+      const res = await fetch(
+        `${apiBase}/applications/${type}/${app.id}/review`,
+        {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({
+            status,
+            reviewNotes: status === "APPROVED" ? "Auto-approved" : "Rejected",
+          }),
+        }
+      );
+      if (res.ok) fetchApplications();
+      else alert("Failed to update application");
+    } catch (err) {
+      console.error(err);
+      alert("Error updating application");
     }
   };
 
-  const handleOpenTransaction = (application, type, status) => {
-    // Only used if specific manual transaction is needed (optional)
-    const txData = buildTransactionData(application, type);
-    setTransactionData(txData);
-    setTransactionModalOpen(true);
-  };
+  const filterApps = (apps) =>
+    filter === "ALL" ? apps : apps.filter((a) => a.status === filter);
 
-  const buildTransactionData = (application, type) => {
-    // ... (helper logic same as before) ...
-    const baseData = {
-      applicationId: application.id,
-      applicationType: type,
-      userId: application.user?.id,
-      userName: application.user?.name,
-      date: new Date().toISOString().split("T")[0],
-    };
-    // ... default mapping logic ...
-    return baseData; 
-  };
-
-  const handleTransactionComplete = async (finalStatus = "APPROVED") => {
-    if (transactionData) {
-      handleQuickReview({ id: transactionData.applicationId }, finalStatus, transactionData.applicationType);
-      setTransactionModalOpen(false);
-      setTransactionData(null);
-    }
-  };
-
-  const handleSubmitReview = async (applicationId, status, notes) => {
-    try {
-      const endpoint = `${apiBase}/applications/${currentReviewType}/${applicationId}/review`;
-      const response = await fetch(endpoint, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        credentials: "include",
-        body: JSON.stringify({ status, reviewNotes: notes }),
-      });
-
-      if (response.ok) {
-        setReviewModalOpen(false);
-        setCurrentReviewApp(null);
-        setCurrentReviewType(null);
-        fetchApplications();
-      } else {
-        alert("Failed to submit review");
-      }
-    } catch (error) {
-      console.error("Error submitting review:", error);
-      alert("An error occurred while submitting the review");
-    }
-  };
-
-  const filterApplications = (apps) => {
-    if (filterStatus === "ALL") return apps;
-    return apps.filter((app) => app.status === filterStatus);
-  };
-
-  if (sessionLoading) {
+  if (!networkId)
     return (
-      <div className="bg-white p-6 min-h-[calc(100vh-8.5rem)] rounded-lg shadow-md flex items-center justify-center">
-        <p className="text-center text-gray-500">Loading session...</p>
-      </div>
+      <p className="text-center text-red-500 mt-10">
+        Unable to load session. Please login again.
+      </p>
     );
-  }
 
-  if (!selectedNetworkId) {
-    return (
-      <div className="bg-white p-6 min-h-[calc(100vh-8.5rem)] rounded-lg shadow-md flex items-center justify-center">
-        <p className="text-center text-red-500">
-          Unable to load session. Please login again.
-        </p>
-      </div>
-    );
-  }
+  const stats = ["PENDING", "APPROVED", "REJECTED"];
+  const statCounts = {
+    PENDING:
+      applications.fd.filter((a) => a.status === "PENDING").length +
+      applications.sa.filter((a) => a.status === "PENDING").length +
+      applications.loan.filter((a) => a.status === "PENDING").length,
+    APPROVED:
+      applications.fd.filter((a) => a.status === "APPROVED").length +
+      applications.sa.filter((a) => a.status === "APPROVED").length +
+      applications.loan.filter((a) => a.status === "APPROVED").length,
+    REJECTED:
+      applications.fd.filter((a) => a.status === "REJECTED").length +
+      applications.sa.filter((a) => a.status === "REJECTED").length +
+      applications.loan.filter((a) => a.status === "REJECTED").length,
+  };
+  const totalApplications =
+    applications.fd.length + applications.sa.length + applications.loan.length;
+
+  const applicationSections = [
+    {
+      key: "fd",
+      label: "Fixed Deposit",
+      icon: DocumentTextIcon,
+      type: "fixed-deposit",
+      apps: applications.fd,
+    },
+    {
+      key: "sa",
+      label: "Saving Account",
+      icon: CurrencyDollarIcon,
+      type: "saving-account",
+      apps: applications.sa,
+    },
+    {
+      key: "loan",
+      label: "Loans",
+      icon: BanknotesIcon,
+      type: "loan",
+      apps: applications.loan,
+    },
+  ];
 
   return (
-    <>
-      <div className="bg-white p-6 min-h-[calc(100vh-8.5rem)] rounded-lg shadow-md">
-        <div className="flex justify-between items-center mb-6">
-          <h2 className="text-2xl font-bold text-gray-800">
-            Applications Review
-          </h2>
-          <div className="flex gap-2">
-            {["ALL", "PENDING", "APPROVED", "REJECTED"].map((st) => (
-              <button
-                key={st}
-                onClick={() => setFilterStatus(st)}
-                className={`px-4 py-2 rounded-full font-semibold text-sm transition-colors ${
-                  filterStatus === st
-                    ? "bg-teal-500 text-white"
-                    : "bg-gray-200 text-gray-700 hover:bg-gray-300"
-                }`}
-              >
+    <div className="space-y-6 bg-gray-50 min-h-screen">
+      <div className="max-w-7xl mx-auto">
+        {/* Top Stats */}
+        <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 mb-6">
+          {stats.map((st) => (
+            <div
+              key={st}
+              className="bg-white rounded-xl p-4 shadow flex flex-col"
+            >
+              <p className="text-xs text-gray-500">
                 {st.charAt(0) + st.slice(1).toLowerCase()}
-              </button>
-            ))}
+              </p>
+              <h2 className="text-2xl font-bold text-gray-900">
+                {statCounts[st]}
+              </h2>
+            </div>
+          ))}
+          <div className="bg-white rounded-xl p-4 shadow flex flex-col">
+            <p className="text-xs text-gray-500">Total</p>
+            <h2 className="text-2xl font-bold text-gray-900">
+              {totalApplications}
+            </h2>
           </div>
         </div>
 
-        {loading ? (
-          <p className="text-center text-gray-500">Loading applications...</p>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {/* Fixed Deposit Applications */}
-            <div className="border border-gray-200 rounded-lg p-4 shadow-lg">
-              <h3 className="text-lg font-semibold text-gray-700 mb-4 flex items-center gap-2">
-                <DocumentTextIcon className="w-5 h-5 text-teal-500" />
-                Fixed Deposit Applications
-              </h3>
-              <div className="space-y-3 max-h-[600px] overflow-y-auto">
-                {filterApplications(fdApplications).length > 0 ? (
-                  filterApplications(fdApplications).map((app) => (
-                    <ApplicationCard
-                      key={app.id}
-                      application={app}
-                      type="fixed-deposit"
-                      onReview={(app, status) =>
-                        handleQuickReview(app, status, "fixed-deposit")
-                      }
-                      onOpenTransaction={handleOpenTransaction}
-                    />
-                  ))
-                ) : (
-                  <p className="text-center text-gray-400 py-8">
-                    No applications
-                  </p>
-                )}
-              </div>
-            </div>
+        {/* Filter Buttons */}
+        <div className="flex flex-wrap gap-2 mb-6">
+          {["ALL", "PENDING", "APPROVED", "REJECTED"].map((st) => (
+            <button
+              key={st}
+              onClick={() => setFilter(st)}
+              className={`px-4 py-2 rounded-full font-semibold text-sm transition ${
+                filter === st
+                  ? "bg-teal-500 text-white"
+                  : "bg-gray-200 text-gray-700 hover:bg-gray-300"
+              }`}
+            >
+              {st.charAt(0) + st.slice(1).toLowerCase()}
+            </button>
+          ))}
+        </div>
 
-            {/* Saving Account Applications */}
-            <div className="border border-gray-200 rounded-lg p-4 shadow-lg">
-              <h3 className="text-lg font-semibold text-gray-700 mb-4 flex items-center gap-2">
-                <CurrencyDollarIcon className="w-5 h-5 text-teal-500" />
-                Saving Account Applications
-              </h3>
-              <div className="space-y-3 max-h-[600px] overflow-y-auto">
-                {filterApplications(saApplications).length > 0 ? (
-                  filterApplications(saApplications).map((app) => (
-                    <ApplicationCard
-                      key={app.id}
-                      application={app}
-                      type="saving-account"
-                      onReview={(app, status) =>
-                        handleQuickReview(app, status, "saving-account")
-                      }
-                      onOpenTransaction={handleOpenTransaction}
-                    />
-                  ))
-                ) : (
-                  <p className="text-center text-gray-400 py-8">
-                    No applications
-                  </p>
-                )}
-              </div>
-            </div>
+        {/* Application Sections */}
+        <div className="space-y-6">
+          {applicationSections.map((section) => {
+            const Icon = section.icon;
+            const collapsed = collapseState[section.key];
+            return (
+              <div key={section.key} className="bg-white rounded-xl shadow p-4">
+                <div
+                  className="flex justify-between items-center mb-3 cursor-pointer"
+                  onClick={() =>
+                    setCollapseState((prev) => ({
+                      ...prev,
+                      [section.key]: !prev[section.key],
+                    }))
+                  }
+                >
+                  <h3 className="text-lg font-semibold flex items-center gap-2">
+                    <Icon className="w-5 h-5 text-teal-500" /> {section.label}
+                  </h3>
+                  <span className="text-gray-400">{collapsed ? "+" : "-"}</span>
+                </div>
 
-            {/* Loan Applications */}
-            <div className="border border-gray-200 rounded-lg p-4 shadow-lg">
-              <h3 className="text-lg font-semibold text-gray-700 mb-4 flex items-center gap-2">
-                <BanknotesIcon className="w-5 h-5 text-teal-500" />
-                Loan Applications
-              </h3>
-              <div className="space-y-3 max-h-[600px] overflow-y-auto">
-                {filterApplications(loanApplications).length > 0 ? (
-                  filterApplications(loanApplications).map((app) => (
-                    <ApplicationCard
-                      key={app.id}
-                      application={app}
-                      type="loan"
-                      onReview={(app, status) =>
-                        handleQuickReview(app, status, "loan")
-                      }
-                      onOpenTransaction={handleOpenTransaction}
-                    />
-                  ))
-                ) : (
-                  <p className="text-center text-gray-400 py-8">
-                    No applications
-                  </p>
+                {!collapsed && (
+                  <div className="space-y-3 max-h-[500px] overflow-y-auto">
+                    {filterApps(section.apps).length ? (
+                      filterApps(section.apps).map((app) => (
+                        <ApplicationCard
+                          key={app.id}
+                          application={app}
+                          type={section.type}
+                          onReview={(a, s) => handleReview(a, s, section.type)}
+                        />
+                      ))
+                    ) : (
+                      <p className="text-gray-400 text-center py-6">
+                        No applications
+                      </p>
+                    )}
+                  </div>
                 )}
               </div>
-            </div>
-          </div>
-        )}
+            );
+          })}
+        </div>
       </div>
-
-      {/* Rejection Review Modal */}
-      <ReviewModal
-        isOpen={reviewModalOpen}
-        onClose={() => {
-          setReviewModalOpen(false);
-          setCurrentReviewApp(null);
-          setCurrentReviewType(null);
-        }}
-        application={currentReviewApp}
-        type={currentReviewType}
-        onSubmit={handleSubmitReview}
-      />
-
-      {/* Transaction Entry Modal - Kept for optional use but disconnected from main approve flow */}
-      <Modal
-        isOpen={transactionModalOpen}
-        onClose={() => {
-          setTransactionModalOpen(false);
-          setTransactionData(null);
-        }}
-        title="Complete Application Approval"
-        size="xl"
-      >
-        <div className="mb-4 p-4 bg-blue-50 border-l-4 border-blue-500 text-blue-700 rounded">
-          <p className="font-semibold">📋 Application Approval Workflow</p>
-          <p className="text-sm mt-1">
-            Complete the transaction details below to approve this application.
-          </p>
-        </div>
-        {transactionData && (
-          <AddTransactionForm
-            onAdded={handleTransactionComplete}
-            onClose={() => {
-              setTransactionModalOpen(false);
-              setTransactionData(null);
-            }}
-            prefilledData={transactionData}
-          />
-        )}
-      </Modal>
-    </>
+    </div>
   );
 }
-
-export default AdminApplications;
