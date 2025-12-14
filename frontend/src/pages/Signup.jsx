@@ -3,73 +3,34 @@ import { useState, useEffect } from "react";
 
 const API_BASE = "http://localhost:8080/api";
 
-// --- Stepper UI Component ---
+/* -------------------- STEPPER -------------------- */
 const Stepper = ({ currentStep }) => (
-  <div className="flex items-center justify-center w-full mb-4">
-    {/* Step 1 */}
-    <div
-      className={`flex flex-col items-center ${
-        currentStep >= 1 ? "text-teal-500" : "text-gray-400"
-      }`}
-    >
-      <div
-        className={`w-8 h-8 rounded-full border-2 flex items-center justify-center font-bold ${
-          currentStep >= 1 ? "border-teal-500" : "border-gray-400"
-        }`}
-      >
-        1
+  <div className="flex items-center justify-between mb-8">
+    {[1, 2, 3].map((s) => (
+      <div key={s} className="flex-1 flex items-center">
+        <div
+          className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold border-2
+            ${
+              currentStep >= s
+                ? "border-[#00FFB2] text-[#00FFB2]"
+                : "border-gray-300 text-gray-400"
+            }`}
+        >
+          {s}
+        </div>
+        {s !== 3 && (
+          <div
+            className={`flex-1 h-[2px] mx-2 ${
+              currentStep > s ? "bg-[#00FFB2]" : "bg-gray-300"
+            }`}
+          />
+        )}
       </div>
-      <span className="text-xs font-semibold mt-1">Personal</span>
-    </div>
-
-    {/* Connector */}
-    <div
-      className={`flex-1 h-1 mx-2 ${
-        currentStep >= 2 ? "bg-teal-500" : "bg-gray-300"
-      }`}
-    ></div>
-
-    {/* Step 2 */}
-    <div
-      className={`flex flex-col items-center ${
-        currentStep >= 2 ? "text-teal-500" : "text-gray-400"
-      }`}
-    >
-      <div
-        className={`w-8 h-8 rounded-full border-2 flex items-center justify-center font-bold ${
-          currentStep >= 2 ? "border-teal-500" : "border-gray-400"
-        }`}
-      >
-        2
-      </div>
-      <span className="text-xs font-semibold mt-1">Account</span>
-    </div>
-
-    {/* Connector */}
-    <div
-      className={`flex-1 h-1 mx-2 ${
-        currentStep >= 3 ? "bg-teal-500" : "bg-gray-300"
-      }`}
-    ></div>
-
-    {/* Step 3 */}
-    <div
-      className={`flex flex-col items-center ${
-        currentStep >= 3 ? "text-teal-500" : "text-gray-400"
-      }`}
-    >
-      <div
-        className={`w-8 h-8 rounded-full border-2 flex items-center justify-center font-bold ${
-          currentStep >= 3 ? "border-teal-500" : "border-gray-400"
-        }`}
-      >
-        3
-      </div>
-      <span className="text-xs font-semibold mt-1">Documents</span>
-    </div>
+    ))}
   </div>
 );
 
+/* -------------------- SIGNUP -------------------- */
 export default function Signup() {
   const navigate = useNavigate();
   const [step, setStep] = useState(1);
@@ -92,435 +53,216 @@ export default function Signup() {
     photo: null,
   });
 
-  // Load sahakari list from database
   useEffect(() => {
-    const loadSahakariList = async () => {
+    const load = async () => {
+      setLoadingSahakari(true);
       try {
-        setLoadingSahakari(true);
         const res = await fetch(`${API_BASE}/networks`);
-
-        if (!res.ok) {
-          throw new Error("Failed to fetch sahakari list");
-        }
-
         const data = await res.json();
         setSahakariList(Array.isArray(data) ? data : []);
-      } catch (err) {
-        console.error("Error loading sahakari list:", err);
+      } catch {
         setSahakariList([]);
       } finally {
         setLoadingSahakari(false);
       }
     };
-
-    loadSahakariList();
+    load();
   }, []);
 
   const handleChange = (e) => {
     const { name, value, files } = e.target;
-    setFormData((prev) => ({
-      ...prev,
-      [name]: files ? files[0] : value,
-    }));
+    setFormData((p) => ({ ...p, [name]: files ? files[0] : value }));
   };
 
-  const handleSignup = async (e) => {
-    e.preventDefault();
+  const nextStep = () => {
+    setError("");
+    if (
+      step === 1 &&
+      (!formData.name ||
+        !formData.email ||
+        !formData.phone ||
+        !formData.dob ||
+        !formData.address)
+    ) {
+      setError("Please fill in all fields.");
+      return;
+    }
+    if (
+      step === 2 &&
+      (!formData.sahakari ||
+        !formData.password ||
+        formData.password !== formData.confirm)
+    ) {
+      setError("Check your account details.");
+      return;
+    }
+    setStep((s) => s + 1);
+  };
+
+  const prevStep = () => setStep((s) => s - 1);
+
+  const handleSignup = async () => {
     setError("");
     setLoading(true);
 
-    // Final validation
-    const {
-      name,
-      email,
-      phone,
-      dob,
-      address,
-      password,
-      confirm,
-      sahakari,
-      citizenship,
-      signature,
-      photo,
-    } = formData;
-
-    if (
-      !name ||
-      !email ||
-      !phone ||
-      !dob ||
-      !address ||
-      !password ||
-      !confirm ||
-      !sahakari
-    ) {
-      setError("Please fill in all required fields.");
-      setLoading(false);
-      return;
-    }
-
-    if (password !== confirm) {
-      setError("Passwords do not match!");
-      setLoading(false);
-      return;
-    }
-
-    // Validate documents in Step 3
-    if (!citizenship || !signature || !photo) {
-      setError(
-        "Please upload all required documents (Citizenship, Signature, and Photo)."
-      );
+    if (!formData.citizenship || !formData.signature || !formData.photo) {
+      setError("All documents are required.");
       setLoading(false);
       return;
     }
 
     try {
-      // Prepare FormData for multipart request
-      const submitData = new FormData();
-      submitData.append("name", formData.name);
-      submitData.append("email", formData.email);
-      submitData.append("phone", formData.phone);
-      submitData.append("dob", formData.dob);
-      submitData.append("address", formData.address);
-      submitData.append("role", "member");
-      submitData.append("sahakari", formData.sahakari);
-      submitData.append("password", formData.password);
-
-      // ⭐ Append documents with correct field names
-      if (formData.citizenship) {
-        submitData.append("citizenship", formData.citizenship);
-      }
-      if (formData.signature) {
-        submitData.append("signature", formData.signature);
-      }
-      if (formData.photo) {
-        submitData.append("photo", formData.photo);
-      }
-
-      console.log("Submitting signup data...");
+      const fd = new FormData();
+      Object.entries(formData).forEach(([k, v]) => v && fd.append(k, v));
+      fd.append("role", "member");
 
       const res = await fetch(`${API_BASE}/users`, {
         method: "POST",
-        body: submitData,
+        body: fd,
       });
+      if (!res.ok) throw new Error("Signup failed");
 
-      if (!res.ok) {
-        const errorData = await res
-          .json()
-          .catch(() => ({ error: "Unknown error" }));
-        throw new Error(
-          errorData.error || `Signup failed with status: ${res.status}`
-        );
-      }
-
-      const savedUser = await res.json();
-      console.log("User created successfully:", savedUser);
-
-      // Show success message
-      alert(
-        `Account created successfully!\n\nYour account is pending approval from ${formData.sahakari}.\nYou will be notified once approved.`
-      );
-
-      // Redirect to login page
+      alert("Account created. Pending approval.");
       navigate("/");
-    } catch (err) {
-      console.error("Signup error:", err);
-      setError(err.message || "Failed to create account. Please try again.");
+    } catch (e) {
+      setError(e.message);
     } finally {
       setLoading(false);
     }
   };
 
-  // --- Step Navigation ---
-  const nextStep = () => {
-    setError("");
-
-    // Validate Step 1
-    if (step === 1) {
-      if (
-        !formData.name ||
-        !formData.email ||
-        !formData.phone ||
-        !formData.dob ||
-        !formData.address
-      ) {
-        setError("Please fill in all required fields.");
-        return;
-      }
-    }
-
-    // Validate Step 2
-    if (step === 2) {
-      if (!formData.sahakari || !formData.password || !formData.confirm) {
-        setError("Please select your Sahakari and fill in your password.");
-        return;
-      }
-      if (formData.password !== formData.confirm) {
-        setError("Passwords do not match.");
-        return;
-      }
-    }
-
-    if (step < 3) {
-      setStep((s) => s + 1);
-    }
-  };
-
-  const prevStep = () => {
-    setError("");
-    if (step > 1) {
-      setStep((s) => s - 1);
-    }
-  };
-
   return (
-    <div className="flex flex-col lg:flex-row lg:h-screen lg:overflow-hidden bg-white">
-      {/* Left Panel - Hidden on mobile */}
-      <div className="hidden lg:flex flex-1 bg-black items-center justify-center relative">
-        {/* Top-right Logo */}
-        <div className="absolute top-4 right-4 bg-black p-2 rounded-lg border border-[#00FFB2]">
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            fill="none"
-            viewBox="0 0 24 24"
-            strokeWidth="2"
-            stroke="#00FFB2"
-            className="w-6 h-6"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              d="M12 4.5v15m7.5-7.5h-15"
-            />
-          </svg>
-        </div>
+    <div className="min-h-screen grid grid-cols-1 lg:grid-cols-2 bg-white">
+      {/* LEFT — HERO */}
+      <div className="hidden lg:flex relative items-center px-20 bg-gradient-to-br from-[#00FFB2] via-black to-black text-white overflow-hidden">
+        <div className="absolute -top-24 -left-24 w-96 h-96 bg-white/10 rounded-full blur-3xl" />
+        <div className="absolute bottom-0 right-0 w-80 h-80 bg-black/10 rounded-full blur-3xl" />
 
-        {/* Dollar Symbol Art */}
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          viewBox="0 0 100 100"
-          className="w-3/4 max-w-[320px] px-6"
-        >
-          <path
-            d="M20 80 Q50 20 80 80 M40 65 L70 65 M45 45 L45 65 M55 45 L55 65"
-            stroke="#00FFB2"
-            strokeWidth="5"
-            fill="none"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          />
-          <text x="50" y="90" fill="#00FFB2" fontSize="14" textAnchor="middle">
-            $
-          </text>
-        </svg>
+        <div className="relative z-10 max-w-lg">
+          <p className="uppercase tracking-widest text-sm text-white/70 mb-6">
+            Finance Management Platform
+          </p>
+          <h1 className="text-5xl font-semibold leading-tight mb-6">
+            One account.
+            <br />
+            Full control.
+          </h1>
+          <p className="text-lg text-white/80">
+            Join your Sahakari network and manage everything securely.
+          </p>
+        </div>
       </div>
 
-      {/* Right Panel - Scrollable on desktop */}
-      <div
-        className="flex-1 lg:h-screen lg:overflow-y-auto 
-                     scrollbar-thin scrollbar-thumb-gray-400 scrollbar-track-gray-100"
-      >
-        <div className="w-full max-w-md mx-auto px-6 py-12">
-          <h2 className="text-3xl font-bold mb-6">
-            Create Account,
-            <br />
-            Join Us Today
+      {/* RIGHT — FORM */}
+      <div className="flex items-center justify-center px-6 sm:px-10">
+        <div className="w-full max-w-md">
+          <h2 className="text-3xl font-semibold text-gray-900 mb-2">
+            Create account
           </h2>
+          <p className="text-gray-500 mb-6">Step {step} of 3</p>
 
           <Stepper currentStep={step} />
 
-          {/* Error Message */}
           {error && (
-            <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-4">
+            <div className="mb-5 rounded-lg p-4 text-sm bg-red-50 text-red-600 border border-red-200">
               {error}
             </div>
           )}
 
-          <div className="flex flex-col gap-5 mt-8">
-            {/* --- Step 1: Personal Info --- */}
+          <div className="space-y-5">
             {step === 1 && (
               <>
-                <h3 className="text-lg font-semibold text-gray-700 -mb-2 text-center">
-                  Personal Information
-                </h3>
-                {/* Full Name */}
-                <div>
-                  <label className="block font-semibold mb-2">
-                    Full Name <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    name="name"
-                    value={formData.name}
-                    onChange={handleChange}
-                    placeholder="Enter your full name"
-                    className="w-full px-4 py-3 border border-gray-300 rounded-full focus:outline-none focus:border-black"
-                    required
-                  />
-                </div>
+                {["name", "email", "phone", "address"].map((f) => (
+                  <div key={f}>
+                    <label className="text-sm font-medium text-gray-700 capitalize">
+                      {f}
+                    </label>
+                    <input
+                      name={f}
+                      value={formData[f]}
+                      onChange={handleChange}
+                      className="mt-2 w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-[#00FFB2] focus:outline-none"
+                    />
+                  </div>
+                ))}
 
-                {/* Email */}
                 <div>
-                  <label className="block font-semibold mb-2">
-                    Email <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="email"
-                    name="email"
-                    value={formData.email}
-                    onChange={handleChange}
-                    placeholder="Enter your email"
-                    className="w-full px-4 py-3 border border-gray-300 rounded-full focus:outline-none focus:border-black"
-                    required
-                  />
-                </div>
-
-                {/* Phone Number */}
-                <div>
-                  <label className="block font-semibold mb-2">
-                    Phone Number <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="tel"
-                    name="phone"
-                    value={formData.phone}
-                    onChange={handleChange}
-                    placeholder="98XXXXXXXX"
-                    className="w-full px-4 py-3 border border-gray-300 rounded-full focus:outline-none focus:border-black"
-                    required
-                  />
-                </div>
-
-                {/* Date of Birth */}
-                <div>
-                  <label className="block font-semibold mb-2">
-                    Date of Birth <span className="text-red-500">*</span>
+                  <label className="text-sm font-medium text-gray-700">
+                    Date of birth
                   </label>
                   <input
                     type="date"
                     name="dob"
                     value={formData.dob}
                     onChange={handleChange}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-full focus:outline-none focus:border-black"
-                    required
+                    className="mt-2 w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-[#00FFB2]"
                   />
                 </div>
-
-                {/* Address */}
-                <div>
-                  <label className="block font-semibold mb-2">
-                    Address <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    name="address"
-                    value={formData.address}
-                    onChange={handleChange}
-                    placeholder="Enter your full address"
-                    className="w-full px-4 py-3 border border-gray-300 rounded-full focus:outline-none focus:border-black"
-                    required
-                  />
-                </div>
-
-                <p className="text-xs text-gray-500 text-center -mt-2">
-                  <span className="text-red-500">*</span> All fields are
-                  required
-                </p>
               </>
             )}
 
-            {/* --- Step 2: Account Info --- */}
             {step === 2 && (
               <>
-                <h3 className="text-lg font-semibold text-gray-700 -mb-2 text-center">
-                  Account Information
-                </h3>
-                {/* Sahakari Dropdown */}
-                <div>
-                  <label className="block font-semibold mb-2">
-                    Select Sahakari <span className="text-red-500">*</span>
-                  </label>
-                  <select
-                    name="sahakari"
-                    value={formData.sahakari}
-                    onChange={handleChange}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-full focus:outline-none focus:border-black"
-                    required
-                    disabled={loadingSahakari}
-                  >
-                    <option value="">
-                      {loadingSahakari
-                        ? "Loading sahakari..."
-                        : "Choose your Sahakari"}
+                <select
+                  name="sahakari"
+                  value={formData.sahakari}
+                  onChange={handleChange}
+                  className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-[#00FFB2]"
+                >
+                  <option value="">Select Sahakari</option>
+                  {sahakariList.map((s) => (
+                    <option key={s.id} value={s.name}>
+                      {s.name}
                     </option>
-                    {sahakariList.map((net) => (
-                      <option key={net.id} value={net.name}>
-                        {net.name}
-                      </option>
-                    ))}
-                  </select>
-                  {sahakariList.length === 0 && !loadingSahakari && (
-                    <p className="text-xs text-red-500 mt-1 px-2">
-                      No sahakari available. Please contact administrator.
-                    </p>
-                  )}
-                </div>
+                  ))}
+                </select>
 
-                {/* Password */}
-                <div>
-                  <label className="block font-semibold mb-2">
-                    Password <span className="text-red-500">*</span>
-                  </label>
+                {["password", "confirm"].map((f) => (
                   <input
+                    key={f}
                     type="password"
-                    name="password"
-                    value={formData.password}
+                    name={f}
+                    placeholder={
+                      f === "confirm" ? "Confirm password" : "Password"
+                    }
+                    value={formData[f]}
                     onChange={handleChange}
-                    placeholder="Enter your password"
-                    className="w-full px-4 py-3 border border-gray-300 rounded-full focus:outline-none focus:border-black"
-                    required
+                    className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-[#00FFB2]"
                   />
-                </div>
-
-                {/* Confirm Password */}
-                <div>
-                  <label className="block font-semibold mb-2">
-                    Confirm Password <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="password"
-                    name="confirm"
-                    value={formData.confirm}
-                    onChange={handleChange}
-                    placeholder="Re-enter your password"
-                    className="w-full px-4 py-3 border border-gray-300 rounded-full focus:outline-none focus:border-black"
-                    required
-                  />
-                </div>
+                ))}
               </>
             )}
 
-            {/* --- Step 3: Document Upload --- */}
             {step === 3 && (
               <>
-                <h3 className="text-lg font-semibold text-gray-700 -mb-2 text-center">
-                  Verification Documents
+                <h3 className="text-lg font-semibold text-gray-900 mb-1">
+                  Verification documents
                 </h3>
+                <p className="text-sm text-gray-500 mb-6">
+                  Upload required documents for account approval
+                </p>
 
-                {/* Citizenship Document */}
+                {/* Citizenship */}
                 <div>
-                  <label className="block font-semibold mb-2">
-                    Citizenship/NID Card (PDF / Image){" "}
-                    <span className="text-red-500">*</span>
+                  <label className="text-sm font-medium text-gray-700">
+                    Citizenship / NID
                   </label>
-                  <input
-                    type="file"
-                    name="citizenship"
-                    accept=".pdf, .png, .jpg, .jpeg"
-                    onChange={handleChange}
-                    className="w-full border border-gray-300 rounded-full px-4 py-2 text-gray-700 file:mr-3 file:py-2 file:px-4 file:rounded-full file:border-0 file:bg-[#00FFB2] file:text-black file:font-semibold hover:file:bg-[#00e6a0] transition"
-                  />
+
+                  <div className="mt-2 flex items-center justify-between gap-4 rounded-lg border border-gray-300 px-4 py-3 focus-within:ring-2 focus-within:ring-[#00FFB2]">
+                    <input
+                      type="file"
+                      name="citizenship"
+                      accept=".pdf,.png,.jpg,.jpeg"
+                      onChange={handleChange}
+                      className="text-sm text-gray-600 file:hidden w-full"
+                    />
+                    <span className="text-xs text-gray-400 whitespace-nowrap">
+                      PDF / Image
+                    </span>
+                  </div>
+
                   {formData.citizenship && (
-                    <p className="text-xs text-green-600 mt-1 px-2">
+                    <p className="mt-2 text-xs text-green-600">
                       ✓ {formData.citizenship.name}
                     </p>
                   )}
@@ -528,18 +270,25 @@ export default function Signup() {
 
                 {/* Signature */}
                 <div>
-                  <label className="block font-semibold mb-2">
-                    Signature (Image) <span className="text-red-500">*</span>
+                  <label className="text-sm font-medium text-gray-700">
+                    Signature
                   </label>
-                  <input
-                    type="file"
-                    name="signature"
-                    accept=".png, .jpg, .jpeg"
-                    onChange={handleChange}
-                    className="w-full border border-gray-300 rounded-full px-4 py-2 text-gray-700 file:mr-3 file:py-2 file:px-4 file:rounded-full file:border-0 file:bg-[#00FFB2] file:text-black file:font-semibold hover:file:bg-[#00e6a0] transition"
-                  />
+
+                  <div className="mt-2 flex items-center justify-between gap-4 rounded-lg border border-gray-300 px-4 py-3 focus-within:ring-2 focus-within:ring-[#00FFB2]">
+                    <input
+                      type="file"
+                      name="signature"
+                      accept=".png,.jpg,.jpeg"
+                      onChange={handleChange}
+                      className="text-sm text-gray-600 file:hidden w-full"
+                    />
+                    <span className="text-xs text-gray-400 whitespace-nowrap">
+                      Image
+                    </span>
+                  </div>
+
                   {formData.signature && (
-                    <p className="text-xs text-green-600 mt-1 px-2">
+                    <p className="mt-2 text-xs text-green-600">
                       ✓ {formData.signature.name}
                     </p>
                   )}
@@ -547,77 +296,64 @@ export default function Signup() {
 
                 {/* Photo */}
                 <div>
-                  <label className="block font-semibold mb-2">
-                    Passport Size Photo (Image){" "}
-                    <span className="text-red-500">*</span>
+                  <label className="text-sm font-medium text-gray-700">
+                    Passport size photo
                   </label>
-                  <input
-                    type="file"
-                    name="photo"
-                    accept=".png, .jpg, .jpeg"
-                    onChange={handleChange}
-                    className="w-full border border-gray-300 rounded-full px-4 py-2 text-gray-700 file:mr-3 file:py-2 file:px-4 file:rounded-full file:border-0 file:bg-[#00FFB2] file:text-black file:font-semibold hover:file:bg-[#00e6a0] transition"
-                  />
+
+                  <div className="mt-2 flex items-center justify-between gap-4 rounded-lg border border-gray-300 px-4 py-3 focus-within:ring-2 focus-within:ring-[#00FFB2]">
+                    <input
+                      type="file"
+                      name="photo"
+                      accept=".png,.jpg,.jpeg"
+                      onChange={handleChange}
+                      className="text-sm text-gray-600 file:hidden w-full"
+                    />
+                    <span className="text-xs text-gray-400 whitespace-nowrap">
+                      Image
+                    </span>
+                  </div>
+
                   {formData.photo && (
-                    <p className="text-xs text-green-600 mt-1 px-2">
+                    <p className="mt-2 text-xs text-green-600">
                       ✓ {formData.photo.name}
                     </p>
                   )}
                 </div>
-
-                <p className="text-xs text-gray-500 text-center -mt-2">
-                  <span className="text-red-500">*</span> All documents are
-                  required for verification
-                </p>
               </>
             )}
 
             {/* --- Navigation Buttons --- */}
-            <div className="flex justify-between mt-6">
-              {/* "Back" button */}
+            <div className="flex justify-between mt-6 items-center">
+              {/* Back button */}
               {step > 1 ? (
                 <button
                   type="button"
                   onClick={prevStep}
                   disabled={loading}
-                  className="bg-gray-200 text-gray-800 font-semibold py-3 px-8 rounded-full hover:bg-gray-300 transition-colors disabled:opacity-50"
+                  className="px-6 py-3 rounded-lg bg-gray-200 text-gray-800 font-semibold hover:bg-gray-300 transition disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   Back
                 </button>
               ) : (
-                <div></div>
+                <div className="w-24" /> // empty placeholder for alignment
               )}
 
-              {/* "Next" button */}
-              {step < 3 ? (
-                <button
-                  type="button"
-                  onClick={nextStep}
-                  className="bg-black text-white font-semibold py-3 px-8 rounded-full hover:bg-gray-800 transition-colors"
-                >
-                  Next
-                </button>
-              ) : null}
-
-              {/* "Signup" button */}
-              {step === 3 ? (
-                <button
-                  type="button"
-                  onClick={handleSignup}
-                  disabled={loading}
-                  className="w-full bg-[#00FFB2] text-black font-semibold py-3 rounded-full hover:bg-[#00e6a0] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {loading ? "Creating Account..." : "Signup"}
-                </button>
-              ) : null}
+              {/* Next / Signup button */}
+              <button
+                type="button"
+                onClick={step < 3 ? nextStep : handleSignup}
+                disabled={loading}
+                className="px-6 py-3 rounded-lg bg-[#00FFB2] text-black font-semibold hover:bg-[#00e6a0] transition disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {step < 3 ? "Next" : loading ? "Creating..." : "Sign up"}
+              </button>
             </div>
           </div>
 
-          {/* Login Link */}
-          <p className="mt-6 text-center font-medium">
+          <p className="mt-8 text-center text-sm text-gray-600">
             Already have an account?{" "}
-            <NavLink to="/" className="text-[#00FFB2] hover:underline">
-              Signin
+            <NavLink to="/" className="font-medium text-[#00FFB2]">
+              Sign in
             </NavLink>
           </p>
         </div>
