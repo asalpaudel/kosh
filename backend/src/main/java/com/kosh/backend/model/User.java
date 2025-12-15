@@ -1,6 +1,16 @@
 package com.kosh.backend.model;
 
-import jakarta.persistence.*;
+import java.time.LocalDateTime; // Import added
+
+import jakarta.persistence.Basic;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.Lob;
+import jakarta.persistence.PrePersist;
 
 @Entity
 public class User {
@@ -22,6 +32,16 @@ public class User {
 
     @Column(nullable = false, columnDefinition = "DOUBLE DEFAULT 0.0")
     private Double balance = 0.0;
+
+    // --- NEW FIELD: Created At Timestamp ---
+    @Column(updatable = false)
+    private LocalDateTime createdAt;
+
+    @PrePersist
+    protected void onCreate() {
+        this.createdAt = LocalDateTime.now();
+    }
+    // ---------------------------------------
 
     // ⭐ Photo as BLOB
     @Lob
@@ -134,6 +154,15 @@ public class User {
     public void setBalance(Double balance) {
         this.balance = balance != null ? balance : 0.0;
     }
+
+    // --- NEW Getter/Setter for createdAt ---
+    public LocalDateTime getCreatedAt() {
+        return createdAt;
+    }
+    public void setCreatedAt(LocalDateTime createdAt) {
+        this.createdAt = createdAt;
+    }
+    // ---------------------------------------
 
     // ⭐ New getters and setters for BLOB fields
     public byte[] getPhotoData() {
