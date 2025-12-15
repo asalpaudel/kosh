@@ -23,11 +23,15 @@ public class EmailService {
 
     private final Map<String, String> otpStorage = new HashMap<>();
 
+    /**
+     * Sends a specifically formatted OTP email for Password Resets.
+     */
     public void sendOtpEmail(String toEmail, String name, String otp, Network network) throws MessagingException {
         MimeMessage message = mailSender.createMimeMessage();
         MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
 
-        helper.setFrom("your-email@gmail.com"); 
+        // Make sure this matches spring.mail.username in application.properties
+        helper.setFrom("REMOVED_MAIL_USERNAME"); 
         helper.setTo(toEmail);
         helper.setSubject("Password Reset Request");
 
@@ -77,6 +81,30 @@ public class EmailService {
         }
 
         mailSender.send(message);
+    }
+
+    /**
+     * ⭐ NEW METHOD: Generic email sender used by AuthController for 2FA.
+     */
+    public void sendEmail(String to, String subject, String body) {
+        try {
+            MimeMessage message = mailSender.createMimeMessage();
+            MimeMessageHelper helper = new MimeMessageHelper(message, "UTF-8");
+            
+            // Ensure this matches your application.properties
+            helper.setFrom("REMOVED_MAIL_USERNAME"); 
+            helper.setTo(to);
+            helper.setSubject(subject);
+            
+            // Set to false because AuthController sends plain text with \n
+            helper.setText(body, false); 
+
+            mailSender.send(message);
+        } catch (MessagingException e) {
+            // Log the error but don't crash the application flow
+            System.err.println("Failed to send email to " + to + ": " + e.getMessage());
+            e.printStackTrace();
+        }
     }
 
     public String generateOtp(String email) {

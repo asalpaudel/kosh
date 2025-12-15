@@ -1,8 +1,11 @@
 package com.kosh.backend.controller;
 
-import java.util.HashMap;
+import java.time.LocalDateTime;
 import java.util.Map;
+import java.util.Random;
+import java.util.UUID;
 
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -17,6 +20,9 @@ import com.kosh.backend.repository.NetworkRepository;
 import com.kosh.backend.repository.UserRepository;
 import com.kosh.backend.service.EmailService;
 
+import jakarta.servlet.http.Cookie;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
 
 @RestController
@@ -42,6 +48,7 @@ public class AuthController {
         public String password;
     }
 
+    // Response DTO capable of handling both success/fail and 2FA challenges
     public static class LoginResponse {
         public boolean success;
         public String message;
@@ -49,139 +56,179 @@ public class AuthController {
         public int userId;
         public Long networkId;
         public String status;
+        public String name;
+        public String sahakari;
 
-        public LoginResponse(boolean success, String message, String role, int userId, Long networkId) {
-            this.success = success;
-            this.message = message;
-            this.role = role;
-            this.userId = userId;
-            this.networkId = networkId;
-        }
-
-        public LoginResponse(boolean success, String message, String role, int userId, Long networkId, String status) {
+        public LoginResponse(boolean success, String message, String role, int userId, Long networkId, String status, String name, String sahakari) {
             this.success = success;
             this.message = message;
             this.role = role;
             this.userId = userId;
             this.networkId = networkId;
             this.status = status;
+            this.name = name;
+            this.sahakari = sahakari;
         }
     }
 
     @PostMapping("/login")
-    public LoginResponse login(@RequestBody LoginRequest req, HttpSession session) {
-
+    public ResponseEntity<?> login(@RequestBody LoginRequest req, HttpServletRequest request, HttpSession session) {
         User user = repo.findByEmail(req.email);
 
         if (user == null) {
-            return new LoginResponse(false, "Email not found", null, -1, null);
+            return ResponseEntity.ok(new LoginResponse(false, "Email not found", null, -1, null, null, null, null));
         }
 
         if (!passwordEncoder.matches(req.password, user.getPassword())) {
-            return new LoginResponse(false, "Incorrect password", null, -1, null);
+            return ResponseEntity.ok(new LoginResponse(false, "Incorrect password", null, -1, null, null, null, null));
         }
 
-        System.out.println("DEBUG: User status is: " + user.getStatus());
-        
+        // Check Account Status
         if (user.getStatus() == null || !user.getStatus().equals("Active")) {
-            String message;
-            if ("Pending".equals(user.getStatus())) {
-                message = "Your account is pending approval. Please wait for admin approval.";
-            } else if ("Rejected".equals(user.getStatus())) {
-                message = "Your account has been rejected. Please contact support.";
-            } else {
-                message = "Your account is not active. Status: " + user.getStatus();
-            }
+            String message = "Your account is not active. Status: " + user.getStatus();
+            if ("Pending".equals(user.getStatus())) message = "Your account is pending approval.";
+            else if ("Rejected".equals(user.getStatus())) message = "Your account has been rejected.";
             
-            System.out.println("LOGIN BLOCKED - User status: " + user.getStatus());
-            return new LoginResponse(false, message, null, -1, null, user.getStatus());
+            return ResponseEntity.ok(new LoginResponse(false, message, null, -1, null, user.getStatus(), null, null));
         }
-        
-        System.out.println("User status is Active - allowing login");
 
-        Long networkId = null;
-        String sahakariName = null;
-
-        if (!user.getRole().equals("superadmin")) {
-            sahakariName = user.getSahakari(); 
-            Network net = networkRepo.findByName(sahakariName);
-            if (net != null) {
-                networkId = net.getId();
+        // --- CHECK TRUSTED DEVICE COOKIE ---
+        boolean isDeviceTrusted = false;
+        Cookie[] cookies = request.getCookies();
+        if (cookies != null && user.getTrustedDeviceToken() != null) {
+            for (Cookie c : cookies) {
+                if ("trusted_device".equals(c.getName()) && c.getValue().equals(user.getTrustedDeviceToken())) {
+                    // Check if token is still valid (not expired)
+                    if (user.getTrustedDeviceExpiry() != null && user.getTrustedDeviceExpiry().isAfter(LocalDateTime.now())) {
+                        isDeviceTrusted = true;
+                    }
+                }
             }
+        }
+
+        // Scenario 1: Device is trusted -> Log in directly
+        if (isDeviceTrusted) {
+            return performLogin(user, session);
+        } 
+        
+        // Scenario 2: Unknown Device -> Trigger 2FA
+        else {
+            String otp = String.format("%06d", new Random().nextInt(999999));
+            user.setTwoFactorCode(otp);
+            user.setTwoFactorExpiry(LocalDateTime.now().plusMinutes(10));
+            repo.save(user);
+
+            // Send Email
+            String subject = "Your Login Verification Code";
+            String body = "Hello " + user.getName() + ",\n\n" +
+                          "Your verification code is: " + otp + "\n" +
+                          "This code expires in 10 minutes.\n\n" +
+                          "If you did not request this, please secure your account immediately.";
+            emailService.sendEmail(user.getEmail(), subject, body);
+
+            // Return "2FA_REQUIRED" status so frontend knows to switch to Step 2
+            return ResponseEntity.ok(Map.of(
+                "success", true,
+                "status", "2FA_REQUIRED",
+                "userId", user.getId(),
+                "message", "Verification code sent to email"
+            ));
+        }
+    }
+
+    @PostMapping("/verify-2fa")
+    public ResponseEntity<?> verify2FA(@RequestBody Map<String, Object> payload, 
+                                       HttpServletResponse response,
+                                       HttpSession session) {
+        
+        Long userId = ((Number) payload.get("userId")).longValue();
+        String otp = (String) payload.get("otp");
+        boolean trustDevice = (Boolean) payload.getOrDefault("trustDevice", false);
+
+        User user = repo.findById(userId.intValue()).orElse(null);
+
+        if (user == null) {
+            return ResponseEntity.badRequest().body(Map.of("success", false, "message", "User not found"));
+        }
+
+        // Validate OTP
+        if (user.getTwoFactorCode() == null || 
+            !user.getTwoFactorCode().equals(otp) || 
+            user.getTwoFactorExpiry().isBefore(LocalDateTime.now())) {
+            return ResponseEntity.ok(Map.of("success", false, "message", "Invalid or expired code"));
+        }
+
+        // Clear OTP (Success)
+        user.setTwoFactorCode(null);
+        user.setTwoFactorExpiry(null);
+
+        // Handle "Trust This Device" Logic
+        if (trustDevice) {
+            String token = UUID.randomUUID().toString();
+            user.setTrustedDeviceToken(token);
+            user.setTrustedDeviceExpiry(LocalDateTime.now().plusDays(30)); // 30 Days Validity
+            
+            // Set Cookie
+            Cookie cookie = new Cookie("trusted_device", token);
+            cookie.setMaxAge(30 * 24 * 60 * 60); // 30 Days in seconds
+            cookie.setPath("/");
+            cookie.setHttpOnly(true); // Secure against XSS
+            // cookie.setSecure(true); // Use this in Production with HTTPS
+            response.addCookie(cookie);
+        }
+
+        repo.save(user);
+        return performLogin(user, session);
+    }
+
+    // Helper method to finalize the session
+    private ResponseEntity<?> performLogin(User user, HttpSession session) {
+        Long networkId = null;
+        if (!"superadmin".equals(user.getRole())) {
+            Network net = networkRepo.findByName(user.getSahakari());
+            if (net != null) networkId = net.getId();
         }
 
         session.setAttribute("userEmail", user.getEmail());
         session.setAttribute("userId", user.getId());
         session.setAttribute("sahakariId", networkId);
-        session.setAttribute("sahakari", sahakariName); 
-        session.setAttribute("userId", user.getId());
+        session.setAttribute("sahakari", user.getSahakari()); 
         session.setAttribute("userRole", user.getRole());
         session.setAttribute("userName", user.getName());
 
-        System.out.println("========== LOGIN SESSION DEBUG ==========");
-        System.out.println("User logged in: " + user.getEmail());
-        System.out.println("Session ID: " + session.getId());
-        System.out.println("Session sahakari: " + session.getAttribute("sahakari"));
-        System.out.println("Session sahakariId: " + session.getAttribute("sahakariId"));
-        System.out.println("=========================================");
-
+        // Log Activity
         if ("admin".equals(user.getRole()) || "superadmin".equals(user.getRole())) {
             try {
-                ActivityLog log = new ActivityLog(
-                    user.getName(), 
-                    user.getRole(), 
-                    networkId, 
-                    "LOGIN", 
-                    user.getRole() + " logged in successfully."
-                );
+                ActivityLog log = new ActivityLog(user.getName(), user.getRole(), networkId, "LOGIN", "Logged in successfully.");
                 logRepo.save(log);
-            } catch (Exception e) {
-                System.out.println("Failed to save login activity log: " + e.getMessage());
-            }
+            } catch (Exception e) {}
         }
 
-        return new LoginResponse(
-                true,
-                "Login successful",
-                user.getRole(),
-                user.getId().intValue(),
-                networkId);
+        return ResponseEntity.ok(new LoginResponse(
+            true, "Login successful", user.getRole(), 
+            user.getId().intValue(), networkId, 
+            user.getStatus(), user.getName(), user.getSahakari()
+        ));
     }
 
     @PostMapping("/logout")
     public Map<String, String> logout(HttpSession session) {
-        
         try {
             String userRole = (String) session.getAttribute("userRole");
             if (userRole != null && ("admin".equals(userRole) || "superadmin".equals(userRole))) {
-                Object sahakariIdObj = session.getAttribute("sahakariId");
-                Long sahakariId = null;
-                if (sahakariIdObj instanceof Long) sahakariId = (Long) sahakariIdObj;
-                else if (sahakariIdObj instanceof Integer) sahakariId = ((Integer) sahakariIdObj).longValue();
-                
-                String userName = (String) session.getAttribute("userName");
-                if (userName == null) userName = "Unknown User";
-                
                 ActivityLog log = new ActivityLog(
-                    userName, 
+                    (String) session.getAttribute("userName"), 
                     userRole, 
-                    sahakariId, 
+                    (Long) session.getAttribute("sahakariId"), 
                     "LOGOUT", 
                     userRole + " logged out."
                 );
                 logRepo.save(log);
             }
-        } catch (Exception e) {
-            System.out.println("Failed to save logout activity log: " + e.getMessage());
-        }
+        } catch (Exception e) {}
 
         session.invalidate();
-        System.out.println("User logged out, session invalidated");
-        
-        Map<String, String> response = new HashMap<>();
-        response.put("success", "true");
-        response.put("message", "Logged out successfully");
-        return response;
+        return Map.of("success", "true", "message", "Logged out successfully");
     }
 
     @PostMapping("/forgot-password")
@@ -189,21 +236,15 @@ public class AuthController {
         String email = payload.get("email");
         User user = repo.findByEmail(email);
 
-        if (user == null) {
-            return Map.of("success", false, "message", "Email not found");
-        }
+        if (user == null) return Map.of("success", false, "message", "Email not found");
 
-        Network network = null;
-        if (user.getSahakariId() != null) {
-            network = networkRepo.findById(user.getSahakariId()).orElse(null);
-        }
+        Network network = (user.getSahakariId() != null) ? networkRepo.findById(user.getSahakariId()).orElse(null) : null;
 
         try {
             String otp = emailService.generateOtp(email);
             emailService.sendOtpEmail(email, user.getName(), otp, network);
             return Map.of("success", true, "message", "OTP sent to your email");
         } catch (Exception e) {
-            e.printStackTrace();
             return Map.of("success", false, "message", "Failed to send email");
         }
     }
@@ -214,19 +255,15 @@ public class AuthController {
         String otp = payload.get("otp");
         String newPassword = payload.get("newPassword");
 
-        if (!emailService.validateOtp(email, otp)) {
-            return Map.of("success", false, "message", "Invalid or expired OTP");
-        }
+        if (!emailService.validateOtp(email, otp)) return Map.of("success", false, "message", "Invalid or expired OTP");
 
         User user = repo.findByEmail(email);
         if (user != null) {
             user.setPassword(passwordEncoder.encode(newPassword));
             repo.save(user);
-            emailService.clearOtp(email); 
-            
+            emailService.clearOtp(email);
             return Map.of("success", true, "message", "Password changed successfully");
         }
-
         return Map.of("success", false, "message", "User not found");
     }
 }
