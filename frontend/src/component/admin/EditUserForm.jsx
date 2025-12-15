@@ -1,15 +1,12 @@
 import React, { useState, useEffect } from "react";
 
-/**
- * A form to edit an existing user's details.
- * @param {object} props
- * @param {object} props.user - The user object to edit.
- * @param {function} props.onClose - Function to close the modal.
- * @param {function} props.onUserUpdated - Callback when user is successfully updated.
- * @param {function} props.onUserDeleted - Callback when user is successfully deleted.
- * @param {string} props.apiBase - Base URL for API calls.
- */
-function EditUserForm({ user, onClose, onUserUpdated, onUserDeleted, apiBase }) {
+function EditUserForm({
+  user,
+  onClose,
+  onUserUpdated,
+  onUserDeleted,
+  apiBase,
+}) {
   const [formData, setFormData] = useState({
     name: "",
     email: "",
@@ -17,13 +14,12 @@ function EditUserForm({ user, onClose, onUserUpdated, onUserDeleted, apiBase }) 
     role: "member",
     sahakari: "",
     status: "Pending",
-    password: "", // Will hold the original password
+    password: "",
   });
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  // Pre-fill the form when the 'user' prop changes
   useEffect(() => {
     if (user) {
       setFormData({
@@ -40,11 +36,7 @@ function EditUserForm({ user, onClose, onUserUpdated, onUserDeleted, apiBase }) 
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData((prev) => ({
-      ...prev,
-      [name]: value,
-    }));
-    // Clear error when user starts typing
+    setFormData((prev) => ({ ...prev, [name]: value }));
     if (error) setError(null);
   };
 
@@ -54,204 +46,188 @@ function EditUserForm({ user, onClose, onUserUpdated, onUserDeleted, apiBase }) 
     setError(null);
 
     try {
-      const response = await fetch(`${apiBase}/users/${user.id}`, {
+      const res = await fetch(`${apiBase}/users/${user.id}`, {
         method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(formData),
         credentials: "include",
       });
 
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => null);
-        throw new Error(
-          errorData?.message || `Failed to update user: ${response.statusText}`
-        );
-      }
+      if (!res.ok) throw new Error("Failed to update user");
 
-      const updatedUser = await response.json();
-      
-      console.log(`Successfully updated user ${user.id}:`, updatedUser);
-      
-      // Call the callback to update the parent component's state
-      if (onUserUpdated) {
-        onUserUpdated(updatedUser);
-      }
-      
-      // Show success message
-      alert(`User "${formData.name}" updated successfully!`);
-      
-      // Close the modal
+      const updated = await res.json();
+      onUserUpdated?.(updated);
+      alert(`User "${formData.name}" updated successfully`);
       onClose();
     } catch (err) {
-      console.error("Error updating user:", err);
-      setError(err.message || "Failed to update user. Please try again.");
+      setError(err.message);
     } finally {
       setLoading(false);
     }
   };
 
   const handleDelete = async () => {
-    if (!window.confirm(`Are you sure you want to delete user "${formData.name}"? This action cannot be undone.`)) {
-      return;
-    }
+    if (!window.confirm(`Delete "${formData.name}" permanently?`)) return;
 
     setLoading(true);
     setError(null);
 
     try {
-      const response = await fetch(`${apiBase}/users/${user.id}`, {
+      const res = await fetch(`${apiBase}/users/${user.id}`, {
         method: "DELETE",
         credentials: "include",
       });
 
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => null);
-        throw new Error(
-          errorData?.message || `Failed to delete user: ${response.statusText}`
-        );
-      }
+      if (!res.ok) throw new Error("Failed to delete user");
 
-      console.log(`Successfully deleted user ${user.id}`);
-      
-      // Call the callback to update the parent component's state
-      if (onUserDeleted) {
-        onUserDeleted(user.id);
-      }
-      
-      // Show success message
-      alert(`User "${formData.name}" deleted successfully!`);
-      
-      // Close the modal
+      onUserDeleted?.(user.id);
+      alert(`User "${formData.name}" deleted`);
       onClose();
     } catch (err) {
-      console.error("Error deleting user:", err);
-      setError(err.message || "Failed to delete user. Please try again.");
+      setError(err.message);
     } finally {
       setLoading(false);
     }
   };
 
-  if (!user) return null; // Don't render if no user is provided
+  if (!user) return null;
 
   return (
-    <form onSubmit={handleSubmit} className="flex flex-col gap-5">
-      {/* Error Message */}
-      {error && (
-        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
-          <p className="font-semibold">Error:</p>
-          <p className="text-sm">{error}</p>
+    <div className="bg-white">
+      {/* Header */}
+
+      <form onSubmit={handleSubmit} className="space-y-6">
+        {/* Error */}
+        {error && (
+          <div className="rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">
+            {error}
+          </div>
+        )}
+
+        {/* Name */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Full name
+          </label>
+          <input
+            type="text"
+            name="name"
+            value={formData.name}
+            onChange={handleChange}
+            className="w-full rounded-lg border border-gray-300 px-4 py-2.5 focus:outline-none focus:ring-1 focus:ring-green-400 focus:border-green-400"
+            disabled={loading}
+            required
+          />
         </div>
-      )}
 
-      {/* Full Name */}
-      <div>
-        <label className="block font-semibold mb-2">Full Name</label>
-        <input
-          type="text"
-          name="name"
-          value={formData.name}
-          onChange={handleChange}
-          placeholder="Enter user's full name"
-          className="w-full px-4 py-3 border border-gray-300 rounded-full focus:outline-none focus:border-black"
-          required
-          disabled={loading}
-        />
-      </div>
-
-      {/* Email */}
-      <div>
-        <label className="block font-semibold mb-2">Email</label>
-        <input
-          type="email"
-          name="email"
-          value={formData.email}
-          onChange={handleChange}
-          placeholder="Enter user's email"
-          className="w-full px-4 py-3 border border-gray-300 rounded-full focus:outline-none focus:border-black"
-          required
-          disabled={loading}
-        />
-      </div>
-
-      {/* Phone Number */}
-      <div>
-        <label className="block font-semibold mb-2">Phone Number</label>
-        <input
-          type="tel"
-          name="phone"
-          value={formData.phone}
-          onChange={handleChange}
-          placeholder="98XXXXXXXX"
-          className="w-full px-4 py-3 border border-gray-300 rounded-full focus:outline-none focus:border-black"
-          disabled={loading}
-        />
-      </div>
-
-      {/* Role (Read-only display) */}
-      <div>
-        <label className="block font-semibold mb-2">Role</label>
-        <div className="w-full px-4 py-3 border border-gray-200 rounded-full bg-gray-50 text-gray-700 capitalize">
-          {formData.role}
+        {/* Email */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Email address
+          </label>
+          <input
+            type="email"
+            name="email"
+            value={formData.email}
+            onChange={handleChange}
+            className="w-full rounded-lg border border-gray-300 px-4 py-2.5 focus:outline-none focus:ring-1 focus:ring-green-400 focus:border-green-400"
+            disabled={loading}
+            required
+          />
         </div>
-      </div>
 
-      {/* Sahakari (Read-only display) */}
-      <div>
-        <label className="block font-semibold mb-2">Associated Sahakari</label>
-        <div className="w-full px-4 py-3 border border-gray-200 rounded-full bg-gray-50 text-gray-700">
-          {formData.sahakari || "Not assigned"}
+        {/* Phone */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Phone number
+          </label>
+          <input
+            type="tel"
+            name="phone"
+            value={formData.phone}
+            onChange={handleChange}
+            className="w-full rounded-lg border border-gray-300 px-4 py-2.5 focus:outline-none focus:ring-1 focus:ring-green-400 focus:border-green-400"
+            disabled={loading}
+          />
         </div>
-      </div>
 
-      {/* Status */}
-      <div>
-        <label className="block font-semibold mb-2">Status</label>
-        <select
-          name="status"
-          value={formData.status}
-          onChange={handleChange}
-          className="w-full px-4 py-3 border border-gray-300 rounded-full focus:outline-none focus:border-black"
-          disabled={loading}
-        >
-          <option value="Pending">Pending</option>
-          <option value="Active">Active</option>
-          <option value="Suspended">Suspended</option>
-        </select>
-      </div>
+        {/* Read-only fields */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Role
+            </label>
+            <div className="rounded-lg bg-gray-50 border border-gray-200 px-4 py-2.5 text-sm text-gray-700 capitalize">
+              {formData.role}
+            </div>
+          </div>
 
-      {/* Action Buttons */}
-      <div className="flex gap-3 mt-4">
-        <button
-          type="button"
-          onClick={onClose}
-          className="flex-1 bg-gray-200 text-gray-700 font-semibold py-3 rounded-full hover:bg-gray-300 transition-colors"
-          disabled={loading}
-        >
-          Cancel
-        </button>
-        <button
-          type="submit"
-          className="flex-1 bg-teal-500 text-white font-semibold py-3 rounded-full hover:bg-teal-600 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed"
-          disabled={loading}
-        >
-          {loading ? "Saving..." : "Save Changes"}
-        </button>
-      </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Sahakari
+            </label>
+            <div className="rounded-lg bg-gray-50 border border-gray-200 px-4 py-2.5 text-sm text-gray-700">
+              {formData.sahakari || "Not assigned"}
+            </div>
+          </div>
+        </div>
 
-      {/* Delete Button - Separate row, only for non-Pending users */}
-      {formData.status !== "Pending" && (
-        <button
-          type="button"
-          onClick={handleDelete}
-          className="w-full bg-red-500 text-white font-semibold py-3 rounded-full hover:bg-red-600 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed mt-2"
-          disabled={loading}
-        >
-          {loading ? "Deleting..." : "Delete User"}
-        </button>
-      )}
-    </form>
+        {/* Status */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Account status
+          </label>
+          <select
+            name="status"
+            value={formData.status}
+            onChange={handleChange}
+            className="w-full rounded-lg border border-gray-300 px-4 py-2.5 focus:outline-none focus:ring-1 focus:ring-green-400 focus:border-green-400"
+            disabled={loading}
+          >
+            <option value="Pending">Pending</option>
+            <option value="Active">Active</option>
+            <option value="Suspended">Suspended</option>
+          </select>
+        </div>
+
+        {/* Actions */}
+        <div className="flex items-center justify-between pt-4">
+          {/* Left side: Delete OR placeholder */}
+          {formData.status !== "Pending" ? (
+            <button
+              type="button"
+              onClick={handleDelete}
+              className="text-sm text-red-600 hover:text-red-700 font-medium"
+              disabled={loading}
+            >
+              Delete user permanently
+            </button>
+          ) : (
+            <div />
+          )}
+
+          {/* Right side: Always right-aligned */}
+          <div className="flex gap-3">
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-6 py-2.5 rounded-lg border border-gray-300 text-gray-700 text-sm hover:bg-gray-50"
+              disabled={loading}
+            >
+              Cancel
+            </button>
+
+            <button
+              type="submit"
+              className="px-6 py-2.5 rounded-lg bg-green-400 text-black text-sm font-medium hover:bg-green-500 transition disabled:opacity-60"
+              disabled={loading}
+            >
+              {loading ? "Saving..." : "Save changes"}
+            </button>
+          </div>
+        </div>
+      </form>
+    </div>
   );
 }
 

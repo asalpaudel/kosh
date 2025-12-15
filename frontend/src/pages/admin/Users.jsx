@@ -26,41 +26,21 @@ const DetailItem = ({ label, value }) => (
 // ⭐ Updated Component: Document Viewer Modal (Fixed for PDF viewing)
 const UserDocumentsModal = ({ userId, onClose, API_BASE }) => {
   const [loading, setLoading] = useState(true);
-  const [documents, setDocuments] = useState({
-    citizenship: null,
-    photo: null,
-    signature: null,
-  });
+  const [documents, setDocuments] = useState({});
 
   useEffect(() => {
     const loadDocuments = async () => {
       try {
-        setLoading(true);
-
-        // Fetch user details to check which documents exist
-        const userRes = await fetch(`${API_BASE}/users/${userId}`, {
+        const res = await fetch(`${API_BASE}/users/${userId}`, {
           credentials: "include",
         });
 
-        if (userRes.ok) {
-          const userData = await userRes.json();
-
-          console.log("User documents data:", userData); // Debug log
-
-          setDocuments({
-            hasCitizenship: userData.hasCitizenship,
-            hasPhoto: userData.hasPhoto,
-            hasSignature: userData.hasSignature,
-            citizenshipName: userData.citizenshipName,
-            photoName: userData.photoName,
-            signatureName: userData.signatureName,
-            citizenshipType: userData.citizenshipType,
-            photoType: userData.photoType,
-            signatureType: userData.signatureType,
-          });
+        if (res.ok) {
+          const data = await res.json();
+          setDocuments(data);
         }
-      } catch (error) {
-        console.error("Error loading documents:", error);
+      } catch (e) {
+        console.error(e);
       } finally {
         setLoading(false);
       }
@@ -71,227 +51,81 @@ const UserDocumentsModal = ({ userId, onClose, API_BASE }) => {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-12">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-teal-500 mx-auto mb-4"></div>
-          <p className="text-gray-500">Loading documents...</p>
-        </div>
-      </div>
+      <div className="py-16 text-center text-gray-500">Loading documents…</div>
     );
   }
 
-  const hasAnyDocument =
-    documents.hasCitizenship || documents.hasPhoto || documents.hasSignature;
+  const isPDF = (type, name) =>
+    type?.includes("pdf") || name?.toLowerCase().endsWith(".pdf");
 
-  // Helper function to check if file is PDF based on filename or MIME type
-  const isPDF = (mimeType, filename) => {
-    const isPDFMime = mimeType && mimeType.includes("pdf");
-    const isPDFFile = filename && filename.toLowerCase().endsWith(".pdf");
-    return isPDFMime || isPDFFile;
+  const Row = ({ title, hasFile, url, name, type }) => {
+    if (!hasFile) return null;
+
+    return (
+      <div className="flex items-center justify-between py-4 border-b border-gray-100">
+        <div>
+          <p className="text-sm font-medium text-gray-900">{title}</p>
+          <p className="text-xs text-gray-500 mt-1">{name}</p>
+        </div>
+
+        {isPDF(type, name) ? (
+          <a
+            href={url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-sm text-green-600 hover:underline"
+          >
+            Open PDF
+          </a>
+        ) : (
+          <img
+            src={url}
+            alt={title}
+            className="h-20 object-contain rounded border"
+          />
+        )}
+      </div>
+    );
   };
 
   return (
-    <div className="max-h-[85vh] overflow-y-auto space-y-6 pr-2">
-      {!hasAnyDocument && (
-        <div className="text-center py-12">
-          <svg
-            className="w-16 h-16 text-gray-300 mx-auto mb-4"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-            />
-          </svg>
-          <p className="text-gray-500 text-lg">No documents uploaded</p>
-        </div>
-      )}
+    <div className="space-y-6">
+      <Row
+        title="Citizenship / NID"
+        hasFile={documents.hasCitizenship}
+        url={`${API_BASE}/users/${userId}/citizenship`}
+        name={documents.citizenshipName}
+        type={documents.citizenshipType}
+      />
 
-      {/* Citizenship Document */}
-      {documents.hasCitizenship && (
-        <div className="border border-gray-200 rounded-lg p-4">
-          <h3 className="text-lg font-bold text-gray-800 mb-3 flex items-center gap-2">
-            <svg
-              className="w-5 h-5 text-teal-600"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-              />
-            </svg>
-            Citizenship / NID Card
-          </h3>
+      <Row
+        title="Passport Photo"
+        hasFile={documents.hasPhoto}
+        url={`${API_BASE}/users/${userId}/photo`}
+        name={documents.photoName}
+        type={documents.photoType}
+      />
 
-          {isPDF(documents.citizenshipType, documents.citizenshipName) ? (
-            // PDF Document Display
-            <div className="space-y-4">
-              {/* PDF Preview Card */}
-              <div className="bg-gradient-to-br from-red-50 to-orange-50 rounded-lg p-6 border border-red-200">
-                <div className="flex items-center gap-4">
-                  <div className="flex-shrink-0">
-                    <div className="w-16 h-16 bg-red-500 rounded-lg flex items-center justify-center">
-                      <svg
-                        className="w-8 h-8 text-white"
-                        fill="currentColor"
-                        viewBox="0 0 20 20"
-                      >
-                        <path
-                          fillRule="evenodd"
-                          d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm2 6a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1zm1 3a1 1 0 100 2h6a1 1 0 100-2H7z"
-                          clipRule="evenodd"
-                        />
-                      </svg>
-                    </div>
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold text-gray-900 truncate">
-                      {documents.citizenshipName}
-                    </p>
-                    <p className="text-xs text-gray-600 mt-1">PDF Document</p>
-                  </div>
-                </div>
-              </div>
+      <Row
+        title="Signature"
+        hasFile={documents.hasSignature}
+        url={`${API_BASE}/users/${userId}/signature`}
+        name={documents.signatureName}
+        type={documents.signatureType}
+      />
 
-              {/* Action Buttons */}
-              <div className="flex gap-3">
-                <a
-                  href={`${API_BASE}/users/${userId}/citizenship`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-3 bg-teal-500 text-white rounded-lg hover:bg-teal-600 transition-colors font-medium"
-                >
-                  <svg
-                    className="w-5 h-5"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
-                    />
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
-                    />
-                  </svg>
-                  View PDF in New Tab
-                </a>
-              </div>
-
-              {/* Info message */}
-              <div className="bg-blue-50 border border-blue-200 rounded-lg px-4 py-3">
-                <p className="text-sm text-blue-800">
-                  <span className="font-semibold">💡 Note:</span> Click "View
-                  PDF in New Tab" to see the full document in your browser.
-                </p>
-              </div>
-            </div>
-          ) : (
-            // Image Display
-            <div>
-              <div className="bg-gray-50 rounded-lg overflow-hidden p-4 flex justify-center">
-                <img
-                  src={`${API_BASE}/users/${userId}/citizenship`}
-                  alt="Citizenship"
-                  className="max-w-full h-auto max-h-96 object-contain rounded"
-                />
-              </div>
-              <div className="mt-3 flex justify-between items-center">
-                <span className="text-sm text-gray-600">
-                  {documents.citizenshipName || "citizenship"}
-                </span>
-              </div>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Photo */}
-      {documents.hasPhoto && (
-        <div className="border border-gray-200 rounded-lg p-4">
-          <h3 className="text-lg font-bold text-gray-800 mb-3 flex items-center gap-2">
-            <svg
-              className="w-5 h-5 text-teal-600"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
-              />
-            </svg>
-            Passport Size Photo
-          </h3>
-          <div className="bg-gray-50 rounded-lg overflow-hidden flex justify-center p-4">
-            <img
-              src={`${API_BASE}/users/${userId}/photo`}
-              alt="User Photo"
-              className="h-64 w-auto object-contain rounded shadow-lg"
-            />
+      {!documents.hasCitizenship &&
+        !documents.hasPhoto &&
+        !documents.hasSignature && (
+          <div className="py-12 text-center text-gray-500">
+            No documents uploaded
           </div>
-          <div className="mt-3 flex justify-between items-center">
-            <span className="text-sm text-gray-600">
-              {documents.photoName || "photo.jpg"}
-            </span>
-          </div>
-        </div>
-      )}
-
-      {/* Signature */}
-      {documents.hasSignature && (
-        <div className="border border-gray-200 rounded-lg p-4">
-          <h3 className="text-lg font-bold text-gray-800 mb-3 flex items-center gap-2">
-            <svg
-              className="w-5 h-5 text-teal-600"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"
-              />
-            </svg>
-            Signature
-          </h3>
-          <div className="bg-gray-50 rounded-lg overflow-hidden flex justify-center p-4">
-            <img
-              src={`${API_BASE}/users/${userId}/signature`}
-              alt="Signature"
-              className="h-32 w-auto object-contain border-b-2 border-gray-300"
-            />
-          </div>
-          <div className="mt-3 flex justify-between items-center">
-            <span className="text-sm text-gray-600">
-              {documents.signatureName || "signature.jpg"}
-            </span>
-          </div>
-        </div>
-      )}
+        )}
 
       <div className="flex justify-end pt-4">
         <button
           onClick={onClose}
-          className="px-6 py-2.5 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 transition-colors font-medium"
+          className="px-6 py-2.5 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 transition"
         >
           Close
         </button>
@@ -302,91 +136,67 @@ const UserDocumentsModal = ({ userId, onClose, API_BASE }) => {
 
 const UserDetails = ({
   item,
-  onCloseViewModal,
-  handleApprove,
-  handleDeny,
   handleEdit,
   handleDelete,
   handleViewDocuments,
 }) => (
-  <div className="flex flex-col">
-    <div className="flex flex-col sm:flex-row gap-6 sm:gap-8">
-      <div className="flex-shrink-0 w-full sm:w-48 h-48 bg-gray-100 rounded-full flex items-center justify-center overflow-hidden">
+  <div className="space-y-8">
+    {/* Header */}
+    <div className="flex items-center gap-6">
+      <div className="w-24 h-24 rounded-full bg-gray-100 overflow-hidden flex items-center justify-center">
         {item.hasPhoto ? (
           <img
             src={`${API_BASE}/users/${item.id}/photo`}
             alt={item.name}
             className="w-full h-full object-cover"
-            onError={(e) => {
-              e.target.style.display = "none";
-              e.target.nextSibling.style.display = "flex";
-            }}
           />
-        ) : null}
-        <UserCircleIcon className="w-28 h-28 text-gray-400" />
+        ) : (
+          <UserCircleIcon className="w-16 h-16 text-gray-400" />
+        )}
       </div>
-      <div className="flex-1 space-y-5">
-        <div>
-          <h3 className="text-3xl font-bold">{item.name}</h3>
-          <span className="text-lg text-teal-600 font-semibold capitalize block">
-            {item.role}
-          </span>
-        </div>
-        <div className="grid grid-cols-2 gap-x-4 gap-y-5">
-          <DetailItem label="User ID" value={item.id} />
-          <div>
-            <span className="text-sm font-semibold text-gray-500 block">
-              Status
-            </span>
-            <span
-              className={`text-lg font-bold
-              ${item.status === "Active" ? "text-green-600" : ""}
-              ${item.status === "Pending" ? "text-yellow-600" : ""}
-              ${item.status === "Suspended" ? "text-red-600" : ""}
-            `}
-            >
-              {item.status ?? "Active"}
-            </span>
-          </div>
-          <DetailItem label="Email" value={item.email} />
-          <DetailItem label="Phone" value={item.phone} />
-          <DetailItem label="Date of Birth" value={item.dob} />
-          <DetailItem label="Address" value={item.address} />
-          <div className="col-span-2">
-            <DetailItem label="Associated Sahakari" value={item.sahakari} />
-          </div>
-        </div>
+
+      <div>
+        <h2 className="text-2xl font-semibold text-gray-900">{item.name}</h2>
+        <p className="text-sm text-gray-500 capitalize mt-1">{item.role}</p>
+        <span
+          className={`inline-block mt-2 text-sm font-medium
+            ${item.status === "Active" && "text-green-600"}
+            ${item.status === "Pending" && "text-yellow-600"}
+            ${item.status === "Suspended" && "text-red-600"}
+          `}
+        >
+          {item.status}
+        </span>
       </div>
     </div>
 
+    {/* Details */}
+    <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+      <DetailItem label="User ID" value={item.id} />
+      <DetailItem label="Email" value={item.email} />
+      <DetailItem label="Phone" value={item.phone} />
+      <DetailItem label="Date of Birth" value={item.dob} />
+      <div className="sm:col-span-2">
+        <DetailItem label="Associated Sahakari" value={item.sahakari} />
+      </div>
+    </div>
+
+    {/* Actions */}
     {item.role !== "admin" && (
-      <div className="flex items-center justify-end gap-3 mt-6 pt-6 border-t border-gray-200">
-        {/* ⭐ View Documents Button */}
+      <div className="flex justify-end gap-3 pt-6 border-t border-gray-100">
         <button
           onClick={() => handleViewDocuments(item.id)}
-          className="flex items-center gap-2 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
+          className="px-5 py-2.5 text-sm rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 transition"
         >
-          <DocumentIcon className="w-5 h-5" />
-          <span className="font-medium">View Documents</span>
+          View documents
         </button>
 
         <button
           onClick={() => handleEdit(item)}
-          className="flex items-center gap-2 px-4 py-2 bg-teal-500 text-white rounded-lg hover:bg-teal-600 transition-colors"
+          className="px-5 py-2.5 text-sm rounded-lg bg-green-400 text-black hover:bg-green-500 transition"
         >
-          <PencilIcon className="w-5 h-5" />
-          <span className="font-medium">Edit</span>
+          Edit
         </button>
-
-        {item.status !== "Pending" && (
-          <button
-            onClick={() => handleDelete(item.id)}
-            className="flex items-center gap-2 px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors"
-          >
-            <TrashIcon className="w-5 h-5" />
-            <span className="font-medium">Delete</span>
-          </button>
-        )}
       </div>
     )}
   </div>
