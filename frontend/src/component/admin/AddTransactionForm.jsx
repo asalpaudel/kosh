@@ -9,7 +9,7 @@ import {
 
 const apiBase = "http://localhost:8080/api";
 
-// --- 📅 Helper: Custom Calendar Component with Year Select ---
+// --- 📅 Helper: Custom Calendar Component (Kept as is) ---
 const CustomCalendar = ({ selectedDate, onChange, onClose }) => {
   const [currentMonth, setCurrentMonth] = useState(
     new Date(selectedDate || new Date())
@@ -17,18 +17,8 @@ const CustomCalendar = ({ selectedDate, onChange, onClose }) => {
 
   const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
   const months = [
-    "January",
-    "February",
-    "March",
-    "April",
-    "May",
-    "June",
-    "July",
-    "August",
-    "September",
-    "October",
-    "November",
-    "December",
+    "January", "February", "March", "April", "May", "June",
+    "July", "August", "September", "October", "November", "December",
   ];
 
   const currentYear = new Date().getFullYear();
@@ -163,6 +153,11 @@ function AddTransactionForm({ onAdded, onClose, prefilledData }) {
   const [mode, setMode] = useState(prefilledData ? "member" : "member");
   const [showCalendar, setShowCalendar] = useState(false);
   const calendarRef = useRef(null);
+  
+  // --- NEW STATE: Packages & Session ---
+  const [packages, setPackages] = useState([]);
+  const [sahakariId, setSahakariId] = useState(null);
+  const [loadingPackages, setLoadingPackages] = useState(false);
 
   const [formData, setFormData] = useState({
     voucherId: prefilledData?.voucherId || `V-${Math.floor(Math.random() * 10000)}`,
@@ -172,6 +167,12 @@ function AddTransactionForm({ onAdded, onClose, prefilledData }) {
     userId: prefilledData?.userId || null,
     userName: prefilledData?.userName || "",
     userProduct: prefilledData?.userProduct || "Savings",
+    
+    // --- NEW FIELDS ---
+    packageId: "", // To store the selected FD/Loan/Savings Package ID
+    term: "",      // Optional: For Fixed Deposits duration
+    // ------------------
+
     internalHead: "",
     headCategory: "Expense",
     networkLedger: "Cash",
@@ -195,8 +196,48 @@ function AddTransactionForm({ onAdded, onClose, prefilledData }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  // Disable mode switching if data is prefilled
   const isPrefilledMode = !!prefilledData;
+
+  // 1. Fetch Session ID on mount (Required to fetch packages)
+  useEffect(() => {
+    fetch(`${apiBase}/session`, { credentials: "include" })
+      .then((res) => res.json())
+      .then((data) => {
+        if (data && data.sahakariId) {
+            setSahakariId(data.sahakariId);
+        }
+      })
+      .catch((err) => console.error("Failed to fetch session", err));
+  }, []);
+
+  // 2. Fetch Packages when Product changes
+  useEffect(() => {
+    if (!sahakariId || mode !== "member" || isPrefilledMode) return;
+
+    let endpoint = "";
+    if (formData.userProduct === "Fixed Deposit") {
+        endpoint = `/finance/fixed-deposits/${sahakariId}`;
+    } else if (formData.userProduct === "Savings") {
+        endpoint = `/finance/saving-accounts/${sahakariId}`;
+    } else if (formData.userProduct === "Loan") {
+        endpoint = `/finance/loan-packages/${sahakariId}`;
+    } else {
+        setPackages([]);
+        return;
+    }
+
+    setLoadingPackages(true);
+    fetch(`${apiBase}${endpoint}`, { credentials: "include" })
+        .then((res) => res.json())
+        .then((data) => {
+            setPackages(data || []);
+            setLoadingPackages(false);
+        })
+        .catch(() => {
+            setPackages([]);
+            setLoadingPackages(false);
+        });
+  }, [formData.userProduct, sahakariId, mode, isPrefilledMode]);
 
   // Close popups when clicking outside
   useEffect(() => {
@@ -262,7 +303,6 @@ function AddTransactionForm({ onAdded, onClose, prefilledData }) {
 
     searchTimeoutRef.current = setTimeout(async () => {
       try {
-        console.log("🔍 Searching for:", query);
         const response = await fetch(
           `${apiBase}/users?search=${encodeURIComponent(query)}`,
           {
@@ -270,23 +310,13 @@ function AddTransactionForm({ onAdded, onClose, prefilledData }) {
           }
         );
 
-        console.log("📡 Response status:", response.status);
-
         if (!response.ok) {
-          const errorData = await response.json();
-          console.error("❌ Search error:", errorData);
-
-          if (response.status === 401) {
-            setError("Session expired. Please login again.");
-          }
           throw new Error("Failed to fetch users");
         }
 
         const data = await response.json();
-        console.log("✅ Search results:", data);
         setUserResults(data);
       } catch (err) {
-        console.error("💥 User search error:", err);
         setUserResults([]);
       }
     }, 300);
@@ -321,6 +351,10 @@ function AddTransactionForm({ onAdded, onClose, prefilledData }) {
         status: "Success",
         userId: mode === "member" ? formData.userId : null,
         userName: mode === "member" ? formData.userName : "Sahakari Network",
+        // --- NEW: Pass packageId and term to backend
+        packageId: formData.packageId ? formData.packageId : null,
+        term: formData.term ? formData.term : null,
+        // ---
         details: {
           mode,
           fyType: formData.fyType,
@@ -545,17 +579,48 @@ function AddTransactionForm({ onAdded, onClose, prefilledData }) {
               <select
                 name="userProduct"
                 value={formData.userProduct}
-                onChange={handleChange}
+                onChange={(e) => {
+                    handleChange(e);
+                    setFormData(prev => ({ ...prev, packageId: "" })); // Reset package on product change
+                }}
                 disabled={isPrefilledMode}
                 className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none focus:border-teal-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
               >
                 <option value="Savings">Savings Account (Sv)</option>
                 <option value="Fixed Deposit">Fixed Deposit (FD)</option>
-                <option value="Recurring Deposit">
-                  Recurring Deposit (RD)
-                </option>
+                <option value="Recurring Deposit">Recurring Deposit (RD)</option>
                 <option value="Loan">Loan Account (Lg)</option>
               </select>
+
+              {/* ⭐ NEW: Package Dropdown (Available only for supported types) */}
+              {(formData.userProduct === "Savings" || formData.userProduct === "Fixed Deposit" || formData.userProduct === "Loan") && !isPrefilledMode && (
+                <div className="flex flex-col gap-2">
+                    <select
+                        name="packageId"
+                        value={formData.packageId}
+                        onChange={handleChange}
+                        className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none focus:border-teal-500 bg-white"
+                        disabled={loadingPackages}
+                    >
+                        <option value="">{loadingPackages ? "Loading Packages..." : "Select Package / Scheme..."}</option>
+                        {packages.map(pkg => (
+                            <option key={pkg.id} value={pkg.id}>{pkg.name} {pkg.interestRate ? `(${pkg.interestRate}%)` : ''}</option>
+                        ))}
+                    </select>
+
+                    {/* ⭐ Extra field for Fixed Deposit Term */}
+                    {formData.userProduct === "Fixed Deposit" && formData.packageId && (
+                        <input
+                            type="number"
+                            name="term"
+                            value={formData.term}
+                            onChange={handleChange}
+                            placeholder="Duration (Months)"
+                            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none focus:border-teal-500"
+                        />
+                    )}
+                </div>
+              )}
             </>
           ) : (
             <>
