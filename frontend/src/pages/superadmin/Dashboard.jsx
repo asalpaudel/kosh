@@ -13,31 +13,257 @@ import {
 } from "recharts";
 
 const API_BASE = "http://localhost:8080/api";
-const COLORS = ["#3B82F6", "#10B981", "#FBBF24"];
+const COLORS = ["#3B82F6", "#10B981", "#F59E0B"];
 
-const StatCard = ({ title, value, icon, trend }) => (
-  <div className="bg-white p-5 rounded-2xl shadow hover:shadow-lg transition flex flex-col">
-    <div className="flex justify-between items-center mb-2">
-      <p className="text-gray-500 font-medium">{title}</p>
-      <div className="text-2xl">{icon}</div>
-    </div>
-    <p className="text-2xl font-bold text-gray-900">{value}</p>
+/* ----------------------------- UI Primitives ----------------------------- */
+
+const Kicker = ({ children }) => (
+  <p className="text-[11px] uppercase tracking-widest text-gray-400 mb-1">
+    {children}
+  </p>
+);
+
+const SectionTitle = ({ children }) => (
+  <h2 className="text-lg font-medium text-gray-900">{children}</h2>
+);
+
+const Divider = () => <div className="border-t border-gray-200 my-10" />;
+
+const Stat = ({ label, value, hint, trend }) => (
+  <div className="space-y-1">
+    <p className="text-[11px] uppercase tracking-wide text-gray-500">{label}</p>
+    <p className="text-2xl font-semibold text-gray-900">{value}</p>
+    {hint && <p className="text-xs text-gray-400">{hint}</p>}
     {trend && (
-      <div className="mt-2 h-2 bg-gray-100 rounded-full overflow-hidden">
-        <div className="h-2 rounded-full bg-blue-500 w-1/2"></div>
+      <div className="mt-2 h-1 bg-gray-100 rounded-full overflow-hidden">
+        <div className="h-1 rounded-full bg-blue-500" style={{ width: trend }}></div>
       </div>
     )}
   </div>
 );
 
-const TableRow = ({ name, type, value, date }) => (
-  <div className="grid grid-cols-4 gap-4 py-3 border-b hover:bg-gray-50 transition">
-    <p className="font-medium text-gray-900">{name}</p>
-    <p className="text-gray-700">{type}</p>
-    <p className="font-semibold text-gray-900">{value}</p>
-    <p className="text-gray-500">{date}</p>
-  </div>
+/* ----------------------------- Sections ----------------------------- */
+
+const MetricsOverview = ({ networkStats }) => (
+  <section className="space-y-6">
+    <div className="space-y-1">
+      <Kicker>Platform Overview</Kicker>
+      <SectionTitle>Key Metrics</SectionTitle>
+    </div>
+
+    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-6">
+      <Stat
+        label="Total Networks"
+        value={networkStats.total || 0}
+        hint="All types"
+      />
+      <Stat
+        label="Basic"
+        value={networkStats.totalBasic || 0}
+        hint="Entry tier"
+      />
+      <Stat
+        label="Premium"
+        value={networkStats.totalPremium || 0}
+        hint="Mid tier"
+      />
+      <Stat
+        label="Custom"
+        value={networkStats.totalCustom || 0}
+        hint="Enterprise"
+      />
+      <Stat
+        label="Total Users"
+        value={networkStats.totalUsers || 0}
+        hint="Registered"
+      />
+      <Stat
+        label="Active Users"
+        value={networkStats.activeUsers || 0}
+        hint="Currently active"
+        trend="65%"
+      />
+    </div>
+  </section>
 );
+
+const NetworkDistribution = ({ networkPieData }) => (
+  <section className="space-y-4">
+    <div className="space-y-1">
+      <Kicker>Distribution</Kicker>
+      <SectionTitle>Network Types</SectionTitle>
+    </div>
+
+    <div className="border border-gray-200 rounded-lg p-6 bg-white">
+      <ResponsiveContainer width="100%" height={280}>
+        <PieChart>
+          <Pie
+            data={networkPieData}
+            dataKey="value"
+            nameKey="name"
+            innerRadius={70}
+            outerRadius={110}
+            paddingAngle={2}
+          >
+            {networkPieData.map((entry, idx) => (
+              <Cell key={idx} fill={COLORS[idx % COLORS.length]} />
+            ))}
+          </Pie>
+          <Tooltip />
+        </PieChart>
+      </ResponsiveContainer>
+      
+      <div className="flex justify-center gap-6 mt-4">
+        {networkPieData.map((entry, idx) => (
+          <div key={idx} className="flex items-center gap-2">
+            <div 
+              className="w-3 h-3 rounded-full" 
+              style={{ backgroundColor: COLORS[idx % COLORS.length] }}
+            />
+            <span className="text-sm text-gray-600">{entry.name}</span>
+            <span className="text-sm font-semibold text-gray-900">{entry.value}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  </section>
+);
+
+const UserGrowthTrend = ({ activeUsersData }) => (
+  <section className="space-y-4">
+    <div className="space-y-1">
+      <Kicker>Growth</Kicker>
+      <SectionTitle>Active Users Over Time</SectionTitle>
+    </div>
+
+    <div className="border border-gray-200 rounded-lg p-6 bg-white">
+      <ResponsiveContainer width="100%" height={280}>
+        <LineChart
+          data={activeUsersData}
+          margin={{ top: 10, right: 10, bottom: 10, left: 0 }}
+        >
+          <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+          <XAxis 
+            dataKey="date" 
+            tick={{ fontSize: 11, fill: '#6b7280' }}
+            tickLine={false}
+          />
+          <YAxis 
+            tick={{ fontSize: 11, fill: '#6b7280' }}
+            tickLine={false}
+            axisLine={false}
+          />
+          <Tooltip 
+            contentStyle={{
+              backgroundColor: 'white',
+              border: '1px solid #e5e7eb',
+              borderRadius: '6px',
+              fontSize: '12px'
+            }}
+          />
+          <Line
+            type="monotone"
+            dataKey="users"
+            stroke="#3B82F6"
+            strokeWidth={2}
+            dot={{ fill: '#3B82F6', r: 3 }}
+            activeDot={{ r: 5 }}
+          />
+        </LineChart>
+      </ResponsiveContainer>
+    </div>
+  </section>
+);
+
+const RecentNetworksTable = ({ recentNetworks }) => (
+  <section className="space-y-4">
+    <div className="space-y-1">
+      <Kicker>Recent Activity</Kicker>
+      <SectionTitle>Recently Added Networks</SectionTitle>
+    </div>
+
+    <div className="border border-gray-200 rounded-lg overflow-hidden bg-white">
+      <div className="overflow-x-auto">
+        <table className="w-full">
+          <thead className="bg-gray-50 border-b border-gray-200">
+            <tr>
+              <th className="text-left px-6 py-3 text-[11px] uppercase tracking-wide text-gray-500 font-medium">
+                Network Name
+              </th>
+              <th className="text-left px-6 py-3 text-[11px] uppercase tracking-wide text-gray-500 font-medium">
+                Type
+              </th>
+              <th className="text-left px-6 py-3 text-[11px] uppercase tracking-wide text-gray-500 font-medium">
+                Value
+              </th>
+              <th className="text-left px-6 py-3 text-[11px] uppercase tracking-wide text-gray-500 font-medium">
+                Date Added
+              </th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-gray-200">
+            {recentNetworks.length > 0 ? (
+              recentNetworks.map((row, idx) => (
+                <tr key={idx} className="hover:bg-gray-50 transition">
+                  <td className="px-6 py-4 text-sm font-medium text-gray-900">
+                    {row.name}
+                  </td>
+                  <td className="px-6 py-4 text-sm text-gray-600">
+                    <span className={`inline-flex px-2 py-1 text-xs rounded-full ${
+                      row.type === 'Basic' ? 'bg-blue-50 text-blue-700' :
+                      row.type === 'Premium' ? 'bg-green-50 text-green-700' :
+                      'bg-amber-50 text-amber-700'
+                    }`}>
+                      {row.type}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4 text-sm font-semibold text-gray-900">
+                    {row.value}
+                  </td>
+                  <td className="px-6 py-4 text-sm text-gray-500">
+                    {row.date}
+                  </td>
+                </tr>
+              ))
+            ) : (
+              <tr>
+                <td colSpan="4" className="px-6 py-8 text-center text-sm text-gray-400">
+                  No recent networks
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+);
+
+const QuickActions = () => (
+  <section className="space-y-4">
+    <div className="space-y-1">
+      <Kicker>Quick Access</Kicker>
+      <SectionTitle>Actions</SectionTitle>
+    </div>
+
+    <div className="border border-gray-200 rounded-lg p-6 bg-white space-y-3">
+      <button className="w-full text-left px-4 py-3 rounded-md bg-gray-50 hover:bg-gray-100 transition text-sm font-medium text-gray-900">
+        + Add New Network
+      </button>
+      <button className="w-full text-left px-4 py-3 rounded-md bg-gray-50 hover:bg-gray-100 transition text-sm font-medium text-gray-900">
+        Manage Users
+      </button>
+      <button className="w-full text-left px-4 py-3 rounded-md bg-gray-50 hover:bg-gray-100 transition text-sm font-medium text-gray-900">
+        System Settings
+      </button>
+      <button className="w-full text-left px-4 py-3 rounded-md bg-gray-50 hover:bg-gray-100 transition text-sm font-medium text-gray-900">
+        View Analytics
+      </button>
+    </div>
+  </section>
+);
+
+/* ----------------------------- Main Dashboard ----------------------------- */
 
 export default function SuperadminDashboard() {
   const [networkStats, setNetworkStats] = useState({});
@@ -94,124 +320,29 @@ export default function SuperadminDashboard() {
   ];
 
   return (
-    <div className="bg-gray-50 min-h-screen p-6">
-      {/* Top Stats Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-6 mb-6">
-        <StatCard
-          title="Total Networks"
-          value={networkStats.total || 0}
-          icon="🌐"
-        />
-        <StatCard
-          title="Basic Networks"
-          value={networkStats.totalBasic || 0}
-          icon="💠"
-        />
-        <StatCard
-          title="Premium Networks"
-          value={networkStats.totalPremium || 0}
-          icon="💎"
-        />
-        <StatCard
-          title="Custom Networks"
-          value={networkStats.totalCustom || 0}
-          icon="⚙️"
-        />
-        <StatCard
-          title="Total Users"
-          value={networkStats.totalUsers || 0}
-          icon="👥"
-        />
-        <StatCard
-          title="Active Users"
-          value={networkStats.activeUsers || 0}
-          icon="✅"
-        />
-      </div>
+    <div className="min-h-screen bg-white">
+      <div className="px-6 md:px-10 py-10 space-y-12 max-w-[1400px] mx-auto">
+      
+        <MetricsOverview networkStats={networkStats} />
 
-      {/* Charts */}
-      <div className="grid lg:grid-cols-2 gap-6 mb-6">
-        {/* Network Pie */}
-        <div className="bg-white rounded-2xl shadow p-6">
-          <h3 className="text-lg font-bold text-gray-900 mb-4">
-            Network Types
-          </h3>
-          <ResponsiveContainer width="100%" height={250}>
-            <PieChart>
-              <Pie
-                data={networkPieData}
-                dataKey="value"
-                nameKey="name"
-                innerRadius={60}
-                outerRadius={100}
-                label
-              >
-                {networkPieData.map((entry, idx) => (
-                  <Cell key={idx} fill={COLORS[idx % COLORS.length]} />
-                ))}
-              </Pie>
-              <Tooltip formatter={(val) => `Rs. ${val}`} />
-            </PieChart>
-          </ResponsiveContainer>
+        <Divider />
+
+        {/* Charts Grid */}
+        <div className="grid lg:grid-cols-2 gap-10">
+          <NetworkDistribution networkPieData={networkPieData} />
+          <UserGrowthTrend activeUsersData={activeUsersData} />
         </div>
 
-        {/* Active Users Line */}
-        <div className="bg-white rounded-2xl shadow p-6">
-          <h3 className="text-lg font-bold text-gray-900 mb-4">
-            Active Users Over Time
-          </h3>
-          <ResponsiveContainer width="100%" height={250}>
-            <LineChart
-              data={activeUsersData}
-              margin={{ top: 5, right: 20, bottom: 5, left: 0 }}
-            >
-              <XAxis dataKey="date" />
-              <YAxis />
-              <CartesianGrid stroke="#eee" strokeDasharray="5 5" />
-              <Tooltip />
-              <Line
-                type="monotone"
-                dataKey="users"
-                stroke="#3B82F6"
-                strokeWidth={3}
-              />
-            </LineChart>
-          </ResponsiveContainer>
-        </div>
-      </div>
+        <Divider />
 
-      {/* Recent Networks + Shortcuts */}
-      <div className="grid lg:grid-cols-3 gap-6">
-        {/* Recent Networks */}
-        <div className="lg:col-span-2 bg-white rounded-2xl shadow p-6">
-          <h3 className="text-lg font-bold mb-4 text-gray-900">
-            Recently Added Networks
-          </h3>
-          <div className="grid grid-cols-4 gap-4 pb-2 border-b text-gray-500 font-semibold text-sm">
-            <span>Name</span>
-            <span>Type</span>
-            <span>Value</span>
-            <span>Date</span>
+        {/* Bottom Grid */}
+        <div className="grid lg:grid-cols-3 gap-10">
+          <div className="lg:col-span-2">
+            <RecentNetworksTable recentNetworks={recentNetworks} />
           </div>
           <div>
-            {recentNetworks.map((row, idx) => (
-              <TableRow key={idx} {...row} />
-            ))}
+            <QuickActions />
           </div>
-        </div>
-
-        {/* Shortcuts */}
-        <div className="bg-white rounded-2xl shadow p-6 flex flex-col gap-3">
-          <h3 className="text-lg font-bold mb-4 text-gray-900">Shortcuts</h3>
-          <button className="w-full text-left font-medium text-blue-600 hover:underline">
-            Add New Network
-          </button>
-          <button className="w-full text-left font-medium text-blue-600 hover:underline">
-            Manage Users
-          </button>
-          <button className="w-full text-left font-medium text-blue-600 hover:underline">
-            System Settings
-          </button>
         </div>
       </div>
     </div>
