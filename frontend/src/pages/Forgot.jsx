@@ -132,7 +132,7 @@ export default function Forgot() {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full py-3 rounded-lg bg-[#00FFB2] text-black font-semibold hover:bg-[#00e6a0] transition"
+                className="w-full py-3 rounded-lg bg-[#14c596] text-black font-semibold hover:bg-[#21ab87] transition"
               >
                 {loading ? "Sending OTP..." : "Send OTP"}
               </button>
@@ -159,7 +159,7 @@ export default function Forgot() {
                 <input
                   type="password"
                   required
-                  className="mt-2 w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-[#00FFB2] focus:outline-none"
+                  className="mt-2 w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-[#14c596] focus:outline-none"
                   value={newPassword}
                   onChange={(e) => setNewPassword(e.target.value)}
                   placeholder="Enter new password"
@@ -169,7 +169,7 @@ export default function Forgot() {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full py-3 rounded-lg bg-[#00FFB2] text-black font-semibold hover:bg-[#00e6a0] transition"
+                className="w-full py-3 rounded-lg bg-[#14c596] text-black font-semibold hover:bg-[#21ab87] transition"
               >
                 {loading ? "Resetting..." : "Reset Password"}
               </button>
@@ -184,7 +184,7 @@ export default function Forgot() {
                   <button
                     type="button"
                     onClick={() => handleSendOtp(null)}
-                    className="text-[#00FFB2] font-medium hover:underline"
+                    className="text-[#14c596] font-medium hover:underline"
                   >
                     Resend OTP
                   </button>
@@ -195,7 +195,7 @@ export default function Forgot() {
 
           <p className="mt-8 text-center text-sm text-gray-600">
             Remembered your password?{" "}
-            <NavLink to="/" className="font-medium text-[#00FFB2]">
+            <NavLink to="/" className="font-medium text-[#14c596]">
               Log in
             </NavLink>
           </p>

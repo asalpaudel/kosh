@@ -12,7 +12,7 @@ const Stepper = ({ currentStep }) => (
           className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold border-2
             ${
               currentStep >= s
-                ? "border-[#00FFB2] text-[#00FFB2]"
+                ? "border-[#14c596] text-[#14c596]"
                 : "border-gray-300 text-gray-400"
             }`}
         >
@@ -21,7 +21,7 @@ const Stepper = ({ currentStep }) => (
         {s !== 3 && (
           <div
             className={`flex-1 h-[2px] mx-2 ${
-              currentStep > s ? "bg-[#00FFB2]" : "bg-gray-300"
+              currentStep > s ? "bg-[#14c596]" : "bg-gray-300"
             }`}
           />
         )}
@@ -181,7 +181,7 @@ export default function Signup() {
                       name={f}
                       value={formData[f]}
                       onChange={handleChange}
-                      className="mt-2 w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-[#00FFB2] focus:outline-none"
+                      className="mt-2 w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-[#14c596] focus:outline-none"
                     />
                   </div>
                 ))}
@@ -195,7 +195,7 @@ export default function Signup() {
                     name="dob"
                     value={formData.dob}
                     onChange={handleChange}
-                    className="mt-2 w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-[#00FFB2]"
+                    className="mt-2 w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-[#14c596]"
                   />
                 </div>
               </>
@@ -207,7 +207,7 @@ export default function Signup() {
                   name="sahakari"
                   value={formData.sahakari}
                   onChange={handleChange}
-                  className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-[#00FFB2]"
+                  className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-[#14c596]"
                 >
                   <option value="">Select Sahakari</option>
                   {sahakariList.map((s) => (
@@ -227,7 +227,7 @@ export default function Signup() {
                     }
                     value={formData[f]}
                     onChange={handleChange}
-                    className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-[#00FFB2]"
+                    className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-[#14c596]"
                   />
                 ))}
               </>
@@ -248,7 +248,7 @@ export default function Signup() {
                     Citizenship / NID
                   </label>
 
-                  <div className="mt-2 flex items-center justify-between gap-4 rounded-lg border border-gray-300 px-4 py-3 focus-within:ring-2 focus-within:ring-[#00FFB2]">
+                  <div className="mt-2 flex items-center justify-between gap-4 rounded-lg border border-gray-300 px-4 py-3 focus-within:ring-2 focus-within:ring-[#14c596]">
                     <input
                       type="file"
                       name="citizenship"
@@ -274,7 +274,7 @@ export default function Signup() {
                     Signature
                   </label>
 
-                  <div className="mt-2 flex items-center justify-between gap-4 rounded-lg border border-gray-300 px-4 py-3 focus-within:ring-2 focus-within:ring-[#00FFB2]">
+                  <div className="mt-2 flex items-center justify-between gap-4 rounded-lg border border-gray-300 px-4 py-3 focus-within:ring-2 focus-within:ring-[#14c596]">
                     <input
                       type="file"
                       name="signature"
@@ -300,7 +300,7 @@ export default function Signup() {
                     Passport size photo
                   </label>
 
-                  <div className="mt-2 flex items-center justify-between gap-4 rounded-lg border border-gray-300 px-4 py-3 focus-within:ring-2 focus-within:ring-[#00FFB2]">
+                  <div className="mt-2 flex items-center justify-between gap-4 rounded-lg border border-gray-300 px-4 py-3 focus-within:ring-2 focus-within:ring-[#14c596]">
                     <input
                       type="file"
                       name="photo"
@@ -343,7 +343,7 @@ export default function Signup() {
                 type="button"
                 onClick={step < 3 ? nextStep : handleSignup}
                 disabled={loading}
-                className="px-6 py-3 rounded-lg bg-[#00FFB2] text-black font-semibold hover:bg-[#00e6a0] transition disabled:opacity-50 disabled:cursor-not-allowed"
+                className="px-6 py-3 rounded-lg bg-[#14c596] text-black font-semibold hover:bg-[#21ab87] transition disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {step < 3 ? "Next" : loading ? "Creating..." : "Sign up"}
               </button>
@@ -352,7 +352,7 @@ export default function Signup() {
 
           <p className="mt-8 text-center text-sm text-gray-600">
             Already have an account?{" "}
-            <NavLink to="/" className="font-medium text-[#00FFB2]">
+            <NavLink to="/" className="font-medium text-[#14c596]">
               Sign in
             </NavLink>
           </p>
