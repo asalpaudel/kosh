@@ -81,8 +81,23 @@ const ApplicationCard = ({ application, type }) => {
             </div>
             <div className="flex justify-between">
               <span className="text-gray-600">Interest Rate:</span>
-              <span className="font-semibold">{application.fixedDeposit?.interestRate}%</span>
+              <span className="font-semibold">
+                {application.interestRate || application.fixedDeposit?.interestRate}%
+              </span>
             </div>
+            {/* ⭐ NEW: Maturity Info */}
+            {application.maturityDate && (
+                <div className="flex justify-between border-t border-dashed pt-2 mt-2">
+                    <span className="text-teal-700 font-medium">Maturity Date:</span>
+                    <span className="font-bold text-teal-700">{new Date(application.maturityDate).toLocaleDateString()}</span>
+                </div>
+            )}
+            {application.maturityAmount && (
+                <div className="flex justify-between">
+                    <span className="text-teal-700 font-medium">Maturity Amt:</span>
+                    <span className="font-bold text-teal-700">Rs. {application.maturityAmount.toLocaleString()}</span>
+                </div>
+            )}
           </div>
         );
       case "saving-account":
@@ -102,13 +117,29 @@ const ApplicationCard = ({ application, type }) => {
         return (
           <div className="space-y-2">
             <div className="flex justify-between">
-              <span className="text-gray-600">Amount:</span>
+              <span className="text-gray-600">Requested:</span>
               <span className="font-semibold">Rs. {application.requestedAmount?.toLocaleString()}</span>
             </div>
+            {/* ⭐ NEW: Approved Amount */}
+            {application.approvedAmount && (
+                <div className="flex justify-between text-teal-700 bg-teal-50 px-2 py-1 rounded">
+                    <span className="font-medium">Approved:</span>
+                    <span className="font-bold">Rs. {application.approvedAmount.toLocaleString()}</span>
+                </div>
+            )}
             <div className="flex justify-between">
               <span className="text-gray-600">Interest Rate:</span>
-              <span className="font-semibold">{application.loanPackage?.interestRate}%</span>
+              <span className="font-semibold">
+                {application.interestRate || application.loanPackage?.interestRate}%
+              </span>
             </div>
+            {/* ⭐ NEW: Next Payment Date */}
+            {application.nextPaymentDate && (
+                <div className="flex justify-between border-t border-dashed pt-2 mt-2">
+                    <span className="text-orange-700 font-medium">Next Due:</span>
+                    <span className="font-bold text-orange-700">{new Date(application.nextPaymentDate).toLocaleDateString()}</span>
+                </div>
+            )}
             <div className="mt-2">
               <span className="text-gray-600">Purpose:</span>
               <p className="text-sm mt-1 text-gray-700">{application.purpose}</p>
@@ -178,11 +209,8 @@ function UserMyApplications() {
 
         if (response.ok) {
           const data = await response.json();
-          console.log("Session data:", data);
-          
           // Check if session has error (no userEmail)
           if (data.error) {
-            console.error("Session error:", data.error);
             navigate('/');
             return;
           }
@@ -191,7 +219,6 @@ function UserMyApplications() {
 
           // If user doesn't have sahakariId, redirect to login
           if (!data.sahakariId && data.userRole !== "superadmin") {
-            console.error("No sahakariId found in session");
             navigate('/');
             return;
           }
@@ -199,14 +226,11 @@ function UserMyApplications() {
           // Fetch applications after session is validated
           fetchApplications();
         } else if (response.status === 401) {
-          console.error("Unauthorized - no session");
           navigate('/');
         } else {
-          console.error("Failed to fetch session data");
           navigate('/');
         }
       } catch (error) {
-        console.error("Error fetching session:", error);
         navigate('/');
       } finally {
         setSessionLoading(false);
@@ -286,8 +310,6 @@ function UserMyApplications() {
   return (
     <div className="bg-white p-6 min-h-[calc(100vh-8.5rem)] rounded-lg shadow-md">
       <div className="mb-6">
-        {/* <h2 className="text-2xl font-bold text-gray-800 mb-4">My Applications</h2> */}
-
         {/* Filter Buttons */}
         <div className="flex gap-2 flex-wrap">
           <button

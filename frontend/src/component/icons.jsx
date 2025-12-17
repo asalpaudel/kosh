@@ -79,3 +79,4 @@ export { LuFileClock as DocumentTextIcon } from 'react-icons/lu';
 export { FiMoon as MoonIcon } from 'react-icons/fi'; 
 export { FiShield as ShieldIcon } from 'react-icons/fi'; 
 export { FiUser as UserIcon } from 'react-icons/fi';
+export { FiX as XMarkIcon } from "react-icons/fi";

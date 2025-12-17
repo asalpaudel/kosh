@@ -38,6 +38,7 @@ import com.kosh.backend.repository.SavingAccountApplicationRepository;
 import com.kosh.backend.repository.SavingAccountRepository;
 import com.kosh.backend.repository.TransactionRepository;
 import com.kosh.backend.repository.UserRepository;
+import com.kosh.backend.service.LoanService; // ⭐ Import the new Service
 
 import jakarta.servlet.http.HttpSession;
 
@@ -69,9 +70,12 @@ public class ApplicationController {
     @Autowired
     private UserRepository userRepo;
 
-    // NEW: Transaction Repository for auto-logging
     @Autowired
     private TransactionRepository transactionRepo;
+
+    // ⭐ Inject LoanService for Schedule Generation
+    @Autowired
+    private LoanService loanService;
 
     // Helper to generate voucher ID
     private String generateVoucherId() {
@@ -168,7 +172,7 @@ public class ApplicationController {
         return ResponseEntity.ok(fdAppRepo.findByNetworkId(networkId));
     }
 
-    // ⭐ UPDATED: Fixed Deposit Review with Double Transaction
+    // ⭐ UPDATED: Fixed Deposit Review with Double Transaction & Maturity Calculation
     @PutMapping("/fixed-deposit/{id}/review")
     public ResponseEntity<?> reviewFixedDepositApplication(
             @PathVariable Long id,
@@ -191,10 +195,24 @@ public class ApplicationController {
             String notes = request.containsKey("reviewNotes") ? request.get("reviewNotes").toString() : null;
 
             if (status == ApplicationStatus.APPROVED) {
+                // ⭐ 1. Calculate Maturity Details
+                double principal = app.getDepositAmount();
+                double rate = app.getFixedDeposit().getInterestRate();
+                int months = app.getDepositTerm();
+                
+                // Simple Interest Formula: A = P(1 + rt)
+                double timeInYears = months / 12.0;
+                double maturityAmount = principal * (1 + (rate / 100.0 * timeInYears));
+                
+                app.setInterestRate(rate);
+                app.setMaturityDate(LocalDate.now().plusMonths(months));
+                app.setMaturityAmount(Math.round(maturityAmount * 100.0) / 100.0);
+
+                // ⭐ 2. Perform Transactions
                 User user = app.getUser();
                 Double amount = app.getDepositAmount();
 
-                // 1. DEBIT: Remove money from User's Savings
+                // DEBIT: Remove money from User's Savings
                 Transaction debitTx = new Transaction();
                 debitTx.setVoucherId(generateVoucherId());
                 debitTx.setDate(LocalDate.now());
@@ -219,7 +237,7 @@ public class ApplicationController {
                 user.setBalance(user.getBalance() - amount);
                 transactionRepo.save(debitTx);
 
-                // 2. CREDIT: Add money to Fixed Deposit Account
+                // CREDIT: Add money to Fixed Deposit Account
                 Transaction creditTx = new Transaction();
                 creditTx.setVoucherId(generateVoucherId());
                 creditTx.setDate(LocalDate.now());
@@ -229,7 +247,7 @@ public class ApplicationController {
                 creditTx.setNetwork(app.getNetwork());
                 creditTx.setType("Fixed Deposit (Creation)");
                 creditTx.setAmount(amount);
-                creditTx.setNarration("FD Created from Savings for " + app.getDepositTerm() + " months");
+                creditTx.setNarration("FD Created from Savings for " + app.getDepositTerm() + " months @ " + rate + "%");
                 creditTx.setApplicationId(app.getId());
                 creditTx.setApplicationType("fixed-deposit");
 
@@ -474,7 +492,7 @@ public class ApplicationController {
         return ResponseEntity.ok(loanAppRepo.findByNetworkId(networkId));
     }
 
-    // ⭐ UPDATED: Loan Review with 70% Reserve Check
+    // ⭐ UPDATED: Loan Review with 70% Reserve Check, Financial Terms, and Schedule Generation
     @PutMapping("/loan/{id}/review")
     public ResponseEntity<?> reviewLoanApplication(
             @PathVariable Long id,
@@ -497,12 +515,18 @@ public class ApplicationController {
             String notes = request.containsKey("reviewNotes") ? request.get("reviewNotes").toString() : null;
 
             if (status == ApplicationStatus.APPROVED) {
+                // ⭐ 1. Determine Final Approved Amount
+                // If admin sent "approvedAmount" in body, use it. Otherwise use user's requested amount.
+                Double approvedAmt = request.containsKey("approvedAmount") 
+                    ? Double.valueOf(request.get("approvedAmount").toString()) 
+                    : application.getRequestedAmount();
+                
+                application.setApprovedAmount(approvedAmt);
+
                 User user = application.getUser();
-                Double amount = application.getRequestedAmount();
                 Long networkId = application.getNetwork().getId();
 
-                // 1. Calculate Current Reserve using NEW FORMULA
-                // Reserve = Sum(User Balances) - Total Outstanding Loans + Total Network Balance
+                // ⭐ 2. Calculate Current Reserve using NEW FORMULA
                 Double totalUserBalance = userRepo.getTotalUserBalanceByNetwork(networkId);
                 Double totalLoans = transactionRepo.getOutstandingLoans(networkId);
                 Double totalNetwork = transactionRepo.getNetworkBalance(networkId);
@@ -514,19 +538,34 @@ public class ApplicationController {
                 System.out.println("Total Loans (Outstanding): " + totalLoans);
                 System.out.println("Net Network Balance: " + totalNetwork);
                 System.out.println("Calculated Reserve: " + currentReserve);
-                System.out.println("Requested Loan Amount: " + amount);
-                System.out.println("70% Limit: " + (currentReserve * 0.7));
+                System.out.println("Approved Loan Amount: " + approvedAmt);
 
-                // 2. Validate Loan Amount (70% Rule)
-                if (amount > (currentReserve * 0.7)) {
+                // ⭐ 3. Validate Loan Amount (70% Rule) based on APPROVED Amount
+                if (approvedAmt > (currentReserve * 0.7)) {
                     return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                         .body("Loan rejected: Insufficient liquidity. " +
-                              "Loan amount (" + amount + ") exceeds 70% of network reserve (" + 
+                              "Loan amount (" + approvedAmt + ") exceeds 70% of network reserve (" + 
                               String.format("%.2f", currentReserve * 0.7) + "). " +
                               "Current Reserve: " + currentReserve);
                 }
 
-                // 3. Process Transactions (Double Entry)
+                // ⭐ 4. Set Financial Terms (Rate, Duration, Start Date)
+                application.setInterestRate(application.getLoanPackage().getInterestRate());
+                
+                // Allow admin override for duration, else default to package max
+                int duration = request.containsKey("duration") 
+                    ? Integer.parseInt(request.get("duration").toString()) 
+                    : application.getLoanPackage().getMaxDuration();
+                application.setDurationInMonths(duration);
+                application.setStartDate(LocalDate.now());
+
+                // ⭐ 5. Save State & Generate Repayment Schedule
+                // We must save first so the application has an ID (if new changes exist) 
+                // and to persist the approved amount before schedule generation relies on it.
+                application = loanAppRepo.save(application);
+                loanService.generateRepaymentSchedule(application);
+
+                // ⭐ 6. Process Transactions (Double Entry)
                 
                 // Transaction A: Credit to User (Asset Creation)
                 Transaction loanTx = new Transaction();
@@ -537,7 +576,7 @@ public class ApplicationController {
                 loanTx.setUserName(user.getName());
                 loanTx.setNetwork(application.getNetwork());
                 loanTx.setType("Loan Disbursement");
-                loanTx.setAmount(amount);
+                loanTx.setAmount(approvedAmt); // Use approved amount
                 loanTx.setNarration("Loan approved: " + application.getPurpose());
                 loanTx.setApplicationId(application.getId());
                 loanTx.setApplicationType("loan");
@@ -549,10 +588,10 @@ public class ApplicationController {
                 loanTx.setPaymentMethod("Transfer");
 
                 // Update Reserve Snapshot (Reduced by new loan)
-                loanTx.setNetworkReserve(currentReserve - amount);
+                loanTx.setNetworkReserve(currentReserve - approvedAmt);
 
                 // Update User Balance
-                user.setBalance(user.getBalance() + amount);
+                user.setBalance(user.getBalance() + approvedAmt);
                 
                 transactionRepo.save(loanTx);
                 userRepo.save(user);
@@ -566,7 +605,7 @@ public class ApplicationController {
                 expenseTx.setUserName("Sahakari Network");
                 expenseTx.setNetwork(application.getNetwork());
                 expenseTx.setType("Loan Disbursement Expense");
-                expenseTx.setAmount(amount);
+                expenseTx.setAmount(approvedAmt); // Use approved amount
                 expenseTx.setNarration("Disbursement expense for Loan Application #" + application.getId());
                 expenseTx.setApplicationId(application.getId());
                 expenseTx.setApplicationType("loan");
@@ -579,7 +618,7 @@ public class ApplicationController {
                 expenseTx.setPaymentMethod("Cash");
 
                 // Snapshot effect: Reserve decreases again due to cash outflow
-                expenseTx.setNetworkReserve((currentReserve - amount) - amount);
+                expenseTx.setNetworkReserve((currentReserve - approvedAmt) - approvedAmt);
 
                 transactionRepo.save(expenseTx);
             }

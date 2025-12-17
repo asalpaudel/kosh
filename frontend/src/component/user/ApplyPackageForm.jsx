@@ -76,6 +76,19 @@ const LoanForm = ({ packageData, formData, setFormData }) => (
         max={packageData.maxAmount}
       />
     </div>
+    {/* ⭐ NEW: Duration Field */}
+    <div>
+      <label className="block font-semibold mb-2">Requested Duration (Months) *</label>
+      <input
+        type="number"
+        value={formData.duration}
+        onChange={(e) => setFormData({ ...formData, duration: e.target.value })}
+        placeholder={`Max: ${packageData.maxDuration} months`}
+        className="w-full px-4 py-3 border border-gray-300 rounded-full focus:outline-none focus:border-teal-500"
+        required
+        max={packageData.maxDuration}
+      />
+    </div>
     <div>
       <label className="block font-semibold mb-2">Purpose of Loan *</label>
       <textarea
@@ -88,8 +101,7 @@ const LoanForm = ({ packageData, formData, setFormData }) => (
       />
     </div>
     <p className="text-sm text-gray-500">
-      You are applying for the "{packageData.name}" loan with {packageData.interestRate}% interest rate
-      (Max duration: {packageData.maxDuration} months).
+      You are applying for the "{packageData.name}" loan with {packageData.interestRate}% interest rate.
     </p>
   </div>
 );
@@ -111,6 +123,7 @@ export default function ApplyPackageForm({
     initialDeposit: '',
     // Loan
     requestedAmount: '',
+    duration: '', // ⭐ NEW
     purpose: '',
   });
 
@@ -165,6 +178,8 @@ export default function ApplyPackageForm({
       payload: () => ({
         packageId: packageData.id,
         requestedAmount: parseFloat(formData.requestedAmount),
+        // ⭐ NEW: Sending requested duration (needs backend support if you haven't added it yet, but good to have)
+        duration: parseInt(formData.duration), 
         purpose: formData.purpose,
       }),
     },

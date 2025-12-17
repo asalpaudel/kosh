@@ -1,7 +1,18 @@
 package com.kosh.backend.model;
 
-import jakarta.persistence.*;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.Table;
 
 @Entity
 @Table(name = "loan_applications")
@@ -24,6 +35,12 @@ public class LoanApplication {
     private Network network;
 
     private Double requestedAmount;
+    
+    private Double approvedAmount;   // Admin might approve less
+    private Double interestRate;     // Snapshot of rate at time of approval
+    private Integer durationInMonths; // Snapshot of duration
+    private LocalDate startDate;
+    private LocalDate nextPaymentDate; 
     
     @Column(length = 2000)
     private String purpose;
@@ -56,6 +73,21 @@ public class LoanApplication {
 
     public Double getRequestedAmount() { return requestedAmount; }
     public void setRequestedAmount(Double requestedAmount) { this.requestedAmount = requestedAmount; }
+
+    public Double getApprovedAmount() { return approvedAmount; }
+    public void setApprovedAmount(Double approvedAmount) { this.approvedAmount = approvedAmount; }
+
+    public Double getInterestRate() { return interestRate; }
+    public void setInterestRate(Double interestRate) { this.interestRate = interestRate; }
+
+    public Integer getDurationInMonths() { return durationInMonths; }
+    public void setDurationInMonths(Integer durationInMonths) { this.durationInMonths = durationInMonths; }
+
+    public LocalDate getStartDate() { return startDate; }
+    public void setStartDate(LocalDate startDate) { this.startDate = startDate; }
+
+    public LocalDate getNextPaymentDate() { return nextPaymentDate; }
+    public void setNextPaymentDate(LocalDate nextPaymentDate) { this.nextPaymentDate = nextPaymentDate; }
 
     public String getPurpose() { return purpose; }
     public void setPurpose(String purpose) { this.purpose = purpose; }

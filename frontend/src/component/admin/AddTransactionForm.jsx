@@ -9,7 +9,7 @@ import {
 
 const apiBase = "http://localhost:8080/api";
 
-// --- 📅 Helper: Custom Calendar Component (Kept as is) ---
+// --- 📅 Helper: Custom Calendar Component ---
 const CustomCalendar = ({ selectedDate, onChange, onClose }) => {
   const [currentMonth, setCurrentMonth] = useState(
     new Date(selectedDate || new Date())
@@ -158,6 +158,7 @@ function AddTransactionForm({ onAdded, onClose, prefilledData }) {
   const [packages, setPackages] = useState([]);
   const [sahakariId, setSahakariId] = useState(null);
   const [loadingPackages, setLoadingPackages] = useState(false);
+  const [activeLoanId, setActiveLoanId] = useState(null); // ⭐ NEW
 
   const [formData, setFormData] = useState({
     voucherId: prefilledData?.voucherId || `V-${Math.floor(Math.random() * 10000)}`,
@@ -168,10 +169,8 @@ function AddTransactionForm({ onAdded, onClose, prefilledData }) {
     userName: prefilledData?.userName || "",
     userProduct: prefilledData?.userProduct || "Savings",
     
-    // --- NEW FIELDS ---
-    packageId: "", // To store the selected FD/Loan/Savings Package ID
-    term: "",      // Optional: For Fixed Deposits duration
-    // ------------------
+    packageId: "", 
+    term: "",      
 
     internalHead: "",
     headCategory: "Expense",
@@ -198,7 +197,7 @@ function AddTransactionForm({ onAdded, onClose, prefilledData }) {
 
   const isPrefilledMode = !!prefilledData;
 
-  // 1. Fetch Session ID on mount (Required to fetch packages)
+  // 1. Fetch Session ID on mount
   useEffect(() => {
     fetch(`${apiBase}/session`, { credentials: "include" })
       .then((res) => res.json())
@@ -239,16 +238,50 @@ function AddTransactionForm({ onAdded, onClose, prefilledData }) {
         });
   }, [formData.userProduct, sahakariId, mode, isPrefilledMode]);
 
-  // Close popups when clicking outside
+  // ⭐ 3. AUTO-DETECT ACTIVE LOAN FOR REPAYMENT
+  useEffect(() => {
+    if (
+      formData.userId && 
+      formData.userProduct === "Loan" && 
+      formData.transactionType === "Debit" && // "Debit" in form = Withdraw/Repay
+      sahakariId
+    ) {
+        // Fetch all loans for network and filter for this user (Since we don't have an Admin getLoansByUserId endpoint)
+        fetch(`${apiBase}/applications/loan/network/${sahakariId}`, { credentials: 'include' })
+            .then(res => res.json())
+            .then(data => {
+                // Find Approved loan for this user
+                const activeLoan = data.find(app => 
+                    app.user.id === formData.userId && 
+                    app.status === "APPROVED"
+                );
+                
+                if (activeLoan) {
+                    setActiveLoanId(activeLoan.id);
+                    setFormData(prev => ({
+                        ...prev,
+                        applicationId: activeLoan.id,
+                        applicationType: "loan",
+                        narration: prev.narration || `Loan Repayment for ID #${activeLoan.id}`
+                    }));
+                } else {
+                    setActiveLoanId(null);
+                }
+            })
+            .catch(err => console.error("Failed to fetch user loans", err));
+    } else {
+        setActiveLoanId(null);
+    }
+  }, [formData.userId, formData.userProduct, formData.transactionType, sahakariId]);
+
+
+  // Close popups
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (calendarRef.current && !calendarRef.current.contains(event.target)) {
         setShowCalendar(false);
       }
-      if (
-        searchBoxRef.current &&
-        !searchBoxRef.current.contains(event.target)
-      ) {
+      if (searchBoxRef.current && !searchBoxRef.current.contains(event.target)) {
         setShowUserResults(false);
       }
     };
@@ -310,10 +343,7 @@ function AddTransactionForm({ onAdded, onClose, prefilledData }) {
           }
         );
 
-        if (!response.ok) {
-          throw new Error("Failed to fetch users");
-        }
-
+        if (!response.ok) throw new Error("Failed to fetch users");
         const data = await response.json();
         setUserResults(data);
       } catch (err) {
@@ -351,10 +381,9 @@ function AddTransactionForm({ onAdded, onClose, prefilledData }) {
         status: "Success",
         userId: mode === "member" ? formData.userId : null,
         userName: mode === "member" ? formData.userName : "Sahakari Network",
-        // --- NEW: Pass packageId and term to backend
+        // Pass packageId and term to backend
         packageId: formData.packageId ? formData.packageId : null,
         term: formData.term ? formData.term : null,
-        // ---
         details: {
           mode,
           fyType: formData.fyType,
@@ -371,6 +400,7 @@ function AddTransactionForm({ onAdded, onClose, prefilledData }) {
           : `${formData.headCategory} (${formData.transactionType})`,
         amountValue: parseFloat(formData.amountValue),
         narration: formData.narration,
+        // ⭐ CRITICAL: Ensure application ID is passed for repayment
         applicationId: formData.applicationId,
         applicationType: formData.applicationType,
       };
@@ -396,10 +426,7 @@ function AddTransactionForm({ onAdded, onClose, prefilledData }) {
   };
 
   return (
-    <form
-      onSubmit={handleSubmit}
-      className="flex flex-col gap-5 text-gray-800 pb-4"
-    >
+    <form onSubmit={handleSubmit} className="flex flex-col gap-5 text-gray-800 pb-4">
       {/* Header & Toggle */}
       <div className="flex flex-col sm:flex-row justify-between items-center gap-4 border-b pb-4">
         <div className="flex items-center gap-3">
@@ -454,6 +481,16 @@ function AddTransactionForm({ onAdded, onClose, prefilledData }) {
       {error && (
         <div className="bg-red-50 border-l-4 border-red-500 text-red-700 p-3 text-sm rounded">
           {error}
+        </div>
+      )}
+
+      {/* ⭐ INFO ALERT: ACTIVE LOAN FOUND */}
+      {activeLoanId && formData.transactionType === "Debit" && (
+        <div className="bg-blue-50 border-l-4 border-blue-500 text-blue-700 p-3 text-sm rounded flex items-center gap-2">
+            <DocumentTextIcon className="w-5 h-5" />
+            <span>
+                <strong>Linked Loan:</strong> Repayment will be applied to Loan ID #{activeLoanId}
+            </span>
         </div>
       )}
 
@@ -581,7 +618,7 @@ function AddTransactionForm({ onAdded, onClose, prefilledData }) {
                 value={formData.userProduct}
                 onChange={(e) => {
                     handleChange(e);
-                    setFormData(prev => ({ ...prev, packageId: "" })); // Reset package on product change
+                    setFormData(prev => ({ ...prev, packageId: "" })); 
                 }}
                 disabled={isPrefilledMode}
                 className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none focus:border-teal-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
@@ -592,7 +629,7 @@ function AddTransactionForm({ onAdded, onClose, prefilledData }) {
                 <option value="Loan">Loan Account (Lg)</option>
               </select>
 
-              {/* ⭐ NEW: Package Dropdown (Available only for supported types) */}
+              {/* Package Dropdown */}
               {(formData.userProduct === "Savings" || formData.userProduct === "Fixed Deposit" || formData.userProduct === "Loan") && !isPrefilledMode && (
                 <div className="flex flex-col gap-2">
                     <select
@@ -608,7 +645,6 @@ function AddTransactionForm({ onAdded, onClose, prefilledData }) {
                         ))}
                     </select>
 
-                    {/* ⭐ Extra field for Fixed Deposit Term */}
                     {formData.userProduct === "Fixed Deposit" && formData.packageId && (
                         <input
                             type="number"
@@ -713,7 +749,7 @@ function AddTransactionForm({ onAdded, onClose, prefilledData }) {
         </div>
       )}
 
-      {/* New Payment Details */}
+      {/* Payment Details */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 bg-gray-50 p-4 rounded-xl border border-gray-200">
         <div>
           <label className="block text-xs font-bold text-gray-500 uppercase mb-1">
@@ -833,4 +869,4 @@ function AddTransactionForm({ onAdded, onClose, prefilledData }) {
   );
 }
 
-export default AddTransactionForm;
+export default AddTransactionForm;  
