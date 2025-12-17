@@ -136,6 +136,7 @@ const TransactionVoucher = ({ transaction, onClose, onStatusUpdate }) => {
   };
 
   return (
+  <div className="flex flex-col gap-5 max-h-[80vh] overflow-y-auto pr-2">
     <div className="flex flex-col gap-6">
       <div
         ref={voucherRef}
@@ -353,6 +354,7 @@ const TransactionVoucher = ({ transaction, onClose, onStatusUpdate }) => {
         </div>
       </div>
     </div>
+  </div>
   );
 };
 

@@ -79,6 +79,7 @@ function AddLoanForm({ onAdded, onClose, networkId }) {
   };
 
   return (
+  <div className="flex flex-col gap-5 max-h-[80vh] overflow-y-auto pr-2">
     <form onSubmit={handleSubmit} className="flex flex-col gap-5">
       <div className="flex justify-center">
         <BanknotesIcon className="w-16 h-16 text-teal-500" />
@@ -206,6 +207,7 @@ function AddLoanForm({ onAdded, onClose, networkId }) {
         {loading ? "Adding..." : "Add Loan Package"}
       </button>
     </form>
+  </div>
   );
 }
  

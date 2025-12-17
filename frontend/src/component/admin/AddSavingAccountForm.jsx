@@ -77,6 +77,7 @@ function AddSavingAccountForm({ onAdded, onClose, networkId }) {
   };
 
   return (
+  <div className="flex flex-col gap-5 max-h-[80vh] overflow-y-auto pr-2">
     <form onSubmit={handleSubmit} className="flex flex-col gap-5">
       <div className="flex justify-center">
         <CurrencyDollarIcon className="w-16 h-16 text-teal-500" />
@@ -188,6 +189,7 @@ function AddSavingAccountForm({ onAdded, onClose, networkId }) {
         {loading ? "Adding..." : "Add Saving Account"}
       </button>
     </form>
+  </div>
   );
 }
 
