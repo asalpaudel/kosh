@@ -1,5 +1,3 @@
-// Landing.jsx
-// npm i framer-motion lucide-react react-snowfall
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Snowfall from "react-snowfall";
@@ -27,7 +25,6 @@ import {
   Moon,
 } from "lucide-react";
 
-/* ---------- Logo ---------- */
 export const Logo = ({ className }) => (
   <svg
     width="30"
@@ -48,7 +45,6 @@ export const Logo = ({ className }) => (
   </svg>
 );
 
-/* ---------- Theme ---------- */
 function useTheme() {
   const [mode, setMode] = useState(() => {
     const saved = localStorage.getItem("kosh-theme");
@@ -81,7 +77,6 @@ function ThemeToggle({ mode, onToggle }) {
   );
 }
 
-/* ---------- Cursor Trail ---------- */
 function CursorTrail({ mode }) {
   const x = useMotionValue(-100);
   const y = useMotionValue(-100);
@@ -129,7 +124,6 @@ function CursorTrail({ mode }) {
   );
 }
 
-/* ---------- Buttons (match Login Sign In primary) ---------- */
 const PRIMARY = "bg-[#14c596] hover:bg-[#21ab87] text-black";
 
 function PrimaryButton({ children, onClick, className = "" }) {
@@ -169,7 +163,6 @@ function GhostButton({ children, onClick, mode, className = "" }) {
   );
 }
 
-// Sign in button: hover color change (requested)
 function SignInButton({ onClick, mode, className = "" }) {
   return (
     <button
@@ -238,7 +231,6 @@ function Card({ children, mode, className = "" }) {
   );
 }
 
-/* ---------- Horizontal Scroller (Features + Modules) ---------- */
 function HorizontalScroller({ title, subtitle, items, renderItem, mode }) {
   const scrollerRef = useRef(null);
 
@@ -325,18 +317,15 @@ function HorizontalScroller({ title, subtitle, items, renderItem, mode }) {
   );
 }
 
-/* ---------- Main Page ---------- */
 export default function Landing() {
   const nav = useNavigate();
   const { mode, setMode } = useTheme();
 
-  // navbar show/hide behavior
   const [menuOpen, setMenuOpen] = useState(false);
   const [navVisible, setNavVisible] = useState(true);
   const lastYRef = useRef(0);
   const upAccumRef = useRef(0);
 
-  // tilt card
   const heroCardRef = useRef(null);
   const [tilt, setTilt] = useState({ rx: 0, ry: 0 });
 
@@ -355,7 +344,6 @@ export default function Landing() {
     scrollToId(id);
   };
 
-  // navbar hide on scroll down, show after accumulated upward scroll ("twice up")
   useEffect(() => {
     lastYRef.current = window.scrollY;
 
