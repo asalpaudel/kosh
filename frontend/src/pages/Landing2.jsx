@@ -462,7 +462,6 @@ export default function Landing() {
 
   return (
     <div className={["relative min-h-screen overflow-hidden", pageBg].join(" ")}>
-      {/* background glow */}
       <div className="pointer-events-none absolute inset-0">
         {mode === "dark" && (
           <>
@@ -474,15 +473,12 @@ export default function Landing() {
         <div className={["absolute inset-0", glowOverlay].join(" ")} />
       </div>
 
-      {/* snow */}
       <div className="pointer-events-none absolute inset-0 z-10">
         <Snowfall {...snowProps} />
       </div>
 
-      {/* cursor */}
       <CursorTrail mode={mode} />
 
-      {/* Navbar */}
       <header
         className={[
           "fixed inset-x-0 top-0 z-50 transition-all duration-300",
@@ -500,7 +496,6 @@ export default function Landing() {
                 : "border-slate-200 bg-white/70",
             ].join(" ")}
           >
-            {/* Brand */}
             <button
               type="button"
               onClick={() => {
@@ -524,7 +519,6 @@ export default function Landing() {
               </div>
             </button>
 
-            {/* Desktop Nav */}
             <nav className="hidden items-center gap-6 md:flex">
               <NavItem mode={mode} onClick={() => goSection("features")}>Features</NavItem>
               <NavItem mode={mode} onClick={() => goSection("modules")}>Modules</NavItem>
@@ -533,7 +527,6 @@ export default function Landing() {
               <NavItem mode={mode} onClick={() => goSection("contact")}>Contact</NavItem>
             </nav>
 
-            {/* Actions */}
             <div className="hidden items-center gap-3 md:flex">
               <ThemeToggle
                 mode={mode}
@@ -545,7 +538,6 @@ export default function Landing() {
               </PrimaryButton>
             </div>
 
-            {/* Mobile Hamburger */}
             <button
               type="button"
               onClick={() => setMenuOpen((v) => !v)}
@@ -561,7 +553,6 @@ export default function Landing() {
             </button>
           </div>
 
-          {/* Mobile Menu Panel */}
           {menuOpen && (
             <div
               className={[
@@ -622,12 +613,10 @@ export default function Landing() {
         </div>
       </header>
 
-      {/* spacing for fixed navbar */}
       <div className="h-[84px]" />
 
-      {/* content */}
       <main className="relative z-20">
-        {/* Hero */}
+
         <section className="mx-auto max-w-7xl px-5 pb-14 pt-10 md:px-8 md:pb-20">
           <div className="grid items-center gap-10 md:grid-cols-2">
             <div>
@@ -645,7 +634,6 @@ export default function Landing() {
                 operations.
               </h1>
 
-              {/* short on mobile, long on md+ */}
               <p className={["mt-5 max-w-xl text-base leading-relaxed md:hidden", mode === "dark" ? "text-slate-200/85" : "text-slate-700"].join(" ")}>
                 Members, vouchers, loans, reports—kept clean and easy to verify.
               </p>
@@ -678,7 +666,6 @@ export default function Landing() {
               </div>
             </div>
 
-            {/* 3D Tilt Card */}
             <motion.div
               ref={heroCardRef}
               className={[
@@ -814,7 +801,6 @@ export default function Landing() {
           </div>
         </section>
 
-        {/* Features scroller */}
         <section id="features" className="mx-auto max-w-7xl px-5 py-14 md:px-8">
           <HorizontalScroller
             mode={mode}
@@ -848,7 +834,6 @@ export default function Landing() {
           />
         </section>
 
-        {/* Modules scroller */}
         <section id="modules" className="mx-auto max-w-7xl px-5 py-14 md:px-8">
           <HorizontalScroller
             mode={mode}
@@ -871,7 +856,6 @@ export default function Landing() {
           />
         </section>
 
-        {/* Security */}
         <section id="security" className="mx-auto max-w-7xl px-5 py-14 md:px-8">
           <div className="grid gap-8 md:grid-cols-2 md:items-center">
             <div>
@@ -944,7 +928,6 @@ export default function Landing() {
           </div>
         </section>
 
-        {/* Pricing */}
         <section id="pricing" className="mx-auto max-w-7xl px-5 py-14 md:px-8">
           <div className="flex flex-col items-start justify-between gap-4 md:flex-row md:items-end">
             <div>
@@ -1021,7 +1004,6 @@ export default function Landing() {
           </div>
         </section>
 
-        {/* Contact (NO form) */}
         <section id="contact" className="mx-auto max-w-7xl px-5 pb-20 pt-14 md:px-8">
           <Card mode={mode} className="p-8 md:p-12">
             <div className="grid gap-10 md:grid-cols-2 md:items-center">
@@ -1091,7 +1073,6 @@ export default function Landing() {
         </section>
       </main>
 
-      {/* Footer */}
       <footer className={["relative z-20 border-t", mode === "dark" ? "border-white/10" : "border-slate-200"].join(" ")}>
         <div className={["mx-auto flex max-w-7xl flex-col gap-4 px-5 py-8 text-sm md:flex-row md:items-center md:justify-between md:px-8", mode === "dark" ? "text-slate-200/70" : "text-slate-600"].join(" ")}>
           <div className="flex items-center gap-2">
