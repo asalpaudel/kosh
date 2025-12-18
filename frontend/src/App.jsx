@@ -31,7 +31,7 @@ import AdminTransactions from "./pages/admin/Transactions.jsx";
 import AdminPackages from "./pages/admin/Packages.jsx";
 import AdminApplications from "./pages/admin/AdminApplications.jsx";
 import AdminSettings from "./pages/admin/Settings.jsx";
-import Landing from "./pages/Landing.jsx";
+import Landing from "./pages/Landing2.jsx";
 
 function App() {
   return (
