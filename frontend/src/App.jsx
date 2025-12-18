@@ -31,13 +31,15 @@ import AdminTransactions from "./pages/admin/Transactions.jsx";
 import AdminPackages from "./pages/admin/Packages.jsx";
 import AdminApplications from "./pages/admin/AdminApplications.jsx";
 import AdminSettings from "./pages/admin/Settings.jsx";
+import Landing from "./pages/Landing.jsx";
 
 function App() {
   return (
     <>
       <BrowserRouter>
         <Routes>
-          <Route path="/" element={<Login />} />
+          <Route path="/" element={<Landing />} />
+          <Route path="/login" element={<Login />} />
           <Route path="/signup" element={<Signup />} />
           <Route path="/forgot" element={<Forgot />} />
 
