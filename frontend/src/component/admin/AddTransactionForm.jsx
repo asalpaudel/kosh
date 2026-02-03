@@ -6,6 +6,7 @@ import {
   BuildingIcon,
   CalendarIcon,
 } from "../icons";
+import ConfirmationModal from "../ConfirmationModal";
 
 const apiBase = "http://localhost:8080/api";
 
@@ -192,6 +193,7 @@ function AddTransactionForm({ onAdded, onClose, prefilledData }) {
   const searchBoxRef = useRef(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
 
   const isPrefilledMode = !!prefilledData;
 
@@ -430,6 +432,14 @@ function AddTransactionForm({ onAdded, onClose, prefilledData }) {
       return;
     }
 
+    setIsConfirmModalOpen(true);
+    setLoading(false);
+  };
+
+  const processSubmit = async () => {
+    setIsConfirmModalOpen(false);
+    setLoading(true);
+    setError("");
     try {
       const payload = {
         voucherId: mode === "member" ? formData.voucherId : null,
@@ -913,6 +923,15 @@ function AddTransactionForm({ onAdded, onClose, prefilledData }) {
               : `Save ${mode === "member" ? "Member" : "Network"} Voucher`}
         </button>
       </div>
+      <ConfirmationModal
+        isOpen={isConfirmModalOpen}
+        onClose={() => setIsConfirmModalOpen(false)}
+        onConfirm={processSubmit}
+        title="Confirm Transaction"
+        message={`Are you sure you want to process this transaction of Rs. ${parseFloat(formData.amountValue).toLocaleString()}?`}
+        confirmText="Confirm & Process"
+        type="info"
+      />
     </form>
   );
 }

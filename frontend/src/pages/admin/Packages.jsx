@@ -18,6 +18,7 @@ import AddLoanForm from "../../component/admin/AddLoanForm.jsx";
 import EditFixedDepositForm from "../../component/admin/EditFixedDepositForm.jsx";
 import EditSavingAccountForm from "../../component/admin/EditSavingAccountForm.jsx";
 import EditLoanPackageForm from "../../component/admin/EditLoanPackageForm.jsx";
+import ConfirmationModal from "../../component/ConfirmationModal.jsx";
 
 const apiBase = "http://localhost:8080/api";
 
@@ -240,6 +241,10 @@ function AdminPackages() {
   const [currentPackageType, setCurrentPackageType] = useState(null);
   const [currentEditPackage, setCurrentEditPackage] = useState(null);
 
+  // Deletion confirmation
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [packageToDelete, setPackageToDelete] = useState(null);
+
   // --- NEW: Effect to handle Global Search actions ---
   useEffect(() => {
     if (location.state && location.state.action) {
@@ -318,16 +323,30 @@ function AdminPackages() {
   }, [selectedNetworkId]);
 
   // Delete handler
-  const handleDeletePackage = async (id, type) => {
-    const confirm = window.confirm(`Delete this ${type} package?`);
-    if (!confirm) return;
+  const handleDeletePackage = (id, type) => {
+    setPackageToDelete({ id, type });
+    setIsDeleteModalOpen(true);
+  };
 
-    let url = `${apiBase}/finance/${type}/${id}`;
-    await fetch(url, {
-      method: "DELETE",
-      credentials: "include",
-    });
-    fetchData();
+  const confirmDelete = async () => {
+    if (!packageToDelete) return;
+    const { id, type } = packageToDelete;
+    setIsDeleteModalOpen(false);
+    setLoading(true);
+
+    try {
+      let url = `${apiBase}/finance/${type}/${id}`;
+      await fetch(url, {
+        method: "DELETE",
+        credentials: "include",
+      });
+      fetchData();
+    } catch (error) {
+      console.error("Failed to delete package:", error);
+    } finally {
+      setLoading(false);
+      setPackageToDelete(null);
+    }
   };
 
   // View handler
@@ -605,8 +624,8 @@ function AdminPackages() {
         title="Add New Fixed Deposit Package"
         size="2xl"
       >
-        <AddFixedDepositForm 
-          networkId={selectedNetworkId} 
+        <AddFixedDepositForm
+          networkId={selectedNetworkId}
           onAdded={handleAdded}
           onClose={() => setIsAddFixedDepositModalOpen(false)}
         />
@@ -618,8 +637,8 @@ function AdminPackages() {
         title="Add New Saving Account Package"
         size="2xl"
       >
-        <AddSavingAccountForm 
-          networkId={selectedNetworkId} 
+        <AddSavingAccountForm
+          networkId={selectedNetworkId}
           onAdded={handleAdded}
           onClose={() => setIsAddSavingAccountModalOpen(false)}
         />
@@ -631,8 +650,8 @@ function AdminPackages() {
         title="Add New Loan Package"
         size="2xl"
       >
-        <AddLoanForm 
-          networkId={selectedNetworkId} 
+        <AddLoanForm
+          networkId={selectedNetworkId}
           onAdded={handleAdded}
           onClose={() => setIsAddLoanModalOpen(false)}
         />
@@ -712,6 +731,19 @@ function AdminPackages() {
         }}
         packageData={currentPackageToView}
         packageType={currentPackageType}
+      />
+
+      <ConfirmationModal
+        isOpen={isDeleteModalOpen}
+        onClose={() => {
+          setIsDeleteModalOpen(false);
+          setPackageToDelete(null);
+        }}
+        onConfirm={confirmDelete}
+        title="Confirm Deletion"
+        message={`Are you sure you want to delete this ${packageToDelete?.type.replace("-", " ")} package? This action cannot be undone.`}
+        confirmText="Delete"
+        type="danger"
       />
     </>
   );

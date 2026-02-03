@@ -13,6 +13,8 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.kosh.backend.model.ActivityLog;
+import com.kosh.backend.repository.ActivityLogRepository;
 import com.kosh.backend.service.EmailService;
 
 import jakarta.servlet.http.HttpSession;
@@ -37,9 +39,11 @@ public class SuperAdminAuthController {
     
     private final Map<String, SuperAdminOtp> otpStorage = new ConcurrentHashMap<>();
     private final EmailService emailService;
+    private final ActivityLogRepository logRepo;
 
-    public SuperAdminAuthController(EmailService emailService) {
+    public SuperAdminAuthController(EmailService emailService, ActivityLogRepository logRepo) {
         this.emailService = emailService;
+        this.logRepo = logRepo;
     }
 
     /**
@@ -151,6 +155,17 @@ public class SuperAdminAuthController {
         session.setAttribute("superadminRole", "superadmin");
         session.setAttribute("superadminLoggedIn", true);
         
+        // ⭐ UNIFY SESSION KEYS FOR OTHER CONTROLLERS
+        session.setAttribute("userRole", "superadmin");
+        session.setAttribute("userName", "Super Admin");
+        session.setAttribute("userEmail", email);
+
+        // Log Login
+        try {
+            ActivityLog log = new ActivityLog("Super Admin", "superadmin", null, "LOGIN", "SuperAdmin logged in via OTP.");
+            logRepo.save(log);
+        } catch (Exception e) {}
+        
         return ResponseEntity.ok(Map.of(
             "success", true,
             "message", "Login successful",
@@ -185,9 +200,22 @@ public class SuperAdminAuthController {
      */
     @PostMapping("/logout")
     public ResponseEntity<?> logout(HttpSession session) {
+        // Log Logout
+        try {
+            String role = (String) session.getAttribute("userRole");
+            String name = (String) session.getAttribute("userName");
+            if ("superadmin".equals(role)) {
+                ActivityLog log = new ActivityLog(name != null ? name : "Super Admin", "superadmin", null, "LOGOUT", "SuperAdmin logged out.");
+                logRepo.save(log);
+            }
+        } catch (Exception e) {}
+
         session.removeAttribute("superadminEmail");
         session.removeAttribute("superadminRole");
         session.removeAttribute("superadminLoggedIn");
+        session.removeAttribute("userRole");
+        session.removeAttribute("userName");
+        session.removeAttribute("userEmail");
         
         return ResponseEntity.ok(Map.of(
             "success", true,

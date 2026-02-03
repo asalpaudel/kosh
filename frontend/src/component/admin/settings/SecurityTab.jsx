@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import ConfirmationModal from "../../ConfirmationModal.jsx";
 
 // --- Reusable Card Component ---
 const SettingsCard = ({ title, children }) => (
@@ -18,17 +19,22 @@ const TwoFactorAuth = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
+  const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
+
   const handleToggle = () => {
     if (isEnabled) {
       // Disable 2FA
-      if (window.confirm("Are you sure you want to disable 2FA?")) {
-        setIsEnabled(false);
-        setShowSetup(false);
-      }
+      setIsConfirmModalOpen(true);
     } else {
       // Show setup process
       setShowSetup(true);
     }
+  };
+
+  const confirmDisable = () => {
+    setIsConfirmModalOpen(false);
+    setIsEnabled(false);
+    setShowSetup(false);
   };
 
   const handleVerify = (e) => {
@@ -60,7 +66,7 @@ const TwoFactorAuth = () => {
             : "Add an extra layer of security to your account."}
         </p>
       </div>
-      
+
       {/* --- The Toggle --- */}
       <label className="relative inline-flex items-center cursor-pointer">
         <input
@@ -80,15 +86,15 @@ const TwoFactorAuth = () => {
             <p className="text-sm text-gray-600 mb-4">
               Scan this QR code with your authenticator app (e.g., Google Authenticator).
             </p>
-            
+
             {/* 1. Dummy QR Code */}
             <div className="flex justify-center bg-gray-100 p-4 rounded-lg">
-              
 
-[Image of a QR code]
+
+              [Image of a QR code]
 
             </div>
-            
+
             {/* 2. Dummy Secret Key */}
             <p className="text-center font-mono text-sm text-gray-700 my-4">
               ABCD 1234 EFGH 5678
@@ -118,6 +124,16 @@ const TwoFactorAuth = () => {
           </div>
         </div>
       )}
+
+      <ConfirmationModal
+        isOpen={isConfirmModalOpen}
+        onClose={() => setIsConfirmModalOpen(false)}
+        onConfirm={confirmDisable}
+        title="Disable 2FA"
+        message="Are you sure you want to disable Two-Step Authentication? This will make your account less secure."
+        confirmText="Disable"
+        type="danger"
+      />
     </div>
   );
 };
@@ -126,7 +142,7 @@ const TwoFactorAuth = () => {
 function SecurityTab() {
   return (
     <div className="max-w-3xl space-y-10">
-      
+
       {/* --- Change Password --- */}
       <SettingsCard title="Change Password">
         <form className="space-y-4">

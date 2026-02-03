@@ -9,6 +9,7 @@ import {
   XCircleIcon,
   ClockIcon
 } from "../../component/icons.jsx";
+import ConfirmationModal from "../../component/ConfirmationModal.jsx";
 
 const apiBase = "http://localhost:8080/api";
 
@@ -23,14 +24,14 @@ const STATUS_STYLES = {
 const ReviewModal = ({ application, type, onClose, onConfirm }) => {
   const isLoan = type === "loan";
   const isFD = type === "fixed-deposit";
-  
+
   const [formData, setFormData] = useState({
     approvedAmount:
       type === "loan"
         ? application.requestedAmount
         : type === "fixed-deposit"
-        ? application.depositAmount
-        : application.initialDeposit,
+          ? application.depositAmount
+          : application.initialDeposit,
     duration:
       type === "loan"
         ? application.loanPackage?.maxDuration || 12
@@ -50,8 +51,8 @@ const ReviewModal = ({ application, type, onClose, onConfirm }) => {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto overflow-x-hidden p-4 sm:p-6">
       {/* Modern Backdrop: Blur + Light Dark */}
-      <div 
-        className="fixed inset-0 bg-gray-900/20 backdrop-blur-sm transition-opacity" 
+      <div
+        className="fixed inset-0 bg-gray-900/20 backdrop-blur-sm transition-opacity"
         onClick={onClose}
       />
 
@@ -62,14 +63,14 @@ const ReviewModal = ({ application, type, onClose, onConfirm }) => {
             <h3 className="text-xl font-bold text-gray-900">Review Application</h3>
             <p className="text-sm text-gray-500">Approve or reject this request.</p>
           </div>
-          <button 
-            onClick={onClose} 
+          <button
+            onClick={onClose}
             className="rounded-full p-2 text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition-colors"
           >
             <XMarkIcon className="h-6 w-6" />
           </button>
         </div>
-        
+
         <form onSubmit={handleSubmit} className="space-y-5">
           {/* Summary Box */}
           <div className="rounded-xl bg-gray-50 border border-gray-100 p-4 text-sm space-y-2">
@@ -172,7 +173,7 @@ const ReviewModal = ({ application, type, onClose, onConfirm }) => {
 
 const ApplicationCard = ({ application, type, onReview }) => {
   const isPending = application.status === "PENDING";
-  
+
   const getPackageName = () => {
     switch (type) {
       case "fixed-deposit": return application.fixedDeposit?.name || "N/A";
@@ -208,7 +209,7 @@ const ApplicationCard = ({ application, type, onReview }) => {
         return (
           <div className="mt-3 mb-4 space-y-2">
             <div className="grid grid-cols-2 gap-2">
-               <div className="bg-gray-50 p-2 rounded-lg">
+              <div className="bg-gray-50 p-2 rounded-lg">
                 <p className="text-xs text-gray-500">Requested</p>
                 <p className="font-semibold text-gray-900">Rs. {application.requestedAmount?.toLocaleString()}</p>
               </div>
@@ -218,7 +219,7 @@ const ApplicationCard = ({ application, type, onReview }) => {
                   <p className="font-semibold text-emerald-700">Rs. {application.approvedAmount?.toLocaleString()}</p>
                 </div>
               ) : (
-                 <div className="bg-gray-50 p-2 rounded-lg">
+                <div className="bg-gray-50 p-2 rounded-lg">
                   <p className="text-xs text-gray-500">Purpose</p>
                   <p className="font-medium text-gray-900 truncate">{application.purpose}</p>
                 </div>
@@ -235,13 +236,13 @@ const ApplicationCard = ({ application, type, onReview }) => {
       <div>
         <div className="flex items-start justify-between mb-2">
           <div className="flex items-center gap-3">
-             <div className="h-10 w-10 rounded-full bg-gray-100 flex items-center justify-center text-lg font-bold text-gray-600 uppercase">
-                {application.user?.name?.charAt(0)}
-             </div>
-             <div>
-               <h4 className="text-sm font-bold text-gray-900">{application.user?.name}</h4>
-               <p className="text-xs text-gray-500">{getPackageName()}</p>
-             </div>
+            <div className="h-10 w-10 rounded-full bg-gray-100 flex items-center justify-center text-lg font-bold text-gray-600 uppercase">
+              {application.user?.name?.charAt(0)}
+            </div>
+            <div>
+              <h4 className="text-sm font-bold text-gray-900">{application.user?.name}</h4>
+              <p className="text-xs text-gray-500">{getPackageName()}</p>
+            </div>
           </div>
           <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium border ${STATUS_STYLES[application.status]}`}>
             {application.status}
@@ -289,8 +290,12 @@ export default function AdminApplications() {
   const [applications, setApplications] = useState({ fd: [], sa: [], loan: [] });
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState("ALL");
-  const [reviewModal, setReviewModal] = useState(null); 
+  const [reviewModal, setReviewModal] = useState(null);
   const [collapseState, setCollapseState] = useState({ fd: false, sa: false, loan: false });
+
+  // Rejection confirmation
+  const [isRejectModalOpen, setIsRejectModalOpen] = useState(false);
+  const [appToReject, setAppToReject] = useState(null);
 
   // Fetch Session
   useEffect(() => {
@@ -321,7 +326,7 @@ export default function AdminApplications() {
         sa: await saRes.json(),
         loan: await loanRes.json(),
       });
-    } catch (err) { console.error(err); } 
+    } catch (err) { console.error(err); }
     finally { setLoading(false); }
   };
 
@@ -334,10 +339,17 @@ export default function AdminApplications() {
     if (status === "APPROVED") {
       setReviewModal({ app, type });
     } else {
-      if(window.confirm("Are you sure you want to reject this application?")) {
-        submitReview(app, type, { status: "REJECTED", reviewNotes: "Rejected by Admin" });
-      }
+      setAppToReject({ app, type });
+      setIsRejectModalOpen(true);
     }
+  };
+
+  const confirmRejection = () => {
+    if (!appToReject) return;
+    const { app, type } = appToReject;
+    setIsRejectModalOpen(false);
+    submitReview(app, type, { status: "REJECTED", reviewNotes: "Rejected by Admin" });
+    setAppToReject(null);
   };
 
   const submitReview = async (app, type, payload) => {
@@ -348,7 +360,7 @@ export default function AdminApplications() {
         credentials: "include",
         body: JSON.stringify(payload),
       });
-      
+
       if (res.ok) {
         setReviewModal(null);
         fetchApplications();
@@ -365,8 +377,8 @@ export default function AdminApplications() {
   const handleModalConfirm = (data) => {
     if (!reviewModal) return;
     submitReview(reviewModal.app, reviewModal.type, {
-        status: "APPROVED",
-        ...data 
+      status: "APPROVED",
+      ...data
     });
   };
 
@@ -374,18 +386,18 @@ export default function AdminApplications() {
 
   if (!networkId) return (
     <div className="flex h-[80vh] items-center justify-center">
-        <div className="text-center">
-            <div className="h-12 w-12 border-4 border-teal-200 border-t-teal-600 rounded-full animate-spin mx-auto mb-4"></div>
-            <p className="text-gray-500">Loading Session...</p>
-        </div>
+      <div className="text-center">
+        <div className="h-12 w-12 border-4 border-teal-200 border-t-teal-600 rounded-full animate-spin mx-auto mb-4"></div>
+        <p className="text-gray-500">Loading Session...</p>
+      </div>
     </div>
   );
 
   const stats = ["PENDING", "APPROVED", "REJECTED"];
   const statCounts = {
-    PENDING: applications.fd.filter(a=>a.status==="PENDING").length + applications.sa.filter(a=>a.status==="PENDING").length + applications.loan.filter(a=>a.status==="PENDING").length,
-    APPROVED: applications.fd.filter(a=>a.status==="APPROVED").length + applications.sa.filter(a=>a.status==="APPROVED").length + applications.loan.filter(a=>a.status==="APPROVED").length,
-    REJECTED: applications.fd.filter(a=>a.status==="REJECTED").length + applications.sa.filter(a=>a.status==="REJECTED").length + applications.loan.filter(a=>a.status==="REJECTED").length,
+    PENDING: applications.fd.filter(a => a.status === "PENDING").length + applications.sa.filter(a => a.status === "PENDING").length + applications.loan.filter(a => a.status === "PENDING").length,
+    APPROVED: applications.fd.filter(a => a.status === "APPROVED").length + applications.sa.filter(a => a.status === "APPROVED").length + applications.loan.filter(a => a.status === "APPROVED").length,
+    REJECTED: applications.fd.filter(a => a.status === "REJECTED").length + applications.sa.filter(a => a.status === "REJECTED").length + applications.loan.filter(a => a.status === "REJECTED").length,
   };
   const totalApplications = applications.fd.length + applications.sa.length + applications.loan.length;
 
@@ -398,40 +410,38 @@ export default function AdminApplications() {
   return (
     <div className="min-h-screen bg-gray-50/50 p-6 md:p-8">
       <div className="mx-auto max-w-7xl space-y-8">
-        
+
         {/* Header Stats */}
         <div>
-           <h1 className="text-2xl font-bold text-gray-900 mb-6">Application Overview</h1>
-           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm">
-                <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Total</p>
-                <p className="text-3xl font-bold text-gray-900">{totalApplications}</p>
+          <h1 className="text-2xl font-bold text-gray-900 mb-6">Application Overview</h1>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm">
+              <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Total</p>
+              <p className="text-3xl font-bold text-gray-900">{totalApplications}</p>
+            </div>
+            {stats.map(st => (
+              <div key={st} className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm">
+                <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">{st}</p>
+                <p className={`text-3xl font-bold ${st === 'PENDING' ? 'text-amber-500' : st === 'APPROVED' ? 'text-emerald-500' : 'text-rose-500'
+                  }`}>
+                  {statCounts[st]}
+                </p>
               </div>
-              {stats.map(st => (
-                <div key={st} className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm">
-                   <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">{st}</p>
-                   <p className={`text-3xl font-bold ${
-                       st === 'PENDING' ? 'text-amber-500' : st === 'APPROVED' ? 'text-emerald-500' : 'text-rose-500'
-                   }`}>
-                      {statCounts[st]}
-                   </p>
-                </div>
-              ))}
-           </div>
+            ))}
+          </div>
         </div>
 
         {/* Filters */}
         <div className="flex items-center gap-2 overflow-x-auto pb-2">
-            <FunnelIcon className="w-5 h-5 text-gray-400 mr-2" />
-            {["ALL", "PENDING", "APPROVED", "REJECTED"].map((st) => (
+          <FunnelIcon className="w-5 h-5 text-gray-400 mr-2" />
+          {["ALL", "PENDING", "APPROVED", "REJECTED"].map((st) => (
             <button
               key={st}
               onClick={() => setFilter(st)}
-              className={`px-4 py-2 rounded-full text-sm font-semibold transition-all whitespace-nowrap ${
-                filter === st
+              className={`px-4 py-2 rounded-full text-sm font-semibold transition-all whitespace-nowrap ${filter === st
                   ? "bg-teal-600 text-white shadow-md ring-2 ring-teal-600 ring-offset-2"
                   : "bg-white text-gray-600 border border-gray-200 hover:bg-gray-50 hover:border-gray-300"
-              }`}
+                }`}
             >
               {st.charAt(0) + st.slice(1).toLowerCase()}
             </button>
@@ -444,7 +454,7 @@ export default function AdminApplications() {
             const Icon = section.icon;
             const collapsed = collapseState[section.key];
             const filtered = filterApps(section.apps);
-            
+
             return (
               <div key={section.key} className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
                 <button
@@ -453,11 +463,11 @@ export default function AdminApplications() {
                 >
                   <div className="flex items-center gap-4">
                     <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-teal-50 text-teal-600">
-                       <Icon className="h-6 w-6" />
+                      <Icon className="h-6 w-6" />
                     </div>
                     <div className="text-left">
-                       <h3 className="text-lg font-bold text-gray-900">{section.label}</h3>
-                       <p className="text-xs text-gray-500">{filtered.length} applications found</p>
+                      <h3 className="text-lg font-bold text-gray-900">{section.label}</h3>
+                      <p className="text-xs text-gray-500">{filtered.length} applications found</p>
                     </div>
                   </div>
                   <span className={`text-gray-400 transition-transform ${collapsed ? "rotate-0" : "rotate-180"}`}>
@@ -468,24 +478,24 @@ export default function AdminApplications() {
                 {!collapsed && (
                   <div className="border-t border-gray-100 bg-gray-50/50 p-5">
                     {filtered.length > 0 ? (
-                        <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
-                            {filtered.map((app) => (
-                                <ApplicationCard
-                                    key={app.id}
-                                    application={app}
-                                    type={section.type}
-                                    onReview={initiateReview}
-                                />
-                            ))}
-                        </div>
+                      <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
+                        {filtered.map((app) => (
+                          <ApplicationCard
+                            key={app.id}
+                            application={app}
+                            type={section.type}
+                            onReview={initiateReview}
+                          />
+                        ))}
+                      </div>
                     ) : (
-                        <div className="flex flex-col items-center justify-center py-10 text-center">
-                            <div className="rounded-full bg-gray-100 p-4 mb-3">
-                                <DocumentTextIcon className="w-6 h-6 text-gray-400" />
-                            </div>
-                            <p className="text-sm font-medium text-gray-900">No applications found</p>
-                            <p className="text-xs text-gray-500">Try changing the filters</p>
+                      <div className="flex flex-col items-center justify-center py-10 text-center">
+                        <div className="rounded-full bg-gray-100 p-4 mb-3">
+                          <DocumentTextIcon className="w-6 h-6 text-gray-400" />
                         </div>
+                        <p className="text-sm font-medium text-gray-900">No applications found</p>
+                        <p className="text-xs text-gray-500">Try changing the filters</p>
+                      </div>
                     )}
                   </div>
                 )}
@@ -503,6 +513,19 @@ export default function AdminApplications() {
           onConfirm={handleModalConfirm}
         />
       )}
+
+      <ConfirmationModal
+        isOpen={isRejectModalOpen}
+        onClose={() => {
+          setIsRejectModalOpen(false);
+          setAppToReject(null);
+        }}
+        onConfirm={confirmRejection}
+        title="Confirm Rejection"
+        message="Are you sure you want to reject this application? This decision will be notified to the user."
+        confirmText="Reject"
+        type="danger"
+      />
     </div>
   );
 }

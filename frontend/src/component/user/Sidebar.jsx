@@ -9,28 +9,29 @@ import {
   PiggyBankIcon,
   ClipboardListIcon,
 } from "../icons.jsx";
+import ConfirmationModal from "../ConfirmationModal.jsx";
 
 const API_BASE = "http://localhost:8080/api";
 
 function Sidebar() {
   const navigate = useNavigate();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  
+  const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
+
   const navLinkClass = ({ isActive }) =>
-    `group flex items-center gap-3 p-3 rounded-xl transition-all duration-200 relative ${
-      isActive 
-        ? "bg-emerald-500/20 text-emerald-400" 
-        : "text-gray-400 hover:bg-gray-900 hover:text-white"
+    `group flex items-center gap-3 p-3 rounded-xl transition-all duration-200 relative ${isActive
+      ? "bg-emerald-500/20 text-emerald-400"
+      : "text-gray-400 hover:bg-gray-900 hover:text-white"
     }`;
 
   const mobileNavLinkClass = ({ isActive }) =>
-    `group flex items-center gap-3 p-3 rounded-xl transition-all duration-200 w-full ${
-      isActive 
-        ? "bg-emerald-500/20 text-emerald-400" 
-        : "text-gray-400 hover:bg-gray-900 hover:text-white"
+    `group flex items-center gap-3 p-3 rounded-xl transition-all duration-200 w-full ${isActive
+      ? "bg-emerald-500/20 text-emerald-400"
+      : "text-gray-400 hover:bg-gray-900 hover:text-white"
     }`;
 
   const handleLogout = async () => {
+    setIsLogoutModalOpen(false);
     try {
       await fetch(`${API_BASE}/auth/logout`, {
         method: "POST",
@@ -52,15 +53,15 @@ function Sidebar() {
           <div className="mb-4 p-2">
             <Logo className="w-8 h-8" />
           </div>
-          
+
           <NavLink to="/home/dashboard" className={navLinkClass} title="Dashboard">
             <LayoutDashboardIcon className="h-6 w-6 transition-transform group-hover:scale-110" />
           </NavLink>
-          
+
           <NavLink to="/home/report" className={navLinkClass} title="Report">
             <BarChartIcon className="h-6 w-6 transition-transform group-hover:scale-110" />
           </NavLink>
-          
+
           <NavLink to="/home/statement" className={navLinkClass} title="Statement">
             <FileTextIcon className="h-6 w-6 transition-transform group-hover:scale-110" />
           </NavLink>
@@ -74,14 +75,24 @@ function Sidebar() {
           </NavLink>
         </div>
 
-        <button 
-          onClick={handleLogout} 
+        <button
+          onClick={() => setIsLogoutModalOpen(true)}
           className="group p-3 rounded-xl text-red-400 hover:bg-red-500/20 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-red-500"
           title="Logout"
         >
           <LogOutIcon className="h-6 w-6 transition-transform group-hover:scale-110" />
         </button>
       </div>
+
+      <ConfirmationModal
+        isOpen={isLogoutModalOpen}
+        onClose={() => setIsLogoutModalOpen(false)}
+        onConfirm={handleLogout}
+        title="Confirm Logout"
+        message="Are you sure you want to log out of your account?"
+        confirmText="Logout"
+        type="danger"
+      />
 
       {/* Mobile Bottom Navigation */}
       <div className="md:hidden fixed bottom-0 left-0 right-0 bg-black z-50">
@@ -94,7 +105,7 @@ function Sidebar() {
               </>
             )}
           </NavLink>
-          
+
           <NavLink to="/home/report" className="flex flex-col items-center p-2 text-xs">
             {({ isActive }) => (
               <>
@@ -103,7 +114,7 @@ function Sidebar() {
               </>
             )}
           </NavLink>
-          
+
           <NavLink to="/home/statement" className="flex flex-col items-center p-2 text-xs">
             {({ isActive }) => (
               <>
@@ -122,7 +133,7 @@ function Sidebar() {
             )}
           </NavLink>
 
-          <button 
+          <button
             onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
             className="flex flex-col items-center p-2 text-xs text-gray-400"
           >
@@ -137,8 +148,8 @@ function Sidebar() {
         {isMobileMenuOpen && (
           <div className="absolute bottom-full left-0 right-0 bg-black">
             <div className="p-4 space-y-2">
-              <NavLink 
-                to="/home/applications" 
+              <NavLink
+                to="/home/applications"
                 className={mobileNavLinkClass}
                 onClick={() => setIsMobileMenuOpen(false)}
               >
@@ -146,10 +157,10 @@ function Sidebar() {
                 <span>Applications</span>
               </NavLink>
 
-              <button 
+              <button
                 onClick={() => {
                   setIsMobileMenuOpen(false);
-                  handleLogout();
+                  setIsLogoutModalOpen(true);
                 }}
                 className="group flex items-center gap-3 p-3 rounded-xl w-full text-red-400 hover:bg-red-500/20 transition-all duration-200"
               >

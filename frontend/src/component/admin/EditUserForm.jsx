@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import ConfirmationModal from "../ConfirmationModal.jsx";
 
 function EditUserForm({
   user,
@@ -19,6 +20,7 @@ function EditUserForm({
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
 
   useEffect(() => {
     if (user) {
@@ -66,9 +68,12 @@ function EditUserForm({
     }
   };
 
-  const handleDelete = async () => {
-    if (!window.confirm(`Delete "${formData.name}" permanently?`)) return;
+  const handleDelete = () => {
+    setIsDeleteModalOpen(true);
+  };
 
+  const confirmDelete = async () => {
+    setIsDeleteModalOpen(false);
     setLoading(true);
     setError(null);
 
@@ -81,7 +86,7 @@ function EditUserForm({
       if (!res.ok) throw new Error("Failed to delete user");
 
       onUserDeleted?.(user.id);
-      alert(`User "${formData.name}" deleted`);
+      // alert(`User "${formData.name}" deleted`); // Optional
       onClose();
     } catch (err) {
       setError(err.message);
@@ -227,6 +232,16 @@ function EditUserForm({
           </div>
         </div>
       </form>
+
+      <ConfirmationModal
+        isOpen={isDeleteModalOpen}
+        onClose={() => setIsDeleteModalOpen(false)}
+        onConfirm={confirmDelete}
+        title="Confirm Delete User"
+        message={`Are you sure you want to delete "${formData.name}" permanently? This action cannot be undone.`}
+        confirmText="Delete Permanently"
+        type="danger"
+      />
     </div>
   );
 }

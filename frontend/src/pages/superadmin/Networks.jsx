@@ -17,6 +17,7 @@ import AddNetworkForm from "../../component/superadmin/AddNetworkForm.jsx";
 import EditNetworkForm from "../../component/superadmin/EditNetworkForm.jsx";
 import AddUserForm from "../../component/superadmin/AddUserForm.jsx";
 import EditUserForm from "../../component/superadmin/EditUserForm.jsx";
+import ConfirmationModal from "../../component/ConfirmationModal.jsx";
 
 // --- API BASE ---
 const API_BASE = "http://localhost:8080/api";
@@ -130,8 +131,8 @@ const UserDetails = ({ item }) => (
               item.status === "Active"
                 ? "green"
                 : item.status === "Pending"
-                ? "amber"
-                : "red"
+                  ? "amber"
+                  : "red"
             }
           >
             {item.status ?? "Active"}
@@ -184,6 +185,10 @@ function Networks() {
 
   const [isEditUserModalOpen, setIsEditUserModalOpen] = useState(false);
   const [editingUser, setEditingUser] = useState(null);
+
+  // Deletion confirmation
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [deleteData, setDeleteData] = useState(null); // { id, type: 'network' | 'user' }
 
   // Load networks
   const loadNetworks = async () => {
@@ -294,23 +299,35 @@ function Networks() {
     setNetworks((prev) => prev.map((n) => (n.id === saved.id ? saved : n)));
   };
 
-  const deleteNetwork = async (id) => {
-    if (!window.confirm("Delete this sahakari?")) return;
-    try {
-      await fetch(`${API_BASE}/networks/${id}`, { method: "DELETE" });
-      setNetworks((prev) => prev.filter((n) => n.id !== id));
-    } catch (e) {
-      console.error("Delete failed:", e);
-    }
+  const deleteNetwork = (id) => {
+    setDeleteData({ id, type: "network" });
+    setIsDeleteModalOpen(true);
   };
 
-  const deleteUser = async (id) => {
-    if (!window.confirm("Delete this user?")) return;
+  const deleteUser = (id) => {
+    setDeleteData({ id, type: "user" });
+    setIsDeleteModalOpen(true);
+  };
+
+  const confirmDelete = async () => {
+    if (!deleteData) return;
+    const { id, type } = deleteData;
+    setIsDeleteModalOpen(false);
+    setLoading(true);
+
     try {
-      await fetch(`${API_BASE}/users/${id}`, { method: "DELETE" });
-      setUsers((prev) => prev.filter((u) => u.id !== id));
+      if (type === "network") {
+        await fetch(`${API_BASE}/networks/${id}`, { method: "DELETE" });
+        setNetworks((prev) => prev.filter((n) => n.id !== id));
+      } else {
+        await fetch(`${API_BASE}/users/${id}`, { method: "DELETE" });
+        setUsers((prev) => prev.filter((u) => u.id !== id));
+      }
     } catch (e) {
       console.error("Delete failed:", e);
+    } finally {
+      setLoading(false);
+      setDeleteData(null);
     }
   };
 
@@ -704,6 +721,19 @@ function Networks() {
           />
         )}
       </Modal>
+
+      <ConfirmationModal
+        isOpen={isDeleteModalOpen}
+        onClose={() => {
+          setIsDeleteModalOpen(false);
+          setDeleteData(null);
+        }}
+        onConfirm={confirmDelete}
+        title={deleteData?.type === "network" ? "Delete Sahakari" : "Delete User"}
+        message={`Are you sure you want to delete this ${deleteData?.type}? This action cannot be undone.`}
+        confirmText="Delete"
+        type="danger"
+      />
     </>
   );
 }

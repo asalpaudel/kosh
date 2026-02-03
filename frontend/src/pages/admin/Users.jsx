@@ -13,6 +13,7 @@ import {
 import Modal from "../../component/superadmin/Modal.jsx";
 import AddUserForm from "../../component/admin/AddUserForm.jsx";
 import EditUserForm from "../../component/admin/EditUserForm.jsx";
+import ConfirmationModal from "../../component/ConfirmationModal.jsx";
 
 const API_BASE = "http://localhost:8080/api";
 
@@ -216,6 +217,10 @@ function AdminUsers() {
   // ⭐ New state for documents modal
   const [documentsModalUserId, setDocumentsModalUserId] = useState(null);
 
+  // Deletion confirmation
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [userToDelete, setUserToDelete] = useState(null);
+
   const [activeFilter, setActiveFilter] = useState("All");
   const [searchQuery, setSearchQuery] = useState("");
 
@@ -365,20 +370,30 @@ function AdminUsers() {
     setIsEditModalOpen(true);
   };
 
-  const handleDelete = async (userId) => {
-    if (!window.confirm("Delete this user?")) return;
+  const handleDelete = (userId) => {
+    setUserToDelete(userId);
+    setIsDeleteModalOpen(true);
+  };
+
+  const confirmDelete = async () => {
+    if (!userToDelete) return;
+    setIsDeleteModalOpen(false);
+    setLoading(true);
 
     try {
-      await fetch(`${API_BASE}/users/${userId}`, {
+      await fetch(`${API_BASE}/users/${userToDelete}`, {
         method: "DELETE",
         credentials: "include",
       });
-      setAllUsers((prev) => prev.filter((u) => u.id !== userId));
+      setAllUsers((prev) => prev.filter((u) => u.id !== userToDelete));
       handleCloseViewModal();
-      alert("User deleted successfully!");
+      // alert("User deleted successfully!"); // Optional: replace with toast later
     } catch (e) {
       console.error("Delete failed:", e);
       alert("Failed to delete user");
+    } finally {
+      setLoading(false);
+      setUserToDelete(null);
     }
   };
 
@@ -667,6 +682,19 @@ function AdminUsers() {
           />
         )}
       </Modal>
+
+      <ConfirmationModal
+        isOpen={isDeleteModalOpen}
+        onClose={() => {
+          setIsDeleteModalOpen(false);
+          setUserToDelete(null);
+        }}
+        onConfirm={confirmDelete}
+        title="Confirm Delete User"
+        message="Are you sure you want to delete this user? This action cannot be undone and may affect related records."
+        confirmText="Delete User"
+        type="danger"
+      />
     </>
   );
 }
