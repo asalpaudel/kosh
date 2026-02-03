@@ -2,7 +2,7 @@ import "./App.css";
 import React from "react";
 import { BrowserRouter, Route, Routes } from "react-router-dom";
 
-import Forgot from "./pages/Forgot.jsx"; 
+import Forgot from "./pages/Forgot.jsx";
 
 // User Imports
 import Layout from "./component/user/Layout.jsx";
@@ -21,6 +21,8 @@ import SuperadminDashboard from "./pages/superadmin/Dashboard.jsx";
 import Analytics from "./pages/superadmin/Analytics.jsx";
 import History from "./pages/superadmin/History.jsx";
 import Networks from "./pages/superadmin/Networks.jsx";
+import SuperLogin from "./pages/SuperLogin.jsx";
+import SuperadminProtectedRoute from "./component/superadmin/ProtectedRoute.jsx";
 
 // ADMIN IMPORTS
 import AdminLayout from "./component/admin/Layout.jsx";
@@ -49,7 +51,7 @@ function App() {
             <Route path="dashboard" element={<Dashboard />} />
             <Route path="report" element={<Report />} />
             <Route path="statement" element={<Statement />} />
-            <Route path="settings" element={<Settings />} /> 
+            <Route path="settings" element={<Settings />} />
             <Route path="packages" element={<UserPackages />} />
             <Route path="applications" element={<UserMyApplications />} />
           </Route>
@@ -67,7 +69,8 @@ function App() {
           </Route>
 
           {/* Superadmin Routes */}
-          <Route path="/superadmin" element={<SuperadminLayout />}>
+          <Route path="/super-login" element={<SuperLogin />} />
+          <Route path="/superadmin" element={<SuperadminProtectedRoute><SuperadminLayout /></SuperadminProtectedRoute>}>
             <Route index element={<SuperadminDashboard />} />
             <Route path="dashboard" element={<SuperadminDashboard />} />
             <Route path="analytics" element={<Analytics />} />
