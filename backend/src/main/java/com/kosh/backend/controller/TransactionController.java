@@ -288,7 +288,8 @@ public class TransactionController {
 
             // Log Activity
             try {
-                ActivityLog log = new ActivityLog(adminName, "admin", networkId, "ADD_TRANSACTION", 
+                String userRole = (String) session.getAttribute("userRole");
+                ActivityLog log = new ActivityLog(adminName, userRole != null ? userRole : "admin", networkId, "ADD_TRANSACTION", 
                     "Added " + tx.getType() + " of Rs. " + tx.getAmount());
                 logRepo.save(log);
             } catch (Exception e) {}

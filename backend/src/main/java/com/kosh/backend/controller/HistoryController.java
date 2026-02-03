@@ -25,12 +25,14 @@ public class HistoryController {
     @GetMapping("/superadmin")
     public ResponseEntity<?> getSuperAdminHistory(HttpSession session) {
         String role = (String) session.getAttribute("userRole");
-        if (!"superadmin".equals(role)) {
+        String superRole = (String) session.getAttribute("superadminRole");
+
+        if (!"superadmin".equals(role) && !"superadmin".equals(superRole)) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Access Denied");
         }
 
-        // Return all logs, latest first
-        List<ActivityLog> logs = logRepo.findAllByOrderByTimestampDesc();
+        // Return only superadmin actions, latest first
+        List<ActivityLog> logs = logRepo.findByRoleOrderByTimestampDesc("superadmin");
         return ResponseEntity.ok(logs);
     }
 

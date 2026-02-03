@@ -514,12 +514,13 @@ public class UserController {
 
         // --- ACTIVITY LOGGING START ---
         String adminName = (String) session.getAttribute("userName");
+        String userRole = (String) session.getAttribute("userRole");
         if (adminName != null) {
             try {
                 Long sahakariId = (Long) session.getAttribute("sahakariId");
                 ActivityLog log = new ActivityLog(
                     adminName, 
-                    "admin", 
+                    userRole != null ? userRole : "admin", 
                     sahakariId, 
                     "APPROVE_USER", 
                     "Approved user: " + saved.getName()
@@ -540,12 +541,13 @@ public class UserController {
         User saved = repo.save(user);
 
         String adminName = (String) session.getAttribute("userName");
+        String userRole = (String) session.getAttribute("userRole");
         if (adminName != null) {
             try {
                 Long sahakariId = (Long) session.getAttribute("sahakariId");
                 ActivityLog log = new ActivityLog(
                     adminName, 
-                    "admin", 
+                    userRole != null ? userRole : "admin", 
                     sahakariId, 
                     "REJECT_USER", 
                     "Rejected user: " + saved.getName()
@@ -568,12 +570,13 @@ public class UserController {
 
         // --- ACTIVITY LOGGING START ---
         String adminName = (String) session.getAttribute("userName");
+        String userRole = (String) session.getAttribute("userRole");
         if (adminName != null) {
             try {
                 Long sahakariId = (Long) session.getAttribute("sahakariId");
                 ActivityLog log = new ActivityLog(
                     adminName, 
-                    "admin", 
+                    userRole != null ? userRole : "admin", 
                     sahakariId, 
                     "DELETE_USER", 
                     "Deleted user: " + user.getName() + " (ID: " + id + ")"
