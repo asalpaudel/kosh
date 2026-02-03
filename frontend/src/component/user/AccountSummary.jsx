@@ -77,7 +77,7 @@ function AccountSummary() {
           // Sum up all APPROVED loan applications
           totalLoan = loanApps
             .filter(app => app.status === 'APPROVED')
-            .reduce((sum, app) => sum + (app.requestedAmount || 0), 0);
+            .reduce((sum, app) => sum + (app.approvedAmount || app.requestedAmount || 0), 0);
         }
 
         setSummary({

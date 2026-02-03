@@ -38,7 +38,7 @@ import com.kosh.backend.repository.SavingAccountApplicationRepository;
 import com.kosh.backend.repository.SavingAccountRepository;
 import com.kosh.backend.repository.TransactionRepository;
 import com.kosh.backend.repository.UserRepository;
-import com.kosh.backend.service.LoanService; // ⭐ Import the new Service
+import com.kosh.backend.service.LoanService; 
 
 import jakarta.servlet.http.HttpSession;
 
@@ -73,7 +73,7 @@ public class ApplicationController {
     @Autowired
     private TransactionRepository transactionRepo;
 
-    // ⭐ Inject LoanService for Schedule Generation
+    // Inject LoanService for Schedule Generation
     @Autowired
     private LoanService loanService;
 
@@ -195,6 +195,22 @@ public class ApplicationController {
             String notes = request.containsKey("reviewNotes") ? request.get("reviewNotes").toString() : null;
 
             if (status == ApplicationStatus.APPROVED) {
+                // ⭐ UPDATED: Handle Admin Overrides
+                if (request.containsKey("approvedAmount")) {
+                    Double newAmount = Double.valueOf(request.get("approvedAmount").toString());
+                    app.setDepositAmount(newAmount);
+                }
+                if (request.containsKey("duration")) {
+                    Integer newDuration = Integer.valueOf(request.get("duration").toString());
+                    app.setDepositTerm(newDuration);
+                }
+
+                // ⭐ UPDATED: Re-validate User Balance (since amount might have increased)
+                User user = app.getUser();
+                if (user.getBalance() < app.getDepositAmount()) {
+                    return ResponseEntity.badRequest().body("Insufficient user balance for the approved amount.");
+                }
+
                 // ⭐ 1. Calculate Maturity Details
                 double principal = app.getDepositAmount();
                 double rate = app.getFixedDeposit().getInterestRate();
@@ -209,7 +225,6 @@ public class ApplicationController {
                 app.setMaturityAmount(Math.round(maturityAmount * 100.0) / 100.0);
 
                 // ⭐ 2. Perform Transactions
-                User user = app.getUser();
                 Double amount = app.getDepositAmount();
 
                 // DEBIT: Remove money from User's Savings
@@ -381,6 +396,12 @@ public class ApplicationController {
             String notes = request.containsKey("reviewNotes") ? request.get("reviewNotes").toString() : null;
 
             if (status == ApplicationStatus.APPROVED) {
+                // ⭐ UPDATED: Handle Admin Override
+                if (request.containsKey("approvedAmount")) {
+                    Double newAmount = Double.valueOf(request.get("approvedAmount").toString());
+                    app.setInitialDeposit(newAmount);
+                }
+
                 User user = app.getUser();
                 Double amount = app.getInitialDeposit();
 
@@ -584,7 +605,7 @@ public class ApplicationController {
                 loanTx.setMode("member");
                 loanTx.setFyType("Current FY");
                 loanTx.setAccountHead("Loan");
-                loanTx.setDirection("Credit");
+                loanTx.setDirection("Debit");
                 loanTx.setPaymentMethod("Transfer");
 
                 // Update Reserve Snapshot (Reduced by new loan)

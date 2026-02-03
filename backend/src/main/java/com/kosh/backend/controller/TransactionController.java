@@ -274,7 +274,7 @@ public class TransactionController {
             } else if ("Fixed Deposit".equals(head)) {
                 totalFD += ("Credit".equals(dir) ? amt : -amt);
             } else if ("Loan".equals(head)) {
-                totalLoans += ("Credit".equals(dir) ? amt : -amt);
+                totalLoans += ("Debit".equals(dir) ? amt : -amt);
             }
 
             if ("network".equals(mode)) {

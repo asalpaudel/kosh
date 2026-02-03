@@ -187,7 +187,7 @@ function Report() {
           </div>
 
           <div className="lg:col-span-1 flex flex-col gap-6">
-            <PortfolioSummary sahakariId={sessionData.sahakariId} /> 
+            <PortfolioSummary /> 
           </div>
 
         </div>

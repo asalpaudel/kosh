@@ -99,9 +99,8 @@ const CustomCalendar = ({ selectedDate, onChange, onClose }) => {
         {days.map((d, i) => (
           <span
             key={d}
-            className={`text-xs font-bold ${
-              i === 6 ? "text-red-500" : "text-gray-500"
-            }`}
+            className={`text-xs font-bold ${i === 6 ? "text-red-500" : "text-gray-500"
+              }`}
           >
             {d}
           </span>
@@ -128,15 +127,13 @@ const CustomCalendar = ({ selectedDate, onChange, onClose }) => {
               onClick={() => handleDayClick(day)}
               className={`
                 h-9 w-9 rounded-full text-sm flex items-center justify-center transition-colors
-                ${
-                  isSelected
-                    ? "bg-teal-600 text-white font-bold shadow-md"
-                    : "hover:bg-teal-50"
+                ${isSelected
+                  ? "bg-teal-600 text-white font-bold shadow-md"
+                  : "hover:bg-teal-50"
                 }
-                ${
-                  isSat && !isSelected
-                    ? "text-red-600 font-medium"
-                    : "text-gray-700"
+                ${isSat && !isSelected
+                  ? "text-red-600 font-medium"
+                  : "text-gray-700"
                 }
               `}
             >
@@ -153,7 +150,7 @@ function AddTransactionForm({ onAdded, onClose, prefilledData }) {
   const [mode, setMode] = useState(prefilledData ? "member" : "member");
   const [showCalendar, setShowCalendar] = useState(false);
   const calendarRef = useRef(null);
-  
+
   // --- NEW STATE: Packages & Session ---
   const [packages, setPackages] = useState([]);
   const [sahakariId, setSahakariId] = useState(null);
@@ -168,9 +165,9 @@ function AddTransactionForm({ onAdded, onClose, prefilledData }) {
     userId: prefilledData?.userId || null,
     userName: prefilledData?.userName || "",
     userProduct: prefilledData?.userProduct || "Savings",
-    
-    packageId: "", 
-    term: "",      
+
+    packageId: "",
+    term: "",
 
     internalHead: "",
     headCategory: "Expense",
@@ -187,6 +184,7 @@ function AddTransactionForm({ onAdded, onClose, prefilledData }) {
   });
 
   const [balances, setBalances] = useState({ current: 0, projected: 0 });
+  const [fetchedBalance, setFetchedBalance] = useState(0);
   const [userSearch, setUserSearch] = useState(prefilledData?.userName || "");
   const [userResults, setUserResults] = useState([]);
   const [showUserResults, setShowUserResults] = useState(false);
@@ -203,7 +201,7 @@ function AddTransactionForm({ onAdded, onClose, prefilledData }) {
       .then((res) => res.json())
       .then((data) => {
         if (data && data.sahakariId) {
-            setSahakariId(data.sahakariId);
+          setSahakariId(data.sahakariId);
         }
       })
       .catch((err) => console.error("Failed to fetch session", err));
@@ -215,62 +213,62 @@ function AddTransactionForm({ onAdded, onClose, prefilledData }) {
 
     let endpoint = "";
     if (formData.userProduct === "Fixed Deposit") {
-        endpoint = `/finance/fixed-deposits/${sahakariId}`;
+      endpoint = `/finance/fixed-deposits/${sahakariId}`;
     } else if (formData.userProduct === "Savings") {
-        endpoint = `/finance/saving-accounts/${sahakariId}`;
+      endpoint = `/finance/saving-accounts/${sahakariId}`;
     } else if (formData.userProduct === "Loan") {
-        endpoint = `/finance/loan-packages/${sahakariId}`;
+      endpoint = `/finance/loan-packages/${sahakariId}`;
     } else {
-        setPackages([]);
-        return;
+      setPackages([]);
+      return;
     }
 
     setLoadingPackages(true);
     fetch(`${apiBase}${endpoint}`, { credentials: "include" })
-        .then((res) => res.json())
-        .then((data) => {
-            setPackages(data || []);
-            setLoadingPackages(false);
-        })
-        .catch(() => {
-            setPackages([]);
-            setLoadingPackages(false);
-        });
+      .then((res) => res.json())
+      .then((data) => {
+        setPackages(data || []);
+        setLoadingPackages(false);
+      })
+      .catch(() => {
+        setPackages([]);
+        setLoadingPackages(false);
+      });
   }, [formData.userProduct, sahakariId, mode, isPrefilledMode]);
 
   // ⭐ 3. AUTO-DETECT ACTIVE LOAN FOR REPAYMENT
   useEffect(() => {
     if (
-      formData.userId && 
-      formData.userProduct === "Loan" && 
+      formData.userId &&
+      formData.userProduct === "Loan" &&
       formData.transactionType === "Debit" && // "Debit" in form = Withdraw/Repay
       sahakariId
     ) {
-        // Fetch all loans for network and filter for this user (Since we don't have an Admin getLoansByUserId endpoint)
-        fetch(`${apiBase}/applications/loan/network/${sahakariId}`, { credentials: 'include' })
-            .then(res => res.json())
-            .then(data => {
-                // Find Approved loan for this user
-                const activeLoan = data.find(app => 
-                    app.user.id === formData.userId && 
-                    app.status === "APPROVED"
-                );
-                
-                if (activeLoan) {
-                    setActiveLoanId(activeLoan.id);
-                    setFormData(prev => ({
-                        ...prev,
-                        applicationId: activeLoan.id,
-                        applicationType: "loan",
-                        narration: prev.narration || `Loan Repayment for ID #${activeLoan.id}`
-                    }));
-                } else {
-                    setActiveLoanId(null);
-                }
-            })
-            .catch(err => console.error("Failed to fetch user loans", err));
+      // Fetch all loans for network and filter for this user (Since we don't have an Admin getLoansByUserId endpoint)
+      fetch(`${apiBase}/applications/loan/network/${sahakariId}`, { credentials: 'include' })
+        .then(res => res.json())
+        .then(data => {
+          // Find Approved loan for this user
+          const activeLoan = data.find(app =>
+            app.user.id === formData.userId &&
+            app.status === "APPROVED"
+          );
+
+          if (activeLoan) {
+            setActiveLoanId(activeLoan.id);
+            setFormData(prev => ({
+              ...prev,
+              applicationId: activeLoan.id,
+              applicationType: "loan",
+              narration: prev.narration || `Loan Repayment for ID #${activeLoan.id}`
+            }));
+          } else {
+            setActiveLoanId(null);
+          }
+        })
+        .catch(err => console.error("Failed to fetch user loans", err));
     } else {
-        setActiveLoanId(null);
+      setActiveLoanId(null);
     }
   }, [formData.userId, formData.userProduct, formData.transactionType, sahakariId]);
 
@@ -289,25 +287,83 @@ function AddTransactionForm({ onAdded, onClose, prefilledData }) {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  // Balance Calc (Mock)
+  // Balance Calc (Real)
   useEffect(() => {
-    if (mode === "member" && formData.userId) {
-      const mockCurrentBalance = 45000;
-      const amount = parseFloat(formData.amountValue) || 0;
-      let newBal = mockCurrentBalance;
+    if (mode === "member" && formData.userId && formData.userProduct) {
+      const isLoan = formData.userProduct === "Loan";
+
+      fetch(`${apiBase}/transactions`, { credentials: "include" })
+        .then((res) => res.json())
+        .then((data) => {
+          if (!Array.isArray(data)) return;
+
+          const userTxns = data.filter(
+            (t) =>
+              String(t.userId) === String(formData.userId) &&
+              t.type &&
+              t.type.includes(formData.userProduct)
+          );
+
+          let currentBal = 0;
+          userTxns.forEach((t) => {
+            const val = parseFloat(t.amountValue || t.amount || 0);
+
+            // Check direction
+            const isCredit =
+              t.details?.direction === "Credit" ||
+              (t.type && t.type.includes("Credit")) ||
+              (t.type && t.type.includes("Deposit"));
+
+            if (isLoan) {
+              // LOAN LOGIC (Liability Perspective):
+              // Debit (Disburse) = Money taken by user = INCREASES DEBT (Positive Liability)
+              // Credit (Repay) = Money returned by user = DECREASES DEBT
+              if (isCredit) currentBal -= val;
+              else currentBal += val;
+            } else {
+              // SAVINGS LOGIC (Asset Perspective for User):
+              // Credit (Deposit) = Money given to bank = INCREASES BALANCE
+              // Debit (Withdraw) = Money taken from bank = DECREASES BALANCE
+              if (isCredit) currentBal += val;
+              else currentBal -= val;
+            }
+          });
+
+          setFetchedBalance(currentBal);
+        })
+        .catch((err) => console.error("Balance fetch error", err));
+    } else {
+      setFetchedBalance(0);
+    }
+  }, [formData.userId, formData.userProduct, mode]);
+
+  // Update Projected Balance
+  useEffect(() => {
+    const amount = parseFloat(formData.amountValue) || 0;
+    const isLoan = formData.userProduct === "Loan";
+    let newBal = fetchedBalance;
+
+    if (isLoan) {
+      // LOAN: Credit (Repay) REDUCES Debt, Debit (Disburse) INCREASES Debt
+      if (formData.transactionType === "Credit") {
+        newBal -= amount;
+      } else {
+        newBal += amount;
+      }
+    } else {
+      // SAVINGS: Credit (Deposit) INCREASES Balance, Debit (Withdraw) REDUCES Balance
       if (formData.transactionType === "Credit") {
         newBal += amount;
       } else {
         newBal -= amount;
       }
-      setBalances({ current: mockCurrentBalance, projected: newBal });
     }
+    setBalances({ current: fetchedBalance, projected: newBal });
   }, [
-    formData.userId,
-    formData.userProduct,
+    fetchedBalance,
     formData.amountValue,
     formData.transactionType,
-    mode,
+    formData.userProduct
   ]);
 
   const handleChange = (e) => {
@@ -395,8 +451,8 @@ function AddTransactionForm({ onAdded, onClose, prefilledData }) {
           bankName: formData.bankName,
           receivedBy: formData.receivedBy,
         },
-        type: mode === "member" 
-          ? `${formData.userProduct} (${formData.transactionType})` 
+        type: mode === "member"
+          ? `${formData.userProduct} (${formData.transactionType})`
           : `${formData.headCategory} (${formData.transactionType})`,
         amountValue: parseFloat(formData.amountValue),
         narration: formData.narration,
@@ -416,7 +472,7 @@ function AddTransactionForm({ onAdded, onClose, prefilledData }) {
         const errorData = await response.json();
         throw new Error(errorData.error || await response.text());
       }
-      
+
       onAdded();
     } catch (err) {
       setError(err.message);
@@ -445,9 +501,8 @@ function AddTransactionForm({ onAdded, onClose, prefilledData }) {
           style={{ opacity: isPrefilledMode ? 0.5 : 1, cursor: isPrefilledMode ? 'not-allowed' : 'pointer' }}
         >
           <div
-            className={`absolute top-1 bottom-1 w-[calc(50%-4px)] bg-teal-500 rounded-full shadow-md transition-all duration-300 ease-in-out z-0 ${
-              mode === "member" ? "left-1" : "left-[50%]"
-            }`}
+            className={`absolute top-1 bottom-1 w-[calc(50%-4px)] bg-teal-500 rounded-full shadow-md transition-all duration-300 ease-in-out z-0 ${mode === "member" ? "left-1" : "left-[50%]"
+              }`}
           />
           <button
             type="button"
@@ -456,9 +511,8 @@ function AddTransactionForm({ onAdded, onClose, prefilledData }) {
               if (!isPrefilledMode) setMode("member");
             }}
             disabled={isPrefilledMode}
-            className={`relative z-10 w-1/2 flex items-center justify-center gap-2 text-sm font-bold transition-colors duration-300 ${
-              mode === "member" ? "text-white" : "text-gray-600"
-            }`}
+            className={`relative z-10 w-1/2 flex items-center justify-center gap-2 text-sm font-bold transition-colors duration-300 ${mode === "member" ? "text-white" : "text-gray-600"
+              }`}
           >
             <UsersIcon className="w-4 h-4" /> User
           </button>
@@ -469,9 +523,8 @@ function AddTransactionForm({ onAdded, onClose, prefilledData }) {
               if (!isPrefilledMode) setMode("network");
             }}
             disabled={isPrefilledMode}
-            className={`relative z-10 w-1/2 flex items-center justify-center gap-2 text-sm font-bold transition-colors duration-300 ${
-              mode === "network" ? "text-white" : "text-gray-600"
-            }`}
+            className={`relative z-10 w-1/2 flex items-center justify-center gap-2 text-sm font-bold transition-colors duration-300 ${mode === "network" ? "text-white" : "text-gray-600"
+              }`}
           >
             <BuildingIcon className="w-4 h-4" /> Network
           </button>
@@ -487,10 +540,10 @@ function AddTransactionForm({ onAdded, onClose, prefilledData }) {
       {/* ⭐ INFO ALERT: ACTIVE LOAN FOUND */}
       {activeLoanId && formData.transactionType === "Debit" && (
         <div className="bg-blue-50 border-l-4 border-blue-500 text-blue-700 p-3 text-sm rounded flex items-center gap-2">
-            <DocumentTextIcon className="w-5 h-5" />
-            <span>
-                <strong>Linked Loan:</strong> Repayment will be applied to Loan ID #{activeLoanId}
-            </span>
+          <DocumentTextIcon className="w-5 h-5" />
+          <span>
+            <strong>Linked Loan:</strong> Repayment will be applied to Loan ID #{activeLoanId}
+          </span>
         </div>
       )}
 
@@ -569,16 +622,14 @@ function AddTransactionForm({ onAdded, onClose, prefilledData }) {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* User Side */}
         <div
-          className={`flex flex-col gap-3 p-4 rounded-xl border-l-4 ${
-            mode === "member"
-              ? "bg-teal-50 border-teal-500"
-              : "bg-orange-50 border-orange-500"
-          }`}
+          className={`flex flex-col gap-3 p-4 rounded-xl border-l-4 ${mode === "member"
+            ? "bg-teal-50 border-teal-500"
+            : "bg-orange-50 border-orange-500"
+            }`}
         >
           <label
-            className={`text-sm font-bold flex items-center gap-2 ${
-              mode === "member" ? "text-teal-700" : "text-orange-700"
-            }`}
+            className={`text-sm font-bold flex items-center gap-2 ${mode === "member" ? "text-teal-700" : "text-orange-700"
+              }`}
           >
             {mode === "member"
               ? "User / Member Side"
@@ -617,8 +668,8 @@ function AddTransactionForm({ onAdded, onClose, prefilledData }) {
                 name="userProduct"
                 value={formData.userProduct}
                 onChange={(e) => {
-                    handleChange(e);
-                    setFormData(prev => ({ ...prev, packageId: "" })); 
+                  handleChange(e);
+                  setFormData(prev => ({ ...prev, packageId: "" }));
                 }}
                 disabled={isPrefilledMode}
                 className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none focus:border-teal-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
@@ -632,29 +683,29 @@ function AddTransactionForm({ onAdded, onClose, prefilledData }) {
               {/* Package Dropdown */}
               {(formData.userProduct === "Savings" || formData.userProduct === "Fixed Deposit" || formData.userProduct === "Loan") && !isPrefilledMode && (
                 <div className="flex flex-col gap-2">
-                    <select
-                        name="packageId"
-                        value={formData.packageId}
-                        onChange={handleChange}
-                        className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none focus:border-teal-500 bg-white"
-                        disabled={loadingPackages}
-                    >
-                        <option value="">{loadingPackages ? "Loading Packages..." : "Select Package / Scheme..."}</option>
-                        {packages.map(pkg => (
-                            <option key={pkg.id} value={pkg.id}>{pkg.name} {pkg.interestRate ? `(${pkg.interestRate}%)` : ''}</option>
-                        ))}
-                    </select>
+                  <select
+                    name="packageId"
+                    value={formData.packageId}
+                    onChange={handleChange}
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none focus:border-teal-500 bg-white"
+                    disabled={loadingPackages}
+                  >
+                    <option value="">{loadingPackages ? "Loading Packages..." : "Select Package / Scheme..."}</option>
+                    {packages.map(pkg => (
+                      <option key={pkg.id} value={pkg.id}>{pkg.name} {pkg.interestRate ? `(${pkg.interestRate}%)` : ''}</option>
+                    ))}
+                  </select>
 
-                    {formData.userProduct === "Fixed Deposit" && formData.packageId && (
-                        <input
-                            type="number"
-                            name="term"
-                            value={formData.term}
-                            onChange={handleChange}
-                            placeholder="Duration (Months)"
-                            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none focus:border-teal-500"
-                        />
-                    )}
+                  {formData.userProduct === "Fixed Deposit" && formData.packageId && (
+                    <input
+                      type="number"
+                      name="term"
+                      value={formData.term}
+                      onChange={handleChange}
+                      placeholder="Duration (Months)"
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none focus:border-teal-500"
+                    />
+                  )}
                 </div>
               )}
             </>
@@ -701,26 +752,24 @@ function AddTransactionForm({ onAdded, onClose, prefilledData }) {
               onClick={() =>
                 setFormData((prev) => ({ ...prev, transactionType: "Credit" }))
               }
-              className={`flex-1 py-2 text-sm font-semibold rounded-lg border ${
-                formData.transactionType === "Credit"
-                  ? "bg-green-100 border-green-500 text-green-700"
-                  : "bg-white border-gray-200 text-gray-500 hover:bg-gray-50"
-              }`}
+              className={`flex-1 py-2 text-sm font-semibold rounded-lg border ${formData.transactionType === "Credit"
+                ? "bg-green-100 border-green-500 text-green-700"
+                : "bg-white border-gray-200 text-gray-500 hover:bg-gray-50"
+                }`}
             >
-              Deposit (+)
+              {formData.userProduct === "Loan" ? "Repay Loan (+)" : "Deposit (+)"}
             </button>
             <button
               type="button"
               onClick={() =>
                 setFormData((prev) => ({ ...prev, transactionType: "Debit" }))
               }
-              className={`flex-1 py-2 text-sm font-semibold rounded-lg border ${
-                formData.transactionType === "Debit"
-                  ? "bg-red-100 border-red-500 text-red-700"
-                  : "bg-white border-gray-200 text-gray-500 hover:bg-gray-50"
-              }`}
+              className={`flex-1 py-2 text-sm font-semibold rounded-lg border ${formData.transactionType === "Debit"
+                ? "bg-red-100 border-red-500 text-red-700"
+                : "bg-white border-gray-200 text-gray-500 hover:bg-gray-50"
+                }`}
             >
-              Withdraw (-)
+              {formData.userProduct === "Loan" ? "Disburse Loan (-)" : "Withdraw (-)"}
             </button>
           </div>
         </div>
@@ -730,7 +779,7 @@ function AddTransactionForm({ onAdded, onClose, prefilledData }) {
       {mode === "member" && formData.userId && (
         <div className="flex justify-between items-center bg-gray-100 px-4 py-2 rounded-lg border border-gray-300">
           <div className="text-sm text-gray-600">
-            Current:{" "}
+            {formData.userProduct === "Loan" ? "Outstanding Debt: " : "Current Balance: "}
             <span className="font-bold text-black">
               Rs. {balances.current.toLocaleString()}
             </span>
@@ -739,9 +788,8 @@ function AddTransactionForm({ onAdded, onClose, prefilledData }) {
           <div className="text-sm text-gray-600">
             Projected:{" "}
             <span
-              className={`font-bold ${
-                balances.projected < 0 ? "text-red-600" : "text-green-600"
-              }`}
+              className={`font-bold ${balances.projected < 0 ? "text-red-600" : "text-green-600"
+                }`}
             >
               Rs. {balances.projected.toLocaleString()}
             </span>
@@ -860,9 +908,9 @@ function AddTransactionForm({ onAdded, onClose, prefilledData }) {
         >
           {loading
             ? "Processing..."
-            : isPrefilledMode 
-            ? "Approve Application & Save Transaction" 
-            : `Save ${mode === "member" ? "Member" : "Network"} Voucher`}
+            : isPrefilledMode
+              ? "Approve Application & Save Transaction"
+              : `Save ${mode === "member" ? "Member" : "Network"} Voucher`}
         </button>
       </div>
     </form>

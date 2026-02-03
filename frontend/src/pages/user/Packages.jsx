@@ -503,7 +503,7 @@ export default function UserPackages() {
               </p>
               <button 
                 onClick={() => document.getElementById('loans-section').scrollIntoView({ behavior: 'smooth' })}
-                className="bg-white text-black font-bold py-3.5 px-8 rounded-full hover:bg-gray-100 transition-all flex items-center gap-2 shadow-lg hover:shadow-xl active:scale-95"
+                className="bg-teal-500 hover:bg-teal-600 text-white font-bold py-3.5 px-8 rounded-full transition-all flex items-center gap-2 shadow-lg hover:shadow-xl active:scale-95"
               >
                 <Info className="w-5 h-5" /> Browse Packages
               </button>
