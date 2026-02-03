@@ -12,12 +12,36 @@ export default function EditLoanPackageForm({ initialData, onClose, onUpdated })
     description: initialData.description ?? "",
   });
 
+  const [banner, setBanner] = useState(null);
+  const [bannerPreview, setBannerPreview] = useState(
+    initialData.bannerData ? `${apiBase}/finance/loan-packages/${initialData.id}/banner` : null
+  );
+  const [removeBanner, setRemoveBanner] = useState(false);
+
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
   const handleChange = (e) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
+    const { name, value, files } = e.target;
+    if (name === "banner" && files && files[0]) {
+      const file = files[0];
+      setBanner(file);
+      setRemoveBanner(false);
+
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setBannerPreview(reader.result);
+      };
+      reader.readAsDataURL(file);
+    } else {
+      setFormData((prev) => ({ ...prev, [name]: value }));
+    }
+  };
+
+  const handleRemoveBanner = () => {
+    setBanner(null);
+    setBannerPreview(null);
+    setRemoveBanner(true);
   };
 
   const handleSubmit = async (e) => {
@@ -26,18 +50,21 @@ export default function EditLoanPackageForm({ initialData, onClose, onUpdated })
     setError("");
 
     try {
-      const payload = {
-        name: formData.name,
-        interestRate: parseFloat(formData.interestRate),
-        maxAmount: parseFloat(formData.maxAmount),
-        maxDuration: parseInt(formData.maxDuration),
-        description: formData.description,
-      };
+      const submitData = new FormData();
+      submitData.append("name", formData.name);
+      submitData.append("interestRate", formData.interestRate);
+      submitData.append("maxAmount", formData.maxAmount);
+      submitData.append("maxDuration", formData.maxDuration);
+      submitData.append("description", formData.description);
+      submitData.append("removeBanner", removeBanner);
+
+      if (banner) {
+        submitData.append("banner", banner);
+      }
 
       const res = await fetch(`${apiBase}/finance/loan-packages/${formData.id}`, {
         method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
+        body: submitData,
       });
 
       if (!res.ok) throw new Error(await res.text());
@@ -58,6 +85,37 @@ export default function EditLoanPackageForm({ initialData, onClose, onUpdated })
           {error}
         </div>
       )}
+
+      {/* Banner Image Upload */}
+      <div>
+        <label className="block font-semibold mb-2">Package Banner (Optional)</label>
+        {bannerPreview && (
+          <div className="mb-3 relative">
+            <img
+              src={bannerPreview}
+              alt="Banner Preview"
+              className="w-full h-48 object-cover rounded-lg"
+            />
+            <button
+              type="button"
+              onClick={handleRemoveBanner}
+              className="absolute top-2 right-2 bg-red-500 text-white p-2 rounded-full hover:bg-red-600 transition-colors"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+        )}
+        <input
+          type="file"
+          name="banner"
+          accept="image/*"
+          onChange={handleChange}
+          className="w-full border border-gray-300 rounded-full px-4 py-2 text-gray-700 file:mr-3 file:py-2 file:px-4 file:rounded-full file:border-0 file:bg-teal-500 file:text-white file:font-semibold hover:file:bg-teal-600 transition"
+        />
+        <p className="text-xs text-gray-500 mt-1">Upload an attractive banner image for this package</p>
+      </div>
 
       {/* Package Name */}
       <div>

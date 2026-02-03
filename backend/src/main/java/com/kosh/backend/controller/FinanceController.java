@@ -85,7 +85,7 @@ public class FinanceController {
                 .orElse(ResponseEntity.notFound().build());
     }
 
-    @PutMapping("/fixed-deposits/{id}")
+    @PutMapping(value = "/fixed-deposits/{id}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<?> updateFixedDeposit(
             @PathVariable Long id,
             @RequestParam("name") String name,
@@ -93,6 +93,7 @@ public class FinanceController {
             @RequestParam("minDuration") Integer minDuration,
             @RequestParam("minAmount") Double minAmount,
             @RequestParam(value = "description", required = false) String description,
+            @RequestParam(value = "removeBanner", required = false, defaultValue = "false") Boolean removeBanner,
             @RequestParam(value = "banner", required = false) MultipartFile banner) {
         
         return fixedDepositRepo.findById(id)
@@ -104,7 +105,11 @@ public class FinanceController {
                         fd.setMinAmount(minAmount);
                         fd.setDescription(description);
                         
-                        if (banner != null && !banner.isEmpty()) {
+                        if (removeBanner != null && removeBanner) {
+                            fd.setBannerData(null);
+                            fd.setBannerName(null);
+                            fd.setBannerType(null);
+                        } else if (banner != null && !banner.isEmpty()) {
                             fd.setBannerData(banner.getBytes());
                             fd.setBannerName(banner.getOriginalFilename());
                             fd.setBannerType(banner.getContentType());
@@ -180,13 +185,14 @@ public class FinanceController {
                 .orElse(ResponseEntity.notFound().build());
     }
 
-    @PutMapping("/saving-accounts/{id}")
+    @PutMapping(value = "/saving-accounts/{id}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<?> updateSavingAccount(
             @PathVariable Long id,
             @RequestParam("name") String name,
             @RequestParam("interestRate") Double interestRate,
             @RequestParam("minBalance") Double minBalance,
             @RequestParam(value = "description", required = false) String description,
+            @RequestParam(value = "removeBanner", required = false, defaultValue = "false") Boolean removeBanner,
             @RequestParam(value = "banner", required = false) MultipartFile banner) {
         
         return savingAccountRepo.findById(id)
@@ -197,7 +203,11 @@ public class FinanceController {
                         sa.setMinBalance(minBalance);
                         sa.setDescription(description);
                         
-                        if (banner != null && !banner.isEmpty()) {
+                        if (removeBanner != null && removeBanner) {
+                            sa.setBannerData(null);
+                            sa.setBannerName(null);
+                            sa.setBannerType(null);
+                        } else if (banner != null && !banner.isEmpty()) {
                             sa.setBannerData(banner.getBytes());
                             sa.setBannerName(banner.getOriginalFilename());
                             sa.setBannerType(banner.getContentType());
@@ -275,7 +285,7 @@ public class FinanceController {
                 .orElse(ResponseEntity.notFound().build());
     }
 
-    @PutMapping("/loan-packages/{id}")
+    @PutMapping(value = "/loan-packages/{id}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<?> updateLoanPackage(
             @PathVariable Long id,
             @RequestParam("name") String name,
@@ -283,6 +293,7 @@ public class FinanceController {
             @RequestParam("maxAmount") Double maxAmount,
             @RequestParam("maxDuration") Integer maxDuration,
             @RequestParam(value = "description", required = false) String description,
+            @RequestParam(value = "removeBanner", required = false, defaultValue = "false") Boolean removeBanner,
             @RequestParam(value = "banner", required = false) MultipartFile banner) {
         
         return loanPackageRepo.findById(id)
@@ -294,7 +305,11 @@ public class FinanceController {
                         lp.setMaxDuration(maxDuration);
                         lp.setDescription(description);
                         
-                        if (banner != null && !banner.isEmpty()) {
+                        if (removeBanner != null && removeBanner) {
+                            lp.setBannerData(null);
+                            lp.setBannerName(null);
+                            lp.setBannerType(null);
+                        } else if (banner != null && !banner.isEmpty()) {
                             lp.setBannerData(banner.getBytes());
                             lp.setBannerName(banner.getOriginalFilename());
                             lp.setBannerType(banner.getContentType());
