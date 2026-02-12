@@ -4,14 +4,12 @@ import { UserCircleIcon } from "../icons";
 const Stepper = ({ currentStep }) => (
   <div className="flex items-center justify-center w-full mb-4">
     <div
-      className={`flex flex-col items-center ${
-        currentStep >= 1 ? "text-teal-500" : "text-gray-400"
-      }`}
+      className={`flex flex-col items-center ${currentStep >= 1 ? "text-teal-500" : "text-gray-400"
+        }`}
     >
       <div
-        className={`w-8 h-8 rounded-full border-2 flex items-center justify-center font-bold ${
-          currentStep >= 1 ? "border-teal-500" : "border-gray-400"
-        }`}
+        className={`w-8 h-8 rounded-full border-2 flex items-center justify-center font-bold ${currentStep >= 1 ? "border-teal-500" : "border-gray-400"
+          }`}
       >
         1
       </div>
@@ -19,20 +17,17 @@ const Stepper = ({ currentStep }) => (
     </div>
 
     <div
-      className={`flex-1 h-1 mx-2 ${
-        currentStep >= 2 ? "bg-teal-500" : "bg-gray-300"
-      }`}
+      className={`flex-1 h-1 mx-2 ${currentStep >= 2 ? "bg-teal-500" : "bg-gray-300"
+        }`}
     ></div>
 
     <div
-      className={`flex flex-col items-center ${
-        currentStep >= 2 ? "text-teal-500" : "text-gray-400"
-      }`}
+      className={`flex flex-col items-center ${currentStep >= 2 ? "text-teal-500" : "text-gray-400"
+        }`}
     >
       <div
-        className={`w-8 h-8 rounded-full border-2 flex items-center justify-center font-bold ${
-          currentStep >= 2 ? "border-teal-500" : "border-gray-400"
-        }`}
+        className={`w-8 h-8 rounded-full border-2 flex items-center justify-center font-bold ${currentStep >= 2 ? "border-teal-500" : "border-gray-400"
+          }`}
       >
         2
       </div>
@@ -216,10 +211,10 @@ function AddUserForm({
           console.log(`  ${key}: ${value}`);
         }
       }
-      
+
       const totalSize = (
-        formData.citizenship.size + 
-        formData.signature.size + 
+        formData.citizenship.size +
+        formData.signature.size +
         formData.photo.size
       ) / 1024 / 1024;
       console.log(`Total upload size: ${totalSize.toFixed(2)} MB`);
@@ -228,7 +223,7 @@ function AddUserForm({
       // Clean the apiBase to ensure no trailing slashes
       const cleanApiBase = apiBase.replace(/\/+$/, '');
       const endpoint = `${cleanApiBase}/users`;
-      
+
       console.log("Full endpoint URL:", endpoint);
 
       const res = await fetch(endpoint, {
@@ -267,17 +262,17 @@ function AddUserForm({
       onClose?.();
     } catch (err) {
       console.error("Error adding user:", err);
-      
+
       // Provide more specific error messages
       let displayError = err.message;
-      
+
       if (err.message.includes("Failed to fetch") || err.message.includes("ERR_CONNECTION_RESET")) {
         displayError = "Connection failed. This might be due to:\n" +
           "• Files being too large (try reducing file sizes)\n" +
           "• Network timeout (try again)\n" +
           "• Server not responding (check if backend is running)";
       }
-      
+
       setError(displayError);
     } finally {
       setSaving(false);
@@ -326,7 +321,7 @@ function AddUserForm({
   const remainingSlots = getRemainingSlots();
 
   return (
-     <div className="flex flex-col gap-5 max-h-[80vh] overflow-y-auto pr-2">
+    <div className="flex flex-col gap-5 pr-2">
       <div className="flex justify-center">
         <UserCircleIcon className="w-16 h-16 text-teal-500" />
       </div>
@@ -349,42 +344,38 @@ function AddUserForm({
 
           {/* Capacity Display */}
           <div
-            className={`border rounded-lg px-4 py-3 ${
-              capacityReached
+            className={`border rounded-lg px-4 py-3 ${capacityReached
                 ? "bg-red-50 border-red-300"
                 : "bg-blue-50 border-blue-200"
-            }`}
+              }`}
           >
             <div className="flex justify-between items-center mb-2">
               <span
-                className={`text-sm font-semibold ${
-                  capacityReached ? "text-red-700" : "text-blue-700"
-                }`}
+                className={`text-sm font-semibold ${capacityReached ? "text-red-700" : "text-blue-700"
+                  }`}
               >
                 Member Capacity
               </span>
               <span
-                className={`text-xs font-medium px-2 py-1 rounded-full ${
-                  capacityReached
+                className={`text-xs font-medium px-2 py-1 rounded-full ${capacityReached
                     ? "bg-red-200 text-red-800"
                     : "bg-blue-200 text-blue-800"
-                }`}
+                  }`}
               >
                 {networkData?.packageType === "package1"
                   ? "Starter"
                   : networkData?.packageType === "package2"
-                  ? "Professional"
-                  : networkData?.packageType === "package3"
-                  ? "Enterprise"
-                  : "Custom"}
+                    ? "Professional"
+                    : networkData?.packageType === "package3"
+                      ? "Enterprise"
+                      : "Custom"}
               </span>
             </div>
 
             <div className="flex items-baseline gap-2">
               <span
-                className={`text-2xl font-bold ${
-                  capacityReached ? "text-red-600" : "text-blue-600"
-                }`}
+                className={`text-2xl font-bold ${capacityReached ? "text-red-600" : "text-blue-600"
+                  }`}
               >
                 {currentUserCount}
               </span>
@@ -418,9 +409,8 @@ function AddUserForm({
               <div className="mt-3">
                 <div className="w-full bg-gray-200 rounded-full h-2">
                   <div
-                    className={`h-2 rounded-full transition-all ${
-                      capacityReached ? "bg-red-500" : "bg-blue-500"
-                    }`}
+                    className={`h-2 rounded-full transition-all ${capacityReached ? "bg-red-500" : "bg-blue-500"
+                      }`}
                     style={{
                       width: `${Math.min(
                         (currentUserCount / networkData.userLimit) * 100,
