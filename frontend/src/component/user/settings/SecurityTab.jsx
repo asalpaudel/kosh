@@ -182,9 +182,9 @@ function SecurityTab() {
       </SettingsCard>
 
       {/* --- Two-Step Authentication --- */}
-      <SettingsCard title="Account Security">
+      {/* <SettingsCard title="Account Security">
         <TwoFactorAuth />
-      </SettingsCard>
+      </SettingsCard> */}
 
     </div>
   );

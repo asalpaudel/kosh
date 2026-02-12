@@ -88,7 +88,7 @@ const NetworkDetails = ({ item }) => (
     </div>
 
     <div className="border-t border-gray-200 pt-6">
-      <div className="grid grid-cols-2 gap-x-8 gap-y-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-6">
         <DetailItem label="Registered ID" value={item.registeredId} />
         <DetailItem label="Phone Number" value={item.phone} />
         <DetailItem label="Address" value={item.address} />
@@ -142,7 +142,7 @@ const UserDetails = ({ item }) => (
     </div>
 
     <div className="border-t border-gray-200 pt-6">
-      <div className="grid grid-cols-2 gap-x-8 gap-y-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-6">
         <DetailItem label="User ID" value={item.id} />
         <DetailItem label="Email" value={item.email} />
         <DetailItem label="Phone" value={item.phone} />
@@ -334,7 +334,7 @@ function Networks() {
   return (
     <>
       <div className="min-h-screen bg-white">
-        <div className="px-6 md:px-10 py-10 space-y-8 max-w-[1400px] mx-auto">
+        <div className="px-3 md:px-10 py-6 md:py-10 space-y-6 md:space-y-8 max-w-[1400px] mx-auto">
           {/* Header */}
           <header className="space-y-6">
             {/* Controls */}
@@ -393,7 +393,7 @@ function Networks() {
 
               <div className="border border-gray-200 rounded-lg overflow-hidden bg-white">
                 <div className="overflow-x-auto">
-                  <table className="w-full">
+                  <table className="min-w-[800px] w-full">
                     <thead className="bg-gray-50 border-b border-gray-200">
                       <tr>
                         <th className="text-left px-6 py-3 text-[11px] uppercase tracking-wide text-gray-500 font-medium w-16">
@@ -512,7 +512,7 @@ function Networks() {
 
               <div className="border border-gray-200 rounded-lg overflow-hidden bg-white">
                 <div className="overflow-x-auto">
-                  <table className="w-full">
+                  <table className="min-w-[800px] w-full">
                     <thead className="bg-gray-50 border-b border-gray-200">
                       <tr>
                         <th className="text-left px-6 py-3 text-[11px] uppercase tracking-wide text-gray-500 font-medium w-16">
@@ -624,7 +624,7 @@ function Networks() {
       </div>
 
       {/* Floating Action Button */}
-      <div className="fixed bottom-6 right-6 flex flex-col items-end gap-3 z-50">
+      <div className="fixed bottom-20 right-6 md:bottom-6 md:right-6 flex flex-col items-end gap-3 z-50">
         <button
           onClick={() => setIsAddNetworkModalOpen(true)}
           className="flex items-center gap-2 px-4 py-2.5 bg-gray-900 text-white rounded-lg shadow-lg hover:bg-gray-800 transition text-sm font-medium"

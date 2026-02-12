@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { SearchIcon, BellIcon, SettingsIcon } from '../icons';
+import { SearchIcon, SettingsIcon } from '../icons';
 import { useNavigate } from 'react-router-dom';
-import GlobalSearch from './GlobalSearch'; 
+import GlobalSearch from './GlobalSearch';
 
 function Header({ pageName }) {
   const navigate = useNavigate();
   const [isSearchOpen, setIsSearchOpen] = useState(false);
-  const [userName, setUserName] = useState(""); 
+  const [userName, setUserName] = useState("");
 
   useEffect(() => {
     const fetchSessionUser = async () => {
@@ -55,24 +55,19 @@ function Header({ pageName }) {
             Hello, <span className="text-emerald-400">{userName || "..."}</span>
           </span>
 
-          <button 
-            onClick={() => setIsSearchOpen(true)} 
+          <button
+            onClick={() => setIsSearchOpen(true)}
             className="p-2 md:p-2.5 rounded-lg hover:bg-gray-900 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-emerald-500"
             title="Search (Ctrl+K)"
           >
-            <SearchIcon className="text-gray-400 hover:text-emerald-400 h-4 w-4 md:h-5 md:w-5 transition-colors"/>
+            <SearchIcon className="text-gray-400 hover:text-emerald-400 h-4 w-4 md:h-5 md:w-5 transition-colors" />
           </button>
-          
-          <button className="p-2 md:p-2.5 rounded-lg hover:bg-gray-900 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-emerald-500 relative">
-            <BellIcon className="text-gray-400 hover:text-emerald-400 h-4 w-4 md:h-5 md:w-5 transition-colors"/>
-            <span className="absolute top-1.5 right-1.5 md:top-2 md:right-2 h-2 w-2 bg-emerald-500 rounded-full"></span>
-          </button>
-          
-          <button 
+
+          <button
             className="p-2 md:p-2.5 rounded-lg hover:bg-gray-900 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-emerald-500"
             onClick={() => navigate('/admin/settings')}
           >
-            <SettingsIcon className="text-gray-400 hover:text-emerald-400 h-4 w-4 md:h-5 md:w-5 transition-colors"/>
+            <SettingsIcon className="text-gray-400 hover:text-emerald-400 h-4 w-4 md:h-5 md:w-5 transition-colors" />
           </button>
         </div>
       </header>

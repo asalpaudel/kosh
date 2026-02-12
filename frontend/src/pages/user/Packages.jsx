@@ -13,14 +13,14 @@ import {
 } from "lucide-react";
 import Modal from "../../component/superadmin/Modal.jsx";
 import ApplyPackageForm from "../../component/user/ApplyPackageForm.jsx";
-import loanImage from "../../assets/image/loan.png"; 
+import loanImage from "../../assets/image/loan.png";
 
 const apiBase = "http://localhost:8080/api";
 
 // Helper function to get banner URL
 const getBannerUrl = (pkg, type) => {
   if (!pkg.id) return null;
-  
+
   switch (type) {
     case "fixed-deposit":
       return `${apiBase}/finance/fixed-deposits/${pkg.id}/banner`;
@@ -69,9 +69,8 @@ const PackageCard = ({ pkg, type, onClick, isGrid }) => {
   return (
     <div
       onClick={() => onClick(pkg)}
-      className={`relative rounded-xl cursor-pointer transition-all duration-300 hover:scale-105 hover:shadow-2xl group overflow-hidden shadow-lg ${
-        isGrid ? "w-full h-48" : "flex-shrink-0 w-72 h-48"
-      }`}
+      className={`relative rounded-xl cursor-pointer transition-all duration-300 hover:scale-105 hover:shadow-2xl group overflow-hidden shadow-lg ${isGrid ? "w-full h-48" : "flex-shrink-0 w-72 h-48"
+        }`}
     >
       {/* Banner Image or Gradient Background */}
       {bannerUrl && !bannerError ? (
@@ -103,12 +102,12 @@ const PackageCard = ({ pkg, type, onClick, isGrid }) => {
             {pkg.interestRate}% Rate
           </span>
         </div>
-        
+
         <div>
           <h3 className="text-white font-bold text-xl leading-tight drop-shadow-lg line-clamp-2 mb-2">
             {pkg.name}
           </h3>
-          
+
           <div className="flex items-center gap-3 text-xs text-gray-100 font-medium">
             {type === "loan-package" && (
               <span className="bg-black/30 backdrop-blur-sm px-2 py-0.5 rounded">
@@ -156,7 +155,7 @@ const PackageSection = ({ title, items, type, onItemClick }) => {
   const scroll = (direction) => {
     if (scrollRef.current) {
       const { current } = scrollRef;
-      const scrollAmount = direction === "left" ? -620 : 620; 
+      const scrollAmount = direction === "left" ? -620 : 620;
       current.scrollBy({ left: scrollAmount, behavior: "smooth" });
       setTimeout(checkScroll, 500);
     }
@@ -181,15 +180,15 @@ const PackageSection = ({ title, items, type, onItemClick }) => {
             Show Less <X className="w-4 h-4" />
           </button>
         </div>
-        
+
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
           {items.map((item) => (
-            <PackageCard 
-              key={item.id} 
-              pkg={item} 
-              type={type} 
-              isGrid={true} 
-              onClick={() => onItemClick(item, type)} 
+            <PackageCard
+              key={item.id}
+              pkg={item}
+              type={type}
+              isGrid={true}
+              onClick={() => onItemClick(item, type)}
             />
           ))}
         </div>
@@ -201,16 +200,16 @@ const PackageSection = ({ title, items, type, onItemClick }) => {
     <div className="mb-12 relative group">
       <div className="flex justify-between items-end mb-4 px-1">
         <h2 className="text-xl md:text-2xl font-bold text-gray-800 flex items-center gap-2">
-          {title} 
+          {title}
         </h2>
-        
+
         {items.length > 6 && (
-           <button 
-             onClick={() => setShowGrid(true)}
-             className="text-xs font-bold text-teal-600 hover:text-teal-800 transition-colors uppercase tracking-wider flex items-center gap-1"
-           >
-             View All ({items.length}) <ChevronRight className="w-3 h-3"/>
-           </button>
+          <button
+            onClick={() => setShowGrid(true)}
+            className="text-xs font-bold text-teal-600 hover:text-teal-800 transition-colors uppercase tracking-wider flex items-center gap-1"
+          >
+            View All ({items.length}) <ChevronRight className="w-3 h-3" />
+          </button>
         )}
       </div>
 
@@ -249,9 +248,9 @@ const PackageSection = ({ title, items, type, onItemClick }) => {
             <ChevronRight className="w-6 h-6" />
           </button>
         )}
-        
+
         {canScrollRight && (
-            <div className="absolute right-0 top-0 bottom-6 w-16 bg-gradient-to-l from-white/90 to-transparent pointer-events-none z-10 block md:hidden" />
+          <div className="absolute right-0 top-0 bottom-6 w-16 bg-gradient-to-l from-white/90 to-transparent pointer-events-none z-10 block md:hidden" />
         )}
       </div>
     </div>
@@ -261,7 +260,7 @@ const PackageSection = ({ title, items, type, onItemClick }) => {
 // 3. Detail Modal (with Banner)
 const DetailModal = ({ isOpen, onClose, pkg, type, onApply }) => {
   const [bannerError, setBannerError] = useState(false);
-  
+
   if (!isOpen || !pkg) return null;
 
   const bannerUrl = getBannerUrl(pkg, type);
@@ -286,7 +285,7 @@ const DetailModal = ({ isOpen, onClose, pkg, type, onApply }) => {
         </button>
 
         {/* Header with Banner or Gradient */}
-        <div className={`h-72 relative flex items-end p-8 md:p-12 overflow-hidden`}>
+        <div className={`h-48 md:h-72 relative flex items-end p-6 md:p-12 overflow-hidden`}>
           {bannerUrl && !bannerError ? (
             <>
               <img
@@ -303,19 +302,19 @@ const DetailModal = ({ isOpen, onClose, pkg, type, onApply }) => {
               <div className="absolute top-0 right-0 w-96 h-96 bg-white/10 rounded-full -translate-y-1/2 translate-x-1/4 blur-3xl"></div>
             </>
           )}
-          
+
           <div className="relative z-10 w-full">
             <div className="flex items-center gap-3 mb-3">
-               <span className="px-3 py-1 bg-white/20 backdrop-blur-md border border-white/10 text-white text-xs font-bold uppercase tracking-wider rounded-full shadow-sm">
-                 {type.replace("-", " ")}
-               </span>
-               {pkg.interestRate && (
-                 <span className="text-green-300 font-bold text-sm flex items-center gap-1">
-                   <Check className="w-4 h-4" /> {pkg.interestRate}% Interest Rate
-                 </span>
-               )}
+              <span className="px-3 py-1 bg-white/20 backdrop-blur-md border border-white/10 text-white text-xs font-bold uppercase tracking-wider rounded-full shadow-sm">
+                {type.replace("-", " ")}
+              </span>
+              {pkg.interestRate && (
+                <span className="text-green-300 font-bold text-sm flex items-center gap-1">
+                  <Check className="w-4 h-4" /> {pkg.interestRate}% Interest Rate
+                </span>
+              )}
             </div>
-            <h2 className="text-4xl md:text-6xl font-extrabold text-white drop-shadow-xl tracking-tight">
+            <h2 className="text-2xl sm:text-4xl md:text-6xl font-extrabold text-white drop-shadow-xl tracking-tight">
               {pkg.name}
             </h2>
           </div>
@@ -329,7 +328,7 @@ const DetailModal = ({ isOpen, onClose, pkg, type, onApply }) => {
                 {pkg.description || "This package is designed to meet your financial goals with flexible terms and competitive interest rates."}
               </p>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {pkg.minAmount !== undefined && (
                   <div className="p-4 bg-gray-50 rounded-xl border border-gray-100">
                     <p className="text-xs text-gray-500 uppercase font-bold tracking-wide mb-1">Min Amount</p>
@@ -364,22 +363,22 @@ const DetailModal = ({ isOpen, onClose, pkg, type, onApply }) => {
             </div>
 
             <div className="w-full md:w-80 flex flex-col gap-4 pt-2">
-               <div className="p-5 rounded-xl bg-teal-50 border border-teal-100">
-                 <h4 className="font-bold text-teal-800 mb-2">Ready to apply?</h4>
-                 <p className="text-sm text-teal-600 mb-4">Submit your application today and get processed within 48 hours.</p>
-                 <button
-                   onClick={onApply}
-                   className="w-full py-3.5 bg-teal-600 hover:bg-teal-700 text-white font-bold rounded-lg shadow-md flex items-center justify-center gap-2 transition-all transform hover:scale-105 active:scale-95"
-                 >
-                   <span>Apply Now</span>
-                   <ArrowRight className="w-5 h-5" />
-                 </button>
-               </div>
-               
-               <div className="text-xs text-gray-400 px-2">
-                 <p className="mb-1">• Terms and conditions apply.</p>
-                 <p>• Interest rates are subject to market change.</p>
-               </div>
+              <div className="p-5 rounded-xl bg-teal-50 border border-teal-100">
+                <h4 className="font-bold text-teal-800 mb-2">Ready to apply?</h4>
+                <p className="text-sm text-teal-600 mb-4">Submit your application today and get processed within 48 hours.</p>
+                <button
+                  onClick={onApply}
+                  className="w-full py-3.5 bg-teal-600 hover:bg-teal-700 text-white font-bold rounded-lg shadow-md flex items-center justify-center gap-2 transition-all transform hover:scale-105 active:scale-95"
+                >
+                  <span>Apply Now</span>
+                  <ArrowRight className="w-5 h-5" />
+                </button>
+              </div>
+
+              <div className="text-xs text-gray-400 px-2">
+                <p className="mb-1">• Terms and conditions apply.</p>
+                <p>• Interest rates are subject to market change.</p>
+              </div>
             </div>
           </div>
         </div>
@@ -458,10 +457,10 @@ export default function UserPackages() {
   };
 
   const openApply = () => {
-    setApplyModal({ 
-      open: true, 
-      pkg: detailModal.pkg, 
-      type: detailModal.type 
+    setApplyModal({
+      open: true,
+      pkg: detailModal.pkg,
+      type: detailModal.type
     });
     closeDetail();
   };
@@ -475,7 +474,7 @@ export default function UserPackages() {
       <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-teal-500"></div>
     </div>
   );
-  
+
   if (!selectedNetworkId) return (
     <div className="min-h-screen flex items-center justify-center bg-white text-red-500 font-semibold">
       Access Denied. Please login again.
@@ -484,30 +483,30 @@ export default function UserPackages() {
 
   return (
     <div className="bg-white min-h-screen pb-20">
-      
-      <div className="px-4 md:px-8 pt-6 relative z-0">
-        <div className="relative h-[45vh] bg-black rounded-3xl overflow-hidden shadow-2xl flex items-center group">
-           <div className="absolute inset-0 bg-gradient-to-r from-black via-black/80 to-transparent z-10" />
-           <img 
-             src={loanImage}
-             alt="Featured" 
-             className="absolute right-0 top-1/2 -translate-y-1/2 w-2/3 opacity-60 object-cover transition-transform duration-1000 group-hover:scale-105 z-0"
-           />
-           
-           <div className="relative z-20 p-8 md:p-16 max-w-2xl">
-              <h1 className="text-5xl md:text-6xl font-black text-white mb-6 tracking-tight leading-tight">
-                Unlock Your <span className="text-transparent bg-clip-text bg-gradient-to-r from-teal-400 to-emerald-500">Dreams</span>
-              </h1>
-              <p className="text-gray-300 text-lg md:text-xl mb-8 font-light leading-relaxed">
-                Explore our curated selection of financial packages. Whether you want to grow your savings or fund your next big project, we have the right plan for you.
-              </p>
-              <button 
-                onClick={() => document.getElementById('loans-section').scrollIntoView({ behavior: 'smooth' })}
-                className="bg-teal-500 hover:bg-teal-600 text-white font-bold py-3.5 px-8 rounded-full transition-all flex items-center gap-2 shadow-lg hover:shadow-xl active:scale-95"
-              >
-                <Info className="w-5 h-5" /> Browse Packages
-              </button>
-           </div>
+
+      <div className="px-4 md:px-8 pt-6 relative z-0 hidden md:block">
+        <div className="relative h-[30vh] md:h-[45vh] bg-black rounded-3xl overflow-hidden shadow-2xl flex items-center group">
+          <div className="absolute inset-0 bg-gradient-to-r from-black via-black/80 to-transparent z-10" />
+          <img
+            src={loanImage}
+            alt="Featured"
+            className="absolute right-0 top-1/2 -translate-y-1/2 w-2/3 opacity-60 object-cover transition-transform duration-1000 group-hover:scale-105 z-0"
+          />
+
+          <div className="relative z-20 p-8 md:p-16 max-w-2xl">
+            <h1 className="text-3xl md:text-5xl lg:text-6xl font-black text-white mb-4 md:mb-6 tracking-tight leading-tight">
+              Unlock Your <span className="text-transparent bg-clip-text bg-gradient-to-r from-teal-400 to-emerald-500">Dreams</span>
+            </h1>
+            <p className="text-gray-300 text-lg md:text-xl mb-8 font-light leading-relaxed">
+              Explore our curated selection of financial packages. Whether you want to grow your savings or fund your next big project, we have the right plan for you.
+            </p>
+            <button
+              onClick={() => document.getElementById('loans-section').scrollIntoView({ behavior: 'smooth' })}
+              className="bg-teal-500 hover:bg-teal-600 text-white font-bold py-3.5 px-8 rounded-full transition-all flex items-center gap-2 shadow-lg hover:shadow-xl active:scale-95"
+            >
+              <Info className="w-5 h-5" /> Browse Packages
+            </button>
+          </div>
         </div>
       </div>
 
@@ -517,32 +516,32 @@ export default function UserPackages() {
         ) : (
           <>
             <div id="loans-section">
-              <PackageSection 
-                title="Loans For You" 
-                items={loans} 
-                type="loan-package" 
-                onItemClick={openDetail} 
+              <PackageSection
+                title="Loans For You"
+                items={loans}
+                type="loan-package"
+                onItemClick={openDetail}
               />
             </div>
 
-            <PackageSection 
-              title="High Yield Fixed Deposits" 
-              items={fixedDeposits} 
-              type="fixed-deposit" 
-              onItemClick={openDetail} 
+            <PackageSection
+              title="High Yield Fixed Deposits"
+              items={fixedDeposits}
+              type="fixed-deposit"
+              onItemClick={openDetail}
             />
 
-            <PackageSection 
-              title="Saving Accounts" 
-              items={savingAccounts} 
-              type="saving-account" 
-              onItemClick={openDetail} 
+            <PackageSection
+              title="Saving Accounts"
+              items={savingAccounts}
+              type="saving-account"
+              onItemClick={openDetail}
             />
           </>
         )}
       </div>
 
-      <DetailModal 
+      <DetailModal
         isOpen={detailModal.open}
         onClose={closeDetail}
         pkg={detailModal.pkg}

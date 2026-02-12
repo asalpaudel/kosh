@@ -37,6 +37,7 @@ import com.kosh.backend.repository.SavingAccountApplicationRepository;
 import com.kosh.backend.repository.SavingAccountRepository;
 import com.kosh.backend.repository.TransactionRepository;
 import com.kosh.backend.repository.UserRepository;
+import com.kosh.backend.service.EmailService;
 
 import jakarta.servlet.http.HttpSession;
 
@@ -48,6 +49,7 @@ public class TransactionController {
     private final UserRepository userRepo;
     private final NetworkRepository networkRepo;
     private final ActivityLogRepository logRepo;
+    private final EmailService emailService;
 
     // --- NEW: Inject Application & Package Repositories ---
     private final FixedDepositApplicationRepository fdAppRepo;
@@ -62,6 +64,7 @@ public class TransactionController {
             UserRepository userRepo, 
             NetworkRepository networkRepo, 
             ActivityLogRepository logRepo,
+            EmailService emailService,
             FixedDepositApplicationRepository fdAppRepo,
             FixedDepositRepository fdPackageRepo,
             LoanApplicationRepository loanAppRepo,
@@ -73,6 +76,7 @@ public class TransactionController {
         this.userRepo = userRepo;
         this.networkRepo = networkRepo;
         this.logRepo = logRepo;
+        this.emailService = emailService;
         
         // Assign new repos
         this.fdAppRepo = fdAppRepo;
@@ -329,6 +333,15 @@ public class TransactionController {
                 );
                 logRepo.save(log);
             } catch (Exception e) {}
+
+            // Send voucher email to the user
+            try {
+                if (targetUser != null && targetUser.getEmail() != null && !targetUser.getEmail().isEmpty()) {
+                    emailService.sendTransactionVoucherEmail(targetUser.getEmail(), savedTx, network);
+                }
+            } catch (Exception e) {
+                System.err.println("Email send failed (non-blocking): " + e.getMessage());
+            }
 
             return ResponseEntity.ok(mapTransactionToFrontend(savedTx));
 

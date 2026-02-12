@@ -459,25 +459,28 @@ function AdminUsers() {
 
   return (
     <>
-      <div className="bg-white p-6 min-h-[calc(100vh-8.5rem)]">
-        <div className="flex flex-wrap items-center justify-between mb-8 gap-4">
-          <div className="relative flex-grow sm:flex-grow-0">
+      <div className="bg-white p-3 md:p-6 min-h-[calc(100vh-8.5rem)]">
+        {/* Controls Section — stacks on mobile */}
+        <div className="flex flex-col gap-3 mb-6 md:mb-8">
+          {/* Row 1: Search */}
+          <div className="relative w-full md:w-80">
             <span className="absolute inset-y-0 left-0 flex items-center pl-4">
               <SearchIcon className="h-5 w-5 text-gray-400" />
             </span>
             <input
               type="text"
               placeholder="Search by ID, name, email, role..."
-              className="w-full sm:w-80 bg-gray-100 text-gray-700 border border-transparent rounded-full py-3 pl-12 pr-4 text-base focus:outline-none focus:bg-white focus:border-gray-300"
+              className="w-full bg-gray-100 text-gray-700 border border-transparent rounded-full py-2.5 md:py-3 pl-12 pr-4 text-sm md:text-base focus:outline-none focus:bg-white focus:border-gray-300"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />
           </div>
 
-          <div className="flex items-center gap-3">
+          {/* Row 2: Filter Buttons */}
+          <div className="flex flex-wrap items-center gap-2">
             <button
               onClick={() => setActiveFilter("All")}
-              className={`font-medium py-3 px-6 rounded-full transition-colors text-base ${getButtonClass(
+              className={`font-medium py-1.5 px-3 md:py-2 md:px-5 rounded-full transition-colors text-xs md:text-sm ${getButtonClass(
                 "All"
               )}`}
             >
@@ -485,7 +488,7 @@ function AdminUsers() {
             </button>
             <button
               onClick={() => setActiveFilter("Pending")}
-              className={`font-medium py-3 px-6 rounded-full transition-colors text-base ${getButtonClass(
+              className={`font-medium py-1.5 px-3 md:py-2 md:px-5 rounded-full transition-colors text-xs md:text-sm ${getButtonClass(
                 "Pending"
               )}`}
             >
@@ -493,7 +496,7 @@ function AdminUsers() {
             </button>
             <button
               onClick={() => setActiveFilter("Admin")}
-              className={`font-medium py-3 px-6 rounded-full transition-colors text-base ${getButtonClass(
+              className={`font-medium py-1.5 px-3 md:py-2 md:px-5 rounded-full transition-colors text-xs md:text-sm ${getButtonClass(
                 "Admin"
               )}`}
             >
@@ -501,7 +504,7 @@ function AdminUsers() {
             </button>
             <button
               onClick={() => setActiveFilter("Members")}
-              className={`font-medium py-3 px-6 rounded-full transition-colors text-base ${getButtonClass(
+              className={`font-medium py-1.5 px-3 md:py-2 md:px-5 rounded-full transition-colors text-xs md:text-sm ${getButtonClass(
                 "Members"
               )}`}
             >
@@ -520,25 +523,25 @@ function AdminUsers() {
 
         {!loading && (
           <div className="w-full overflow-x-auto">
-            <table className="min-w-full text-left">
+            <table className="w-full text-left">
               <thead>
                 <tr className="bg-gray-50 border-b border-gray-200">
-                  <th className="py-4 px-3 text-sm font-semibold text-gray-600">
+                  <th className="py-3 md:py-4 px-2 md:px-3 text-[10px] md:text-sm font-semibold text-gray-600">
                     ID
                   </th>
-                  <th className="py-4 px-3 text-sm font-semibold text-gray-600">
+                  <th className="py-3 md:py-4 px-2 md:px-3 text-[10px] md:text-sm font-semibold text-gray-600">
                     Name
                   </th>
-                  <th className="py-4 px-3 text-sm font-semibold text-gray-600">
+                  <th className="py-3 md:py-4 px-2 md:px-3 text-[10px] md:text-sm font-semibold text-gray-600 hidden md:table-cell">
                     Email
                   </th>
-                  <th className="py-4 px-3 text-sm font-semibold text-gray-600">
+                  <th className="py-3 md:py-4 px-2 md:px-3 text-[10px] md:text-sm font-semibold text-gray-600 hidden lg:table-cell">
                     Phone
                   </th>
-                  <th className="py-4 px-3 text-sm font-semibold text-gray-600">
+                  <th className="py-3 md:py-4 px-2 md:px-3 text-[10px] md:text-sm font-semibold text-gray-600">
                     Role
                   </th>
-                  <th className="py-4 px-3 text-sm font-semibold text-gray-600">
+                  <th className="py-3 md:py-4 px-2 md:px-3 text-[10px] md:text-sm font-semibold text-gray-600">
                     Status
                   </th>
                 </tr>
@@ -551,22 +554,22 @@ function AdminUsers() {
                     onClick={() => handleRowClick(user)}
                     className="bg-white border-b border-gray-200 hover:bg-gray-50 transition-colors cursor-pointer"
                   >
-                    <td className="py-4 px-3 text-gray-600 font-medium">
+                    <td className="py-3 md:py-4 px-2 md:px-3 text-gray-600 text-xs md:text-base font-medium">
                       {index + 1}
                     </td>
-                    <td className="py-4 px-3 text-gray-800 font-bold">
+                    <td className="py-3 md:py-4 px-2 md:px-3 text-gray-800 text-xs md:text-base font-bold">
                       {user.name}
                     </td>
-                    <td className="py-4 px-3 text-gray-700 truncate">
+                    <td className="py-3 md:py-4 px-2 md:px-3 text-gray-700 truncate hidden md:table-cell">
                       {user.email}
                     </td>
-                    <td className="py-4 px-3 text-gray-700">{user.phone}</td>
-                    <td className="py-4 px-3 text-gray-700 capitalize">
+                    <td className="py-3 md:py-4 px-2 md:px-3 text-gray-700 hidden lg:table-cell">{user.phone}</td>
+                    <td className="py-3 md:py-4 px-2 md:px-3 text-gray-700 text-xs md:text-base capitalize">
                       {user.role}
                     </td>
-                    <td className="py-4 px-3">
+                    <td className="py-3 md:py-4 px-2 md:px-3">
                       <span
-                        className={`font-bold
+                        className={`font-bold text-xs md:text-base
                         ${user.status === "Active" ? "text-green-600" : ""}
                         ${user.status === "Pending" ? "text-yellow-600" : ""}
                         ${user.status === "Suspended" ? "text-red-600" : ""}
@@ -594,7 +597,7 @@ function AdminUsers() {
         )}
       </div>
 
-      <div className="group fixed z-20 bottom-10 right-10 flex flex-col items-center gap-3">
+      <div className="group fixed z-20 bottom-20 right-6 md:bottom-10 md:right-10 flex flex-col items-center gap-3">
         <div className="flex flex-col items-center gap-3 opacity-0 scale-90 translate-y-4 group-hover:opacity-100 group-hover:scale-100 group-hover:translate-y-0 pointer-events-none group-hover:pointer-events-auto transition-all duration-200 ease-in-out">
           <button
             title="Add User"

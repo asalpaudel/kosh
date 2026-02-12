@@ -1,14 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { SearchIcon, BellIcon, SettingsIcon } from '../icons';
+import { SearchIcon, SettingsIcon } from '../icons';
 import { useNavigate } from 'react-router-dom';
-import GlobalSearch from './GlobalSearch'; 
+import GlobalSearch from './GlobalSearch';
 
 const API_BASE = "http://localhost:8080/api";
 
 function Header({ pageName }) {
   const navigate = useNavigate();
   const [isSearchOpen, setIsSearchOpen] = useState(false);
-  const [userName, setUserName] = useState(""); 
+  const [userName, setUserName] = useState("");
 
   useEffect(() => {
     const fetchSessionUser = async () => {
@@ -57,24 +57,19 @@ function Header({ pageName }) {
             Hello, <span className="text-emerald-400">{userName || "..."}</span>
           </span>
 
-          <button 
-            onClick={() => setIsSearchOpen(true)} 
+          <button
+            onClick={() => setIsSearchOpen(true)}
             className="p-3 rounded-xl hover:bg-gray-900 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-emerald-500 group"
             title="Search (Ctrl+K)"
           >
-            <SearchIcon className="text-gray-400 group-hover:text-emerald-400 h-6 w-6 transition-transform group-hover:scale-110"/>
+            <SearchIcon className="text-gray-400 group-hover:text-emerald-400 h-6 w-6 transition-transform group-hover:scale-110" />
           </button>
-          
-          <button className="p-3 rounded-xl hover:bg-gray-900 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-emerald-500 relative group">
-            <BellIcon className="text-gray-400 group-hover:text-emerald-400 h-6 w-6 transition-transform group-hover:scale-110"/>
-            <span className="absolute top-2 right-2 h-2 w-2 bg-emerald-500 rounded-full"></span>
-          </button>
-          
-          <button 
+
+          <button
             className="p-3 rounded-xl hover:bg-gray-900 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-emerald-500 group"
             onClick={() => navigate('/home/settings')}
           >
-            <SettingsIcon className="text-gray-400 group-hover:text-emerald-400 h-6 w-6 transition-transform group-hover:scale-110"/>
+            <SettingsIcon className="text-gray-400 group-hover:text-emerald-400 h-6 w-6 transition-transform group-hover:scale-110" />
           </button>
         </div>
       </header>

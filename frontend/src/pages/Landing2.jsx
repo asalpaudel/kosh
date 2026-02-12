@@ -528,10 +528,10 @@ export default function Landing() {
             </nav>
 
             <div className="hidden items-center gap-3 md:flex">
-              <ThemeToggle
+              {/* <ThemeToggle
                 mode={mode}
                 onToggle={() => setMode((m) => (m === "dark" ? "light" : "dark"))}
-              />
+              /> */}
               <SignInButton mode={mode} onClick={() => nav("/login")} />
               <PrimaryButton onClick={() => goSection("contact")}>
                 Request a demo

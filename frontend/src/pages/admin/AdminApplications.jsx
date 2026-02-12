@@ -408,13 +408,13 @@ export default function AdminApplications() {
   ];
 
   return (
-    <div className="min-h-screen bg-gray-50/50 p-6 md:p-8">
+    <div className="min-h-screen bg-gray-50/50 p-3 md:p-6 lg:p-8">
       <div className="mx-auto max-w-7xl space-y-8">
 
         {/* Header Stats */}
         <div>
           <h1 className="text-2xl font-bold text-gray-900 mb-6">Application Overview</h1>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
             <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm">
               <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Total</p>
               <p className="text-3xl font-bold text-gray-900">{totalApplications}</p>
@@ -439,8 +439,8 @@ export default function AdminApplications() {
               key={st}
               onClick={() => setFilter(st)}
               className={`px-4 py-2 rounded-full text-sm font-semibold transition-all whitespace-nowrap ${filter === st
-                  ? "bg-teal-600 text-white shadow-md ring-2 ring-teal-600 ring-offset-2"
-                  : "bg-white text-gray-600 border border-gray-200 hover:bg-gray-50 hover:border-gray-300"
+                ? "bg-teal-600 text-white shadow-md ring-2 ring-teal-600 ring-offset-2"
+                : "bg-white text-gray-600 border border-gray-200 hover:bg-gray-50 hover:border-gray-300"
                 }`}
             >
               {st.charAt(0) + st.slice(1).toLowerCase()}
