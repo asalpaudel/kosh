@@ -721,4 +721,52 @@ public class UserController {
 
         return ResponseEntity.ok(map);
     }
+    @PostMapping("/change-password")
+    public ResponseEntity<?> changePassword(@RequestBody Map<String, String> payload, HttpSession session) {
+        Long userId = (Long) session.getAttribute("userId");
+        if (userId == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("error", "Not authenticated"));
+        }
+
+        String oldPassword = payload.get("oldPassword");
+        String newPassword = payload.get("newPassword");
+
+        if (oldPassword == null || newPassword == null || newPassword.length() < 6) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Invalid data. Password must be at least 6 chars."));
+        }
+
+        User user = repo.findById(userId.intValue()).orElse(null);
+        if (user == null) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", "User not found"));
+        }
+
+        if (!passwordEncoder.matches(oldPassword, user.getPassword())) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Incorrect current password"));
+        }
+
+        user.setPassword(passwordEncoder.encode(newPassword));
+        repo.save(user);
+
+        // Log Activity
+        String adminName = (String) session.getAttribute("userName");
+        String userRole = (String) session.getAttribute("userRole");
+        Long sahakariId = (Long) session.getAttribute("sahakariId");
+        
+        if (adminName != null) {
+             try {
+                ActivityLog log = new ActivityLog(
+                    adminName, 
+                    userRole, 
+                    sahakariId, 
+                    "CHANGE_PASSWORD", 
+                    "User changed their password."
+                );
+                logRepo.save(log);
+            } catch (Exception e) {
+                System.out.println("Failed to log password change: " + e.getMessage());
+            }
+        }
+
+        return ResponseEntity.ok(Map.of("success", true, "message", "Password changed successfully"));
+    }
 }
