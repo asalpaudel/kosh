@@ -25,6 +25,7 @@ import com.kosh.backend.model.Network;
 import com.kosh.backend.model.SavingAccount;
 import com.kosh.backend.model.SavingAccountApplication;
 import com.kosh.backend.model.Transaction;
+import com.kosh.backend.model.TransactionType;
 import com.kosh.backend.model.User;
 import com.kosh.backend.repository.ActivityLogRepository;
 import com.kosh.backend.repository.FixedDepositApplicationRepository;
@@ -90,11 +91,12 @@ public class TransactionController {
             String adminName = (String) session.getAttribute("userName");
 
             if (adminId == null || networkId == null) {
-                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("error", "Unauthorized access"));
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(Map.of("error", "Unauthorized access"));
             }
 
             Network network = networkRepo.findById(networkId)
-                    .orElseThrow(() -> new RuntimeException("Network not found"));
+                .orElseThrow(() -> new RuntimeException("Network not found"));
 
             Transaction tx = new Transaction();
             
@@ -128,7 +130,7 @@ public class TransactionController {
             if (payload.get("userId") != null) {
                 Long targetUserId = Long.valueOf(payload.get("userId").toString());
                 targetUser = userRepo.findById(targetUserId.intValue())
-                        .orElseThrow(() -> new RuntimeException("User not found"));
+                    .orElseThrow(() -> new RuntimeException("User not found"));
                 
                 tx.setUser(targetUser);
                 tx.setUserName(targetUser.getName());
@@ -138,15 +140,61 @@ public class TransactionController {
 
             tx.setNetwork(network);
 
-            // =================================================================================
-            // ⭐ NEW LOGIC: AUTO-CREATE APPLICATION IF "packageId" IS PRESENT
-            // =================================================================================
-            if (targetUser != null && payload.get("packageId") != null) {
+            // ========================================================================
+            // ⭐ LOGIC FIX: Check if this is a NEW Application or an Existing one
+            // ========================================================================
+            
+            boolean isNewApplication = payload.get("applicationId") == null;
+
+            if (targetUser != null && payload.get("packageId") != null && isNewApplication) {
                 Long packageId = Long.valueOf(payload.get("packageId").toString());
                 String head = tx.getAccountHead();
+                String direction = tx.getDirection();
 
-                // 1. Handle FIXED DEPOSIT Manual Creation
-                if ("Fixed Deposit".equals(head)) {
+                // Determine TransactionType based on direction
+                TransactionType txType;
+                if ("Loan".equals(head)) {
+                    // Loan: Debit = Disbursement (DEPOSIT into user hand), Credit = Repayment (WITHDRAW)
+                    txType = "Debit".equals(direction) ? TransactionType.DEPOSIT : TransactionType.WITHDRAW;
+                } else {
+                    // FD/Savings: Credit = Deposit (DEPOSIT), Debit = Withdraw (WITHDRAW)
+                    txType = "Credit".equals(direction) ? TransactionType.DEPOSIT : TransactionType.WITHDRAW;
+                }
+
+                // --- 1. LOAN CREATION (Only if new) ---
+                if ("Loan".equals(head)) {
+                    LoanPackage packageEntity = loanPackageRepo.findById(packageId).orElse(null);
+                    if (packageEntity != null) {
+                        LoanApplication loanApp = new LoanApplication();
+                        loanApp.setUser(targetUser);
+                        loanApp.setLoanPackage(packageEntity);
+                        loanApp.setNetwork(network);
+                        loanApp.setRequestedAmount(tx.getAmount());
+                        loanApp.setApprovedAmount(tx.getAmount());
+                        loanApp.setTransactionType(txType);
+                        
+                        // New loan disbursement defaults
+                        loanApp.setInterestRate(packageEntity.getInterestRate());
+                        loanApp.setDurationInMonths(packageEntity.getMaxDuration());
+                        loanApp.setStartDate(LocalDate.now());
+                        loanApp.setNextPaymentDate(LocalDate.now().plusMonths(1));
+                        loanApp.setPurpose(tx.getNarration() != null ? tx.getNarration() : "Loan disbursement");
+                        
+                        loanApp.setApplicationDate(LocalDateTime.now());
+                        loanApp.setReviewDate(LocalDateTime.now());
+                        loanApp.setStatus(ApplicationStatus.APPROVED);
+                        loanApp.setReviewNotes("Created via Transaction by " + adminName);
+
+                        LoanApplication savedApp = loanAppRepo.save(loanApp);
+                        tx.setApplicationId(savedApp.getId());
+                        tx.setApplicationType("loan");
+                        
+                        System.out.println("✅ NEW Loan Created: #" + savedApp.getId());
+                    }
+                }
+                
+                // --- 2. FIXED DEPOSIT CREATION (Only if new) ---
+                else if ("Fixed Deposit".equals(head)) {
                     FixedDeposit packageEntity = fdPackageRepo.findById(packageId).orElse(null);
                     if (packageEntity != null) {
                         FixedDepositApplication fdApp = new FixedDepositApplication();
@@ -154,8 +202,8 @@ public class TransactionController {
                         fdApp.setFixedDeposit(packageEntity);
                         fdApp.setNetwork(network);
                         fdApp.setDepositAmount(tx.getAmount());
+                        fdApp.setTransactionType(txType);
                         
-                        // Try to get term from details, fallback to package minimum
                         Integer term = packageEntity.getMinDuration();
                         if (payload.get("term") != null) {
                             term = Integer.valueOf(payload.get("term").toString());
@@ -164,42 +212,18 @@ public class TransactionController {
                         
                         fdApp.setApplicationDate(LocalDateTime.now());
                         fdApp.setReviewDate(LocalDateTime.now());
-                        fdApp.setStatus(ApplicationStatus.APPROVED); // Auto-approve
-                        fdApp.setReviewNotes("Created manually via Transaction by " + adminName);
+                        fdApp.setStatus(ApplicationStatus.APPROVED);
+                        fdApp.setReviewNotes("Created via Transaction by " + adminName);
                         
                         FixedDepositApplication savedApp = fdAppRepo.save(fdApp);
-                        
-                        // Link Transaction
                         tx.setApplicationId(savedApp.getId());
                         tx.setApplicationType("fixed-deposit");
-                    }
-                }
-                
-                // 2. Handle LOAN Manual Creation
-                else if ("Loan".equals(head)) {
-                    LoanPackage packageEntity = loanPackageRepo.findById(packageId).orElse(null);
-                    if (packageEntity != null) {
-                        LoanApplication loanApp = new LoanApplication();
-                        loanApp.setUser(targetUser);
-                        loanApp.setLoanPackage(packageEntity);
-                        loanApp.setNetwork(network);
-                        loanApp.setRequestedAmount(tx.getAmount());
-                        loanApp.setPurpose(tx.getNarration());
                         
-                        loanApp.setApplicationDate(LocalDateTime.now());
-                        loanApp.setReviewDate(LocalDateTime.now());
-                        loanApp.setStatus(ApplicationStatus.APPROVED); // Auto-approve
-                        loanApp.setReviewNotes("Created manually via Transaction by " + adminName);
-
-                        LoanApplication savedApp = loanAppRepo.save(loanApp);
-
-                        // Link Transaction
-                        tx.setApplicationId(savedApp.getId());
-                        tx.setApplicationType("loan");
+                        System.out.println("✅ NEW FD Created: #" + savedApp.getId());
                     }
                 }
                 
-                // 3. Handle SAVINGS ACCOUNT Manual Creation
+                // --- 3. SAVINGS ACCOUNT CREATION (Only if new) ---
                 else if ("Savings".equals(head)) {
                     SavingAccount packageEntity = saPackageRepo.findById(packageId).orElse(null);
                     if (packageEntity != null) {
@@ -208,72 +232,79 @@ public class TransactionController {
                         saApp.setSavingAccount(packageEntity);
                         saApp.setNetwork(network);
                         saApp.setInitialDeposit(tx.getAmount());
+                        saApp.setTransactionType(txType);
                         
                         saApp.setApplicationDate(LocalDateTime.now());
                         saApp.setReviewDate(LocalDateTime.now());
-                        saApp.setStatus(ApplicationStatus.APPROVED); // Auto-approve
-                        saApp.setReviewNotes("Created manually via Transaction by " + adminName);
+                        saApp.setStatus(ApplicationStatus.APPROVED);
+                        saApp.setReviewNotes("Created via Transaction by " + adminName);
 
                         SavingAccountApplication savedApp = saAppRepo.save(saApp);
-
-                        // Link Transaction
                         tx.setApplicationId(savedApp.getId());
                         tx.setApplicationType("saving-account");
+                        
+                        System.out.println("✅ NEW Savings Account Created: #" + savedApp.getId());
                     }
                 }
-            } 
-            // =================================================================================
-            // END NEW LOGIC
-            // =================================================================================
-
-            // If existing Logic passed applicationId in payload (from normal approval flow), use it
-            if (tx.getApplicationId() == null && payload.get("applicationId") != null) {
+            }
+            
+            // --- EXISTING APPLICATION LINKING ---
+            else if (payload.get("applicationId") != null) {
+                // If ID exists, just link it. Do NOT create a new Application entity.
                 tx.setApplicationId(((Number) payload.get("applicationId")).longValue());
                 tx.setApplicationType((String) payload.get("applicationType"));
+                System.out.println("🔗 Linked to Existing Application: #" + tx.getApplicationId());
             }
 
-            // --- USER BALANCE UPDATE LOGIC ---
+            // ========================================================================
+            // END APPLICATION LOGIC
+            // ========================================================================
+
+            // --- USER BALANCE UPDATE ---
             if (targetUser != null) {
                 Double currentBalance = targetUser.getBalance() != null ? targetUser.getBalance() : 0.0;
                 Double amount = tx.getAmount();
+                String accountHead = tx.getAccountHead();
 
-                if ("Credit".equalsIgnoreCase(tx.getDirection())) {
-                    targetUser.setBalance(currentBalance + amount);
-                } else if ("Debit".equalsIgnoreCase(tx.getDirection())) {
-                    if (currentBalance < amount) {
-                        return ResponseEntity.badRequest().body(Map.of("error", "Insufficient user balance."));
+                // Only update User "Wallet" Balance if it's NOT a Loan
+                // (Assuming Loans are separate from the main Savings Balance)
+                if (!"Loan".equals(accountHead)) {
+                    if ("Credit".equalsIgnoreCase(tx.getDirection())) {
+                        targetUser.setBalance(currentBalance + amount);
+                    } else if ("Debit".equalsIgnoreCase(tx.getDirection())) {
+                        if (currentBalance < amount) {
+                            return ResponseEntity.badRequest()
+                                .body(Map.of("error", "Insufficient user balance."));
+                        }
+                        targetUser.setBalance(currentBalance - amount);
                     }
-                    targetUser.setBalance(currentBalance - amount);
+                    userRepo.save(targetUser);
                 }
-                userRepo.save(targetUser);
-            } else {
-                // If no user object, ensure we keep the manually entered name
-                tx.setUserName((String) payload.get("userName"));
             }
 
-            // --- RESERVE CALCULATION ---
+            // --- NETWORK RESERVE CALCULATION ---
             Double totalSavings = transactionRepo.getBalanceByHead(networkId, "Savings");
             Double totalFD = transactionRepo.getBalanceByHead(networkId, "Fixed Deposit");
             Double totalLoans = transactionRepo.getOutstandingLoans(networkId);
             Double totalNetwork = transactionRepo.getNetworkBalance(networkId);
             
-            // Adjust for CURRENT transaction
             String head = tx.getAccountHead();
             String dir = tx.getDirection();
             Double amt = tx.getAmount();
             String mode = tx.getMode();
 
-            // Handle potential nulls
             if (totalSavings == null) totalSavings = 0.0;
             if (totalFD == null) totalFD = 0.0;
             if (totalLoans == null) totalLoans = 0.0;
             if (totalNetwork == null) totalNetwork = 0.0;
 
+            // Adjust current running totals based on this new transaction
             if ("Savings".equals(head)) {
                 totalSavings += ("Credit".equals(dir) ? amt : -amt);
             } else if ("Fixed Deposit".equals(head)) {
                 totalFD += ("Credit".equals(dir) ? amt : -amt);
             } else if ("Loan".equals(head)) {
+                // Loan: Debit increases Outstanding, Credit decreases it
                 totalLoans += ("Debit".equals(dir) ? amt : -amt);
             }
 
@@ -289,8 +320,13 @@ public class TransactionController {
             // Log Activity
             try {
                 String userRole = (String) session.getAttribute("userRole");
-                ActivityLog log = new ActivityLog(adminName, userRole != null ? userRole : "admin", networkId, "ADD_TRANSACTION", 
-                    "Added " + tx.getType() + " of Rs. " + tx.getAmount());
+                ActivityLog log = new ActivityLog(
+                    adminName, 
+                    userRole != null ? userRole : "admin", 
+                    networkId, 
+                    "ADD_TRANSACTION", 
+                    "Added " + tx.getType() + " of Rs. " + tx.getAmount()
+                );
                 logRepo.save(log);
             } catch (Exception e) {}
 

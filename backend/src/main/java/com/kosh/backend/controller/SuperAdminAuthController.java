@@ -24,7 +24,7 @@ import jakarta.servlet.http.HttpSession;
 public class SuperAdminAuthController {
 
     // ⭐ HARDCODED AUTHORIZED EMAIL
-    private static final String AUTHORIZED_EMAIL = "efooty667@gmail.com";
+    private static final String AUTHORIZED_EMAIL = "REMOVED_SUPERADMIN_EMAIL";
     
     // OTP Storage: email -> SuperAdminOtp
     private static class SuperAdminOtp {

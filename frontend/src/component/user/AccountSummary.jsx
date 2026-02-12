@@ -27,64 +27,67 @@ function AccountSummary() {
           return;
         }
 
-        // Fetch user balance
-        const userRes = await fetch(`${API_BASE}/users/${userId}`, {
-          credentials: "include"
-        });
-
+        // 1. Fetch User Info (for Main Wallet Balance)
+        const userRes = await fetch(`${API_BASE}/users/${userId}`, { credentials: "include" });
         let userBalance = 0;
         if (userRes.ok) {
           const userData = await userRes.json();
           userBalance = userData.balance || 0;
         }
 
-        // Fetch Fixed Deposit Applications
-        const fdRes = await fetch(`${API_BASE}/applications/fixed-deposit/user`, {
-          credentials: "include"
-        });
-        
-        let totalFD = 0;
-        if (fdRes.ok) {
-          const fdApps = await fdRes.json();
-          // Sum up all APPROVED fixed deposit applications
-          totalFD = fdApps
-            .filter(app => app.status === 'APPROVED')
-            .reduce((sum, app) => sum + (app.depositAmount || 0), 0);
-        }
-
-        // Fetch Saving Account Applications
-        const saRes = await fetch(`${API_BASE}/applications/saving-account/user`, {
-          credentials: "include"
-        });
+        // 2. Fetch All Transactions for User
+        // Note: You might need to ensure your backend supports filtering by userId for this endpoint
+        const txRes = await fetch(`${API_BASE}/transactions`, { credentials: "include" });
         
         let totalSavings = 0;
-        if (saRes.ok) {
-          const saApps = await saRes.json();
-          // Sum up all APPROVED savings account applications
-          totalSavings = saApps
-            .filter(app => app.status === 'APPROVED')
-            .reduce((sum, app) => sum + (app.initialDeposit || 0), 0);
-        }
-
-        // Fetch Loan Applications
-        const loanRes = await fetch(`${API_BASE}/applications/loan/user`, {
-          credentials: "include"
-        });
-        
+        let totalFD = 0;
         let totalLoan = 0;
-        if (loanRes.ok) {
-          const loanApps = await loanRes.json();
-          // Sum up all APPROVED loan applications
-          totalLoan = loanApps
-            .filter(app => app.status === 'APPROVED')
-            .reduce((sum, app) => sum + (app.approvedAmount || app.requestedAmount || 0), 0);
+
+        if (txRes.ok) {
+          const transactions = await txRes.json();
+          
+          transactions.forEach(tx => {
+            // Ensure we handle both string/number formats if API varies
+            const amount = parseFloat(tx.amount || tx.amountValue || 0);
+            const head = tx.details?.internalHead || tx.accountHead || tx.type; // Adjust based on exact API response
+            const direction = tx.details?.direction || ""; 
+
+            // ⭐ LOGIC: Calculate based on Head and Direction
+            
+            // SAVINGS: Credit = Deposit (+), Debit = Withdraw (-)
+            if (head && head.includes("Savings")) {
+              if (direction === "Credit" || tx.type.includes("Deposit") || tx.type.includes("Opening")) {
+                totalSavings += amount;
+              } else if (direction === "Debit" || tx.type.includes("Withdraw")) {
+                totalSavings -= amount;
+              }
+            }
+
+            // FIXED DEPOSIT: Credit = Deposit (+), Debit = Withdraw (-)
+            if (head && head.includes("Fixed Deposit")) {
+              if (direction === "Credit" || tx.type.includes("Creation")) {
+                totalFD += amount;
+              } else if (direction === "Debit") {
+                totalFD -= amount;
+              }
+            }
+
+            // LOAN: Debit = Disbursement (Debt Increases +), Credit = Repayment (Debt Decreases -)
+            if (head && head.includes("Loan")) {
+              if (direction === "Debit" || tx.type.includes("Disbursement")) {
+                totalLoan += amount; // You owe this money
+              } else if (direction === "Credit" || tx.type.includes("Repayment")) {
+                totalLoan -= amount; // You paid this back
+              }
+            }
+          });
         }
 
         setSummary({
           balance: userBalance,
           savings: totalSavings,
           fixedDeposit: totalFD,
-          loan: totalLoan
+          loan: totalLoan // If negative, it means they overpaid (unlikely), if positive it's outstanding debt
         });
 
       } catch (error) {
@@ -104,17 +107,9 @@ function AccountSummary() {
     { name: "Loan", amount: summary.loan }
   ];
 
+  // ... (Rest of the loading/render UI remains the same)
   if (loading) {
-    return (
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 p-4 bg-white rounded-lg shadow-md">
-        {[1, 2, 3, 4].map((i) => (
-          <div key={i} className="flex flex-col items-start p-3 animate-pulse">
-            <div className="h-4 bg-gray-200 rounded w-20 mb-2"></div>
-            <div className="h-6 bg-gray-300 rounded w-32"></div>
-          </div>
-        ))}
-      </div>
-    );
+    return <div className="p-4">Loading...</div>;
   }
 
   return (

@@ -25,6 +25,7 @@ import com.kosh.backend.model.FixedDepositApplication;
 import com.kosh.backend.model.LoanApplication;
 import com.kosh.backend.model.LoanPackage;
 import com.kosh.backend.model.Network;
+import com.kosh.backend.model.RepaymentSchedule;
 import com.kosh.backend.model.SavingAccount;
 import com.kosh.backend.model.SavingAccountApplication;
 import com.kosh.backend.model.Transaction;
@@ -38,6 +39,7 @@ import com.kosh.backend.repository.SavingAccountApplicationRepository;
 import com.kosh.backend.repository.SavingAccountRepository;
 import com.kosh.backend.repository.TransactionRepository;
 import com.kosh.backend.repository.UserRepository;
+import com.kosh.backend.repository.RepaymentScheduleRepository;
 import com.kosh.backend.service.LoanService; 
 
 import jakarta.servlet.http.HttpSession;
@@ -72,6 +74,9 @@ public class ApplicationController {
 
     @Autowired
     private TransactionRepository transactionRepo;
+
+    @Autowired
+    private RepaymentScheduleRepository repaymentScheduleRepo;
 
     // Inject LoanService for Schedule Generation
     @Autowired
@@ -655,4 +660,50 @@ public class ApplicationController {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(e.getMessage());
         }
     }
+
+    // ⭐ NEW: Generate Repayment Schedule using Reducing Balance Method
+        private void generateRepaymentSchedule(LoanApplication loanApp) {
+            Double principal = loanApp.getApprovedAmount();
+            Double annualRate = loanApp.getInterestRate();
+            Integer months = loanApp.getDurationInMonths();
+            
+            // Monthly interest rate
+            Double monthlyRate = annualRate / 12 / 100;
+            
+            // Calculate EMI using reducing balance formula
+            // EMI = [P x R x (1+R)^N] / [(1+R)^N - 1]
+            Double emi = principal * monthlyRate * Math.pow(1 + monthlyRate, months) 
+                        / (Math.pow(1 + monthlyRate, months) - 1);
+            
+            Double remainingPrincipal = principal;
+            LocalDate currentDate = loanApp.getStartDate();
+            
+            for (int i = 1; i <= months; i++) {
+                RepaymentSchedule schedule = new RepaymentSchedule();
+                schedule.setLoanApplication(loanApp);
+                schedule.setInstallmentNumber(i);
+                schedule.setDueDate(currentDate.plusMonths(i));
+                
+                // Calculate interest on remaining principal
+                Double interestAmount = remainingPrincipal * monthlyRate;
+                Double principalAmount = emi - interestAmount;
+                
+                // Last installment adjustment (handle rounding)
+                if (i == months) {
+                    principalAmount = remainingPrincipal;
+                    emi = principalAmount + interestAmount;
+                }
+                
+                schedule.setPrincipalAmount(principalAmount);
+                schedule.setInterestAmount(interestAmount);
+                schedule.setTotalDue(emi);
+                schedule.setStatus("PENDING");
+                
+                repaymentScheduleRepo.save(schedule);
+                
+                remainingPrincipal -= principalAmount;
+            }
+            
+            System.out.println("✅ Generated " + months + " repayment schedules for Loan #" + loanApp.getId());
+        }
 }

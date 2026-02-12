@@ -48,6 +48,10 @@ public class LoanApplication {
     @Enumerated(EnumType.STRING)
     private ApplicationStatus status = ApplicationStatus.PENDING;
 
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private TransactionType transactionType = TransactionType.WITHDRAW;
+
     private LocalDateTime applicationDate;
     private LocalDateTime reviewDate;
     
@@ -94,6 +98,9 @@ public class LoanApplication {
 
     public ApplicationStatus getStatus() { return status; }
     public void setStatus(ApplicationStatus status) { this.status = status; }
+
+    public TransactionType getTransactionType() { return transactionType; }
+    public void setTransactionType(TransactionType transactionType) { this.transactionType = transactionType; }
 
     public LocalDateTime getApplicationDate() { return applicationDate; }
     public void setApplicationDate(LocalDateTime applicationDate) { this.applicationDate = applicationDate; }

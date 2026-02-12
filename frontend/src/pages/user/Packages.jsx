@@ -485,13 +485,13 @@ export default function UserPackages() {
   return (
     <div className="bg-white min-h-screen pb-20">
       
-      <div className="px-4 md:px-8 pt-6">
+      <div className="px-4 md:px-8 pt-6 relative z-0">
         <div className="relative h-[45vh] bg-black rounded-3xl overflow-hidden shadow-2xl flex items-center group">
            <div className="absolute inset-0 bg-gradient-to-r from-black via-black/80 to-transparent z-10" />
            <img 
              src={loanImage}
              alt="Featured" 
-             className="absolute right-0 top-1/2 -translate-y-1/2 w-2/3 opacity-60 object-cover transition-transform duration-1000 group-hover:scale-105"
+             className="absolute right-0 top-1/2 -translate-y-1/2 w-2/3 opacity-60 object-cover transition-transform duration-1000 group-hover:scale-105 z-0"
            />
            
            <div className="relative z-20 p-8 md:p-16 max-w-2xl">
@@ -511,7 +511,7 @@ export default function UserPackages() {
         </div>
       </div>
 
-      <div className="px-4 md:px-12 space-y-4 mt-12">
+      <div className="px-4 md:px-12 space-y-4 mt-12 relative z-0">
         {loading ? (
           <div className="text-center py-20 text-gray-400">Loading Packages...</div>
         ) : (

@@ -134,7 +134,7 @@ function History() {
           </div>
           <button
             onClick={fetchHistory}
-            className="bg-indigo-600 text-white font-semibold py-2.5 px-6 rounded-xl hover:bg-indigo-700 transition-all text-sm shadow-sm active:scale-95"
+            className="bg-[#21ab87] text-white font-semibold py-2.5 px-6 rounded-xl hover:bg-[#1e9e7c] transition-all text-sm shadow-sm active:scale-95"
           >
             Refresh
           </button>
