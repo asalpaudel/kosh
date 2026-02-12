@@ -42,7 +42,7 @@ const RevenueOverview = ({ totals }) => {
         <SectionTitle>Revenue Overview</SectionTitle>
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6">
         <Stat
           label="Total Revenue"
           value={`Rs. ${total.toLocaleString()}`}
@@ -143,7 +143,7 @@ export default function Analytics() {
     const printWindow = window.open('', '_blank');
     const total = (totals.basic || 0) + (totals.premium || 0) + (totals.custom || 0);
     const percent = (v) => (total ? `${Math.round((v / total) * 100)}%` : "—");
-    
+
     const htmlContent = `
       <!DOCTYPE html>
       <html>
@@ -294,12 +294,12 @@ export default function Analytics() {
         <body>
           <div class="header">
             <h1>Analytics Report</h1>
-            <p class="date">Generated on ${new Date().toLocaleDateString('en-US', { 
-              weekday: 'long', 
-              year: 'numeric', 
-              month: 'long', 
-              day: 'numeric' 
-            })}</p>
+            <p class="date">Generated on ${new Date().toLocaleDateString('en-US', {
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    })}</p>
           </div>
           
           <div class="section">
@@ -406,7 +406,7 @@ export default function Analytics() {
         </body>
       </html>
     `;
-    
+
     printWindow.document.write(htmlContent);
     printWindow.document.close();
   };
@@ -416,14 +416,14 @@ export default function Analytics() {
       {/* Floating PDF Button */}
       <button
         onClick={downloadPDF}
-        className="fixed bottom-6 right-6 h-12 w-12 rounded-full bg-gray-900 text-white flex items-center justify-center shadow-lg hover:bg-gray-800 transition print:hidden"
+        className="fixed bottom-20 right-6 md:bottom-6 md:right-6 h-12 w-12 rounded-full bg-gray-900 text-white flex items-center justify-center shadow-lg hover:bg-gray-800 transition print:hidden"
         title="Download PDF"
       >
         ↓
       </button>
 
       {/* Content */}
-      <div className="px-6 md:px-10 py-10 space-y-12 max-w-[1200px]">
+      <div className="px-3 md:px-10 py-6 md:py-10 space-y-8 md:space-y-12 max-w-[1200px] mx-auto">
         <RevenueOverview totals={totals} />
 
         <Divider />

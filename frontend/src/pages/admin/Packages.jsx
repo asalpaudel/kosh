@@ -408,11 +408,11 @@ function AdminPackages() {
 
   return (
     <>
-      <div className="bg-white p-6 min-h-[calc(100vh-8.5rem)] rounded-lg shadow-md">
+      <div className="bg-white p-3 md:p-6 min-h-[calc(100vh-8.5rem)] rounded-lg shadow-md">
         {loading ? (
           <p className="text-center text-gray-500">Loading...</p>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
             {/* Fixed Deposits */}
             <div className="border border-gray-200 rounded-lg p-4 shadow-lg">
               <h3 className="text-lg font-semibold text-gray-700 mb-3 flex items-center gap-2">
@@ -582,7 +582,7 @@ function AdminPackages() {
       </div>
 
       {/* Floating Add Buttons */}
-      <div className="group fixed z-20 bottom-10 right-10 flex flex-col items-center gap-3">
+      <div className="group fixed z-20 bottom-20 right-6 md:bottom-10 md:right-10 flex flex-col items-center gap-3">
         <div className="flex flex-col items-center gap-3 opacity-0 scale-90 translate-y-4 group-hover:opacity-100 group-hover:scale-100 group-hover:translate-y-0 pointer-events-none group-hover:pointer-events-auto transition-all duration-200 ease-in-out">
           <button
             title="Add Loan Package"

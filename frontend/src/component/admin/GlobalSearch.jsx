@@ -11,8 +11,6 @@ import {
   PlusCircleIcon,
   DocumentTextIcon,
   ShieldIcon,
-  BellIcon,
-  MoonIcon,
   BanknotesIcon,
   DocumentIcon,
   CurrencyDollarIcon,
@@ -132,20 +130,6 @@ export default function GlobalSearch({ isOpen, onClose }) {
       tab: "Security",
       path: "/admin/settings",
       icon: <ShieldIcon className="w-5 h-5 text-gray-600" />,
-    },
-    {
-      name: "Notification Settings",
-      type: "setting",
-      tab: "Notification",
-      path: "/admin/settings",
-      icon: <BellIcon className="w-5 h-5 text-gray-600" />,
-    },
-    {
-      name: "Appearance / Theme",
-      type: "setting",
-      tab: "Appearance",
-      path: "/admin/settings",
-      icon: <MoonIcon className="w-5 h-5 text-gray-600" />,
     },
   ];
 
@@ -374,9 +358,8 @@ export default function GlobalSearch({ isOpen, onClose }) {
               <div
                 key={`${item.category}-${item.id || item.path || item.name}`}
                 onClick={() => handleNavigation(item)}
-                className={`flex items-center gap-3 px-3 py-2 rounded-lg cursor-pointer transition-colors ${
-                  isSelected ? "bg-emerald-50" : "hover:bg-gray-50"
-                }`}
+                className={`flex items-center gap-3 px-3 py-2 rounded-lg cursor-pointer transition-colors ${isSelected ? "bg-emerald-50" : "hover:bg-gray-50"
+                  }`}
               >
                 <div className="p-1.5 rounded-md bg-white shadow-sm border border-gray-100">
                   {icon}

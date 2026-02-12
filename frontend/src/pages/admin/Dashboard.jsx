@@ -16,10 +16,10 @@ function AdminDashboard() {
     users: 0,
     transactions: 0,
     totalPool: 0,
-    savings: 0, 
-    fixedDeposit: 0, 
-    credit: 0, 
-    reserve: 0, 
+    savings: 0,
+    fixedDeposit: 0,
+    credit: 0,
+    reserve: 0,
   });
 
   const [todaysSummary, setTodaysSummary] = useState({
@@ -97,7 +97,7 @@ function AdminDashboard() {
         const txData = await txRes.json();
         const txArray = Array.isArray(txData) ? txData : [];
         setTransactions(txArray);
-        
+
       }
     } catch (err) {
       console.error("Error loading dashboard data:", err);
@@ -184,7 +184,7 @@ function AdminDashboard() {
         {/* LEFT COLUMN */}
         <div className="lg:col-span-2 space-y-6">
           {/* Chart Section */}
-          <div className="bg-white rounded-xl border border-gray-100 p-6 shadow-sm">
+          <div className="bg-white rounded-xl border border-gray-100 p-3 md:p-6 shadow-sm">
             <div className="flex items-center justify-between mb-6">
               <div>
                 <h2 className="text-lg font-bold text-gray-900">Financial Overview</h2>
@@ -279,11 +279,10 @@ function AdminDashboard() {
                       >
                         <div className="flex items-center gap-4">
                           <div
-                            className={`w-10 h-10 rounded-full flex items-center justify-center ${
-                              credit
+                            className={`w-10 h-10 rounded-full flex items-center justify-center ${credit
                                 ? "bg-emerald-100 text-emerald-600"
                                 : "bg-red-100 text-red-600"
-                            }`}
+                              }`}
                           >
                             <BanknotesIcon className="w-5 h-5" />
                           </div>
@@ -300,9 +299,8 @@ function AdminDashboard() {
 
                         <div className="text-right">
                           <p
-                            className={`text-sm font-bold ${
-                              credit ? "text-emerald-600" : "text-red-600"
-                            }`}
+                            className={`text-sm font-bold ${credit ? "text-emerald-600" : "text-red-600"
+                              }`}
                           >
                             {credit ? "+" : "-"} {formatCurrency(amt)}
                           </p>
@@ -325,7 +323,7 @@ function AdminDashboard() {
         {/* RIGHT COLUMN */}
         <div className="space-y-6">
           {/* Quick Actions */}
-          <div className="bg-white rounded-xl border border-gray-100 p-6 shadow-sm">
+          <div className="bg-white rounded-xl border border-gray-100 p-3 md:p-6 shadow-sm">
             <h2 className="text-lg font-bold text-gray-900 mb-4">Quick Actions</h2>
             <div className="space-y-3">
               <Link to="/admin/transactions" className="block w-full">
@@ -366,7 +364,7 @@ function AdminDashboard() {
             </div>
           </div>
 
-          <div className="bg-white rounded-xl border border-gray-100 p-6 shadow-sm">
+          <div className="bg-white rounded-xl border border-gray-100 p-3 md:p-6 shadow-sm">
             <h2 className="text-lg font-bold text-gray-900 mb-4">Today's Summary</h2>
             <div className="space-y-4">
               <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">

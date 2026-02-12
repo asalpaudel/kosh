@@ -1,17 +1,13 @@
 import React, { useState, useEffect } from "react";
 import { useLocation } from "react-router-dom";
-import { UserIcon, ShieldIcon, BellIcon, MoonIcon } from "../../component/icons";
+import { UserIcon, ShieldIcon } from "../../component/icons";
 
 import ProfileTab from "../../component/admin/settings/ProfileTab";
 import SecurityTab from "../../component/admin/settings/SecurityTab";
-import NotificationsTab from "../../component/admin/settings/NotificationsTab";
-import AppearanceTab from "../../component/admin/settings/AppearanceTab";
 
 const tabs = [
   { name: "Profile", icon: UserIcon },
   { name: "Security", icon: ShieldIcon },
-  { name: "Notification", icon: BellIcon },
-  { name: "Appearance", icon: MoonIcon },
 ];
 
 function AdminSettings() {
@@ -31,10 +27,6 @@ function AdminSettings() {
         return <ProfileTab />;
       case "Security":
         return <SecurityTab />;
-      case "Notification":
-        return <NotificationsTab />;
-      case "Appearance":
-        return <AppearanceTab />;
       default:
         return <ProfileTab />;
     }
@@ -57,10 +49,9 @@ function AdminSettings() {
                     flex items-center gap-2
                     whitespace-nowrap py-3 px-4 border-b-2
                     font-semibold text-sm transition-colors
-                    ${
-                      isActive
-                        ? "border-teal-500 text-teal-600"
-                        : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                    ${isActive
+                      ? "border-teal-500 text-teal-600"
+                      : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
                     }
                   `}
                 >

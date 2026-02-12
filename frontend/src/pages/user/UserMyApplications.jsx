@@ -87,16 +87,16 @@ const ApplicationCard = ({ application, type }) => {
             </div>
             {/* ⭐ NEW: Maturity Info */}
             {application.maturityDate && (
-                <div className="flex justify-between border-t border-dashed pt-2 mt-2">
-                    <span className="text-teal-700 font-medium">Maturity Date:</span>
-                    <span className="font-bold text-teal-700">{new Date(application.maturityDate).toLocaleDateString()}</span>
-                </div>
+              <div className="flex justify-between border-t border-dashed pt-2 mt-2">
+                <span className="text-teal-700 font-medium">Maturity Date:</span>
+                <span className="font-bold text-teal-700">{new Date(application.maturityDate).toLocaleDateString()}</span>
+              </div>
             )}
             {application.maturityAmount && (
-                <div className="flex justify-between">
-                    <span className="text-teal-700 font-medium">Maturity Amt:</span>
-                    <span className="font-bold text-teal-700">Rs. {application.maturityAmount.toLocaleString()}</span>
-                </div>
+              <div className="flex justify-between">
+                <span className="text-teal-700 font-medium">Maturity Amt:</span>
+                <span className="font-bold text-teal-700">Rs. {application.maturityAmount.toLocaleString()}</span>
+              </div>
             )}
           </div>
         );
@@ -122,10 +122,10 @@ const ApplicationCard = ({ application, type }) => {
             </div>
             {/* ⭐ NEW: Approved Amount */}
             {application.approvedAmount && (
-                <div className="flex justify-between text-teal-700 bg-teal-50 px-2 py-1 rounded">
-                    <span className="font-medium">Approved:</span>
-                    <span className="font-bold">Rs. {application.approvedAmount.toLocaleString()}</span>
-                </div>
+              <div className="flex justify-between text-teal-700 bg-teal-50 px-2 py-1 rounded">
+                <span className="font-medium">Approved:</span>
+                <span className="font-bold">Rs. {application.approvedAmount.toLocaleString()}</span>
+              </div>
             )}
             <div className="flex justify-between">
               <span className="text-gray-600">Interest Rate:</span>
@@ -135,10 +135,10 @@ const ApplicationCard = ({ application, type }) => {
             </div>
             {/* ⭐ NEW: Next Payment Date */}
             {application.nextPaymentDate && (
-                <div className="flex justify-between border-t border-dashed pt-2 mt-2">
-                    <span className="text-orange-700 font-medium">Next Due:</span>
-                    <span className="font-bold text-orange-700">{new Date(application.nextPaymentDate).toLocaleDateString()}</span>
-                </div>
+              <div className="flex justify-between border-t border-dashed pt-2 mt-2">
+                <span className="text-orange-700 font-medium">Next Due:</span>
+                <span className="font-bold text-orange-700">{new Date(application.nextPaymentDate).toLocaleDateString()}</span>
+              </div>
             )}
             <div className="mt-2">
               <span className="text-gray-600">Purpose:</span>
@@ -153,7 +153,7 @@ const ApplicationCard = ({ application, type }) => {
 
   return (
     <div className="bg-white border border-gray-200 rounded-lg p-5 shadow-md hover:shadow-lg transition-shadow">
-      <div className="flex items-start justify-between mb-4">
+      <div className="flex flex-col sm:flex-row items-start sm:items-start justify-between mb-4 gap-2">
         <div className="flex items-center gap-3">
           {getIcon()}
           <div>
@@ -214,7 +214,7 @@ function UserMyApplications() {
             navigate('/');
             return;
           }
-          
+
           setSessionData(data);
 
           // If user doesn't have sahakariId, redirect to login
@@ -314,41 +314,37 @@ function UserMyApplications() {
         <div className="flex gap-2 flex-wrap">
           <button
             onClick={() => setFilterStatus("ALL")}
-            className={`px-4 py-2 rounded-full font-semibold text-sm transition-colors ${
-              filterStatus === "ALL"
+            className={`px-4 py-2 rounded-full font-semibold text-sm transition-colors ${filterStatus === "ALL"
                 ? "bg-teal-500 text-white"
                 : "bg-gray-200 text-gray-700 hover:bg-gray-300"
-            }`}
+              }`}
           >
             All Applications
           </button>
           <button
             onClick={() => setFilterStatus("PENDING")}
-            className={`px-4 py-2 rounded-full font-semibold text-sm transition-colors ${
-              filterStatus === "PENDING"
+            className={`px-4 py-2 rounded-full font-semibold text-sm transition-colors ${filterStatus === "PENDING"
                 ? "bg-teal-500 text-white"
                 : "bg-gray-200 text-gray-700 hover:bg-gray-300"
-            }`}
+              }`}
           >
             Pending
           </button>
           <button
             onClick={() => setFilterStatus("APPROVED")}
-            className={`px-4 py-2 rounded-full font-semibold text-sm transition-colors ${
-              filterStatus === "APPROVED"
+            className={`px-4 py-2 rounded-full font-semibold text-sm transition-colors ${filterStatus === "APPROVED"
                 ? "bg-teal-500 text-white"
                 : "bg-gray-200 text-gray-700 hover:bg-gray-300"
-            }`}
+              }`}
           >
             Approved
           </button>
           <button
             onClick={() => setFilterStatus("REJECTED")}
-            className={`px-4 py-2 rounded-full font-semibold text-sm transition-colors ${
-              filterStatus === "REJECTED"
+            className={`px-4 py-2 rounded-full font-semibold text-sm transition-colors ${filterStatus === "REJECTED"
                 ? "bg-teal-500 text-white"
                 : "bg-gray-200 text-gray-700 hover:bg-gray-300"
-            }`}
+              }`}
           >
             Rejected
           </button>

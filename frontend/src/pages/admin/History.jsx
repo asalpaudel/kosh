@@ -39,14 +39,14 @@ function AdminHistory() {
 
     // Check if this is a transaction log (contains "Rs.")
     if (log.action === 'ADD_TRANSACTION' && detail.includes("Rs.")) {
-      
+
       // Regex to find "Rs." followed by an optional negative sign and numbers
       // Matches strings like: "Rs. -2000.0", "Rs. 5000", "Rs.-400"
       const match = detail.match(/Rs\.\s*(-?[\d,]+(\.\d+)?)/);
 
       if (match) {
         // match[1] contains the number with the sign (e.g., "-2000.0")
-        const rawAmountStr = match[1].replace(/,/g, ''); 
+        const rawAmountStr = match[1].replace(/,/g, '');
         const amount = parseFloat(rawAmountStr);
 
         if (!isNaN(amount)) {
@@ -71,7 +71,7 @@ function AdminHistory() {
           if (isWithdrawn) {
             return (
               <span>
-                <span className="font-bold text-red-600">Withdrawn</span> 
+                <span className="font-bold text-red-600">Withdrawn</span>
                 <span className="text-gray-900 font-medium"> Rs. {absAmount}</span>
                 <span className="text-gray-500 text-xs ml-1">({txType})</span>
                 {userName && <span className="text-gray-600"> for {userName}</span>}
@@ -80,7 +80,7 @@ function AdminHistory() {
           } else {
             return (
               <span>
-                <span className="font-bold text-green-600">Deposited</span> 
+                <span className="font-bold text-green-600">Deposited</span>
                 <span className="text-gray-900 font-medium"> Rs. {absAmount}</span>
                 <span className="text-gray-500 text-xs ml-1">({txType})</span>
                 {userName && <span className="text-gray-600"> for {userName}</span>}
@@ -95,7 +95,7 @@ function AdminHistory() {
     return <span className="text-gray-700">{detail}</span>;
   };
 
-  const filteredLogs = logs.filter(log => 
+  const filteredLogs = logs.filter(log =>
     log.actorName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
     log.action?.toLowerCase().includes(searchTerm.toLowerCase()) ||
     log.details?.toLowerCase().includes(searchTerm.toLowerCase())
@@ -114,18 +114,18 @@ function AdminHistory() {
   const formatDate = (isoString) => {
     if (!isoString) return "-";
     const date = new Date(isoString);
-    return date.toLocaleString('en-GB', { 
-      day: 'numeric', month: 'short', year: 'numeric', 
-      hour: '2-digit', minute: '2-digit' 
+    return date.toLocaleString('en-GB', {
+      day: 'numeric', month: 'short', year: 'numeric',
+      hour: '2-digit', minute: '2-digit'
     });
   };
 
   return (
-    <div className="bg-white p-6 min-h-[calc(100vh-8.5rem)] rounded-lg shadow-md"> 
-      
+    <div className="bg-white p-3 md:p-6 min-h-[calc(100vh-8.5rem)] rounded-lg shadow-md">
+
       <div className="flex flex-wrap items-center justify-between mb-8 gap-4">
-        <h2 className="text-2xl font-bold text-gray-800">Activity Log</h2>
-        
+        <h2 className="text-xl md:text-2xl font-bold text-gray-800">Activity Log</h2>
+
         <div className="relative flex-grow sm:flex-grow-0">
           <span className="absolute inset-y-0 left-0 flex items-center pl-4">
             <SearchIcon className="h-5 w-5 text-gray-400" />
@@ -140,17 +140,17 @@ function AdminHistory() {
         </div>
       </div>
 
-      <div className="w-full overflow-x-auto rounded-lg border border-gray-100">
-        <table className="min-w-full text-left">
+      <div className="w-full overflow-x-auto rounded-lg border border-gray-100 -mx-3 md:mx-0" style={{ width: 'calc(100% + 1.5rem)' }}>
+        <table className="min-w-[800px] w-full text-left">
           <thead>
             <tr className="bg-gray-50 border-b border-gray-200">
-              <th className="py-4 px-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Timestamp</th>
-              <th className="py-4 px-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Admin / Actor</th>
-              <th className="py-4 px-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Action</th>
-              <th className="py-4 px-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Details</th>
+              <th className="py-3 md:py-4 px-3 md:px-4 text-xs font-bold text-gray-500 uppercase tracking-wider whitespace-nowrap">Timestamp</th>
+              <th className="py-3 md:py-4 px-3 md:px-4 text-xs font-bold text-gray-500 uppercase tracking-wider whitespace-nowrap">Admin / Actor</th>
+              <th className="py-3 md:py-4 px-3 md:px-4 text-xs font-bold text-gray-500 uppercase tracking-wider whitespace-nowrap">Action</th>
+              <th className="py-3 md:py-4 px-3 md:px-4 text-xs font-bold text-gray-500 uppercase tracking-wider whitespace-nowrap">Details</th>
             </tr>
           </thead>
-          
+
           <tbody className="divide-y divide-gray-100">
             {loading ? (
               <tr>
@@ -159,20 +159,19 @@ function AdminHistory() {
             ) : filteredLogs.length > 0 ? (
               filteredLogs.map((log) => (
                 <tr key={log.id} className="hover:bg-gray-50 transition-colors">
-                  <td className="py-4 px-4 text-gray-600 text-sm whitespace-nowrap">
+                  <td className="py-3 md:py-4 px-3 md:px-4 text-gray-600 text-sm whitespace-nowrap">
                     {formatDate(log.timestamp)}
                   </td>
-                  <td className="py-4 px-4">
+                  <td className="py-3 md:py-4 px-3 md:px-4 whitespace-nowrap">
                     <div className="font-semibold text-gray-900">{log.actorName}</div>
                     <div className="text-xs text-gray-500 capitalize">{log.role}</div>
                   </td>
-                  <td className="py-4 px-4">
+                  <td className="py-3 md:py-4 px-3 md:px-4 whitespace-nowrap">
                     <span className={`px-3 py-1 rounded-full text-xs font-bold border ${getActionStyle(log.action)}`}>
                       {log.action?.replace(/_/g, " ")}
                     </span>
                   </td>
-                  <td className="py-4 px-4 text-sm">
-                    {/* Render the formatted detail here */}
+                  <td className="py-3 md:py-4 px-3 md:px-4 text-sm">
                     {formatLogDetails(log)}
                   </td>
                 </tr>
@@ -185,7 +184,7 @@ function AdminHistory() {
           </tbody>
         </table>
       </div>
-      
+
     </div>
   );
 }

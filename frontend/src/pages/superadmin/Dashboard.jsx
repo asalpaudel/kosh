@@ -51,7 +51,7 @@ const MetricsOverview = ({ networkStats }) => (
       <SectionTitle>Key Metrics</SectionTitle>
     </div>
 
-    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-6">
+    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-6">
       <Stat
         label="Total Networks"
         value={networkStats.total || 0}
@@ -94,7 +94,7 @@ const NetworkDistribution = ({ networkPieData }) => (
       <SectionTitle>Network Types</SectionTitle>
     </div>
 
-    <div className="border border-gray-200 rounded-lg p-6 bg-white">
+    <div className="border border-gray-200 rounded-lg p-3 md:p-6 bg-white">
       <ResponsiveContainer width="100%" height={280}>
         <PieChart>
           <Pie
@@ -112,12 +112,12 @@ const NetworkDistribution = ({ networkPieData }) => (
           <Tooltip />
         </PieChart>
       </ResponsiveContainer>
-      
+
       <div className="flex justify-center gap-6 mt-4">
         {networkPieData.map((entry, idx) => (
           <div key={idx} className="flex items-center gap-2">
-            <div 
-              className="w-3 h-3 rounded-full" 
+            <div
+              className="w-3 h-3 rounded-full"
               style={{ backgroundColor: COLORS[idx % COLORS.length] }}
             />
             <span className="text-sm text-gray-600">{entry.name}</span>
@@ -136,24 +136,24 @@ const UserGrowthTrend = ({ activeUsersData }) => (
       <SectionTitle>Active Users Over Time</SectionTitle>
     </div>
 
-    <div className="border border-gray-200 rounded-lg p-6 bg-white">
+    <div className="border border-gray-200 rounded-lg p-3 md:p-6 bg-white">
       <ResponsiveContainer width="100%" height={280}>
         <LineChart
           data={activeUsersData}
           margin={{ top: 10, right: 10, bottom: 10, left: 0 }}
         >
           <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-          <XAxis 
-            dataKey="date" 
+          <XAxis
+            dataKey="date"
             tick={{ fontSize: 11, fill: '#6b7280' }}
             tickLine={false}
           />
-          <YAxis 
+          <YAxis
             tick={{ fontSize: 11, fill: '#6b7280' }}
             tickLine={false}
             axisLine={false}
           />
-          <Tooltip 
+          <Tooltip
             contentStyle={{
               backgroundColor: 'white',
               border: '1px solid #e5e7eb',
@@ -184,7 +184,7 @@ const RecentNetworksTable = ({ recentNetworks }) => (
 
     <div className="border border-gray-200 rounded-lg overflow-hidden bg-white">
       <div className="overflow-x-auto">
-        <table className="w-full">
+        <table className="min-w-[600px] w-full">
           <thead className="bg-gray-50 border-b border-gray-200">
             <tr>
               <th className="text-left px-6 py-3 text-[11px] uppercase tracking-wide text-gray-500 font-medium">
@@ -209,11 +209,10 @@ const RecentNetworksTable = ({ recentNetworks }) => (
                     {row.name}
                   </td>
                   <td className="px-6 py-4 text-sm text-gray-600">
-                    <span className={`inline-flex px-2 py-1 text-xs rounded-full ${
-                      row.type === 'Basic' ? 'bg-blue-50 text-blue-700' :
+                    <span className={`inline-flex px-2 py-1 text-xs rounded-full ${row.type === 'Basic' ? 'bg-blue-50 text-blue-700' :
                       row.type === 'Premium' ? 'bg-green-50 text-green-700' :
-                      'bg-amber-50 text-amber-700'
-                    }`}>
+                        'bg-amber-50 text-amber-700'
+                      }`}>
                       {row.type}
                     </span>
                   </td>
@@ -246,7 +245,7 @@ const QuickActions = () => (
       <SectionTitle>Actions</SectionTitle>
     </div>
 
-    <div className="border border-gray-200 rounded-lg p-6 bg-white space-y-3">
+    <div className="border border-gray-200 rounded-lg p-3 md:p-6 bg-white space-y-3">
       <button className="w-full text-left px-4 py-3 rounded-md bg-gray-50 hover:bg-gray-100 transition text-sm font-medium text-gray-900">
         + Add New Network
       </button>
@@ -321,8 +320,8 @@ export default function SuperadminDashboard() {
 
   return (
     <div className="min-h-screen bg-white">
-      <div className="px-6 md:px-10 py-10 space-y-12 max-w-[1400px] mx-auto">
-      
+      <div className="px-3 md:px-10 py-6 md:py-10 space-y-8 md:space-y-12 max-w-[1400px] mx-auto">
+
         <MetricsOverview networkStats={networkStats} />
 
         <Divider />

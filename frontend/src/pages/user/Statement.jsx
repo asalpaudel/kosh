@@ -1,10 +1,10 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { 
-  SearchIcon, 
-  DocumentIcon, 
-  Logo, 
-  XIcon 
+import {
+  SearchIcon,
+  DocumentIcon,
+  Logo,
+  XIcon
 } from '../../component/icons';
 import Modal from '../../component/superadmin/Modal';
 import jsPDF from 'jspdf';
@@ -17,7 +17,7 @@ const parseAmountToNumber = (raw) => {
   if (raw === null || raw === undefined) return 0;
   if (typeof raw === 'number') return raw;
 
-  const cleaned = String(raw).replace(/[^\d.-]/g, '').trim(); 
+  const cleaned = String(raw).replace(/[^\d.-]/g, '').trim();
   const num = parseFloat(cleaned);
   return isNaN(num) ? 0 : num;
 };
@@ -31,7 +31,7 @@ const formatBalance = (num) => {
 
 const UserTransactionVoucher = ({ transaction, onClose }) => {
   const voucherRef = useRef(null);
-  
+
   const [sahakariInfo, setSahakariInfo] = useState({
     name: "",
     address: "",
@@ -76,7 +76,7 @@ const UserTransactionVoucher = ({ transaction, onClose }) => {
           logoUrl: logoUrl,
         });
 
-      } catch (err) { console.error("Setup error:", err); } 
+      } catch (err) { console.error("Setup error:", err); }
       finally { setSahakariLoading(false); }
     };
     fetchSahakari();
@@ -99,6 +99,7 @@ const UserTransactionVoucher = ({ transaction, onClose }) => {
       const canvas = await html2canvas(voucherRef.current, { scale: 2, backgroundColor: "#ffffff" });
       const imgData = canvas.toDataURL('image/png');
       const pdf = new jsPDF('p', 'mm', 'a4');
+
       const pdfWidth = pdf.internal.pageSize.getWidth();
       const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
       pdf.addImage(imgData, 'PNG', 0, 20, pdfWidth, pdfHeight);
@@ -112,78 +113,165 @@ const UserTransactionVoucher = ({ transaction, onClose }) => {
   };
 
   return (
-  <div className="flex flex-col gap-5 max-h-[80vh] overflow-y-auto pr-2">
-    <div className="flex flex-col gap-6">
-      <div ref={voucherRef} className="bg-white p-8 border border-gray-200 shadow-sm rounded-lg text-gray-800 flex flex-col gap-6 relative overflow-hidden">
-        <div className="absolute -right-10 -top-10 opacity-5 pointer-events-none"><Logo className="w-64 h-64 text-gray-900" /></div>
-
-        <div className="flex justify-between items-start border-b-2 border-gray-800 pb-4">
-          <div className="flex items-center gap-3">
-            {sahakariInfo.logoUrl ? (
-              <img src={sahakariInfo.logoUrl} alt="Logo" className="w-12 h-12 object-contain" />
-            ) : ( <Logo className="w-12 h-12 text-teal-600" /> )}
-            <div>
-              <h2 className="text-xl font-bold uppercase tracking-wide">{sahakariInfo.name || "Sahakari Name"}</h2>
-              <p className="text-xs text-gray-500">{sahakariInfo.address} {sahakariInfo.panNumber ? `| Pan: ${sahakariInfo.panNumber}` : ""}</p>
-            </div>
+    <div className="flex flex-col gap-5 max-h-[80vh] overflow-y-auto pr-2">
+      <div className="flex flex-col gap-6">
+        <div
+          ref={voucherRef}
+          className="bg-white p-8 border border-gray-200 shadow-sm rounded-lg text-gray-800 flex flex-col gap-6 relative overflow-hidden"
+        >
+          <div className="absolute -right-10 -top-10 opacity-5 pointer-events-none">
+            <Logo className="w-64 h-64 text-gray-900" />
           </div>
-          <div className="text-right">
-            <h3 className="text-lg font-bold text-gray-700">TRANSACTION VOUCHER</h3>
-            <p className="text-sm font-mono text-gray-500">#{transaction.voucherId || 'N/A'}</p>
-          </div>
-        </div>
 
-        <div className="grid grid-cols-2 gap-8 text-sm">
-          <div><p className="text-gray-500 text-xs uppercase font-bold">Transaction Date</p><p className="font-medium text-lg">{transaction.date ? new Date(transaction.date).toLocaleDateString() : '-'}</p></div>
-          <div className="text-right"><p className="text-gray-500 text-xs uppercase font-bold">System Txn ID</p><p className="font-mono">{transaction.id || transaction.transactionId}</p></div>
-        </div>
-
-        <div className="bg-gray-50 p-4 rounded-lg border border-gray-100">
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <p className="text-gray-500 text-xs uppercase font-bold mb-1">Account / User</p>
-              <p className="font-bold text-gray-900 text-lg">{transaction.userName || transaction.user}</p>
-              {transaction.details?.internalHead && <p className="text-sm text-gray-500">Head: {transaction.details.internalHead}</p>}
-            </div>
-            <div className="text-right"><p className="text-gray-500 text-xs uppercase font-bold mb-1">Transaction Type</p><p className="font-semibold text-gray-700">{transaction.type}</p></div>
-          </div>
-          {transaction.details?.paymentMethod && (
-            <div className="mt-4 pt-4 border-t border-gray-200 grid grid-cols-3 gap-4 text-sm">
-              <div><span className="block text-xs text-gray-500 uppercase font-bold">Method</span><span className="font-medium">{transaction.details.paymentMethod}</span></div>
-              {transaction.details.paymentMethod !== 'Cash' && (
-                <>
-                  <div><span className="block text-xs text-gray-500 uppercase font-bold">Cheque No</span><span className="font-medium font-mono">{transaction.details.chequeNo || '-'}</span></div>
-                  <div><span className="block text-xs text-gray-500 uppercase font-bold">Bank</span><span className="font-medium">{transaction.details.bankName || '-'}</span></div>
-                </>
+          <div className="flex justify-between items-start border-b-2 border-gray-800 pb-4">
+            <div className="flex items-center gap-3">
+              {sahakariInfo.logoUrl ? (
+                <img
+                  src={sahakariInfo.logoUrl}
+                  alt={sahakariInfo.name || "Sahakari Logo"}
+                  className="w-12 h-12 object-contain"
+                />
+              ) : (
+                <Logo className="w-12 h-12 text-teal-600" />
               )}
+              <div>
+                <h2 className="text-xl font-bold uppercase tracking-wide">
+                  {sahakariInfo.name || "Sahakari Name"}
+                </h2>
+                <p className="text-xs text-gray-500">
+                  {sahakariInfo.address || "Kathmandu, Nepal"}
+                  {sahakariInfo.panNumber ? ` | Pan No: ${sahakariInfo.panNumber}` : ""}
+                </p>
+              </div>
             </div>
-          )}
+            <div className="text-right">
+              <h3 className="text-lg font-bold text-gray-700">TRANSACTION VOUCHER</h3>
+              <p className="text-sm font-mono text-gray-500">#{transaction.voucherId || 'N/A'}</p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-8 text-sm">
+            <div>
+              <p className="text-gray-500 text-xs uppercase font-bold">Transaction Date</p>
+              <p className="font-medium text-lg">
+                {transaction.date ? new Date(transaction.date).toLocaleDateString() : '-'}
+              </p>
+            </div>
+            <div className="text-right">
+              <p className="text-gray-500 text-xs uppercase font-bold">System Txn ID</p>
+              <p className="font-mono">{transaction.id || transaction.transactionId}</p>
+            </div>
+          </div>
+
+          <div className="bg-gray-50 p-4 rounded-lg border border-gray-100">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <p className="text-gray-500 text-xs uppercase font-bold mb-1">Account / User</p>
+                <p className="font-bold text-gray-900 text-lg">
+                  {transaction.userName || transaction.user}
+                </p>
+                {transaction.details?.internalHead && (
+                  <p className="text-sm text-gray-500">Head: {transaction.details.internalHead}</p>
+                )}
+              </div>
+              <div className="text-right">
+                <p className="text-gray-500 text-xs uppercase font-bold mb-1">Transaction Type</p>
+                <p className="font-semibold text-gray-700">{transaction.type}</p>
+              </div>
+            </div>
+
+            {transaction.details?.paymentMethod && (
+              <div className="mt-4 pt-4 border-t border-gray-200 grid grid-cols-3 gap-4 text-sm">
+                <div>
+                  <span className="block text-xs text-gray-500 uppercase font-bold">Method</span>
+                  <span className="font-medium">{transaction.details.paymentMethod}</span>
+                </div>
+                {transaction.details.paymentMethod !== 'Cash' && (
+                  <>
+                    <div>
+                      <span className="block text-xs text-gray-500 uppercase font-bold">Cheque No</span>
+                      <span className="font-medium font-mono">
+                        {transaction.details.chequeNo || '-'}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="block text-xs text-gray-500 uppercase font-bold">Bank</span>
+                      <span className="font-medium">{transaction.details.bankName || '-'}</span>
+                    </div>
+                  </>
+                )}
+              </div>
+            )}
+          </div>
+
+          <div className="flex justify-between items-center py-4 border-t border-b border-gray-100">
+            <span className="text-gray-600 font-medium">Total Amount</span>
+            <span
+              className={`text-3xl font-bold ${transaction.isCredit ? 'text-green-600' : 'text-red-600'
+                }`}
+            >
+              {totalDisplay}
+            </span>
+          </div>
+
+          <div>
+            <p className="text-gray-500 text-xs uppercase font-bold mb-1">Narration / Remarks</p>
+            <p className="text-gray-700 italic bg-gray-50 p-3 rounded border border-gray-100 min-h-[60px]">
+              {transaction.narration || 'No additional remarks provided.'}
+            </p>
+          </div>
+
+          <div>
+            <p className="text-gray-500 text-xs uppercase font-bold mb-2">Status History</p>
+            <div className="text-xs space-y-1 border-l-2 border-gray-200 pl-3">
+              {mockHistory.map((h, i) => (
+                <div key={i} className="text-gray-600">
+                  <span className="font-semibold text-gray-900">{h.action}</span> by {h.by} at{' '}
+                  {h.time}
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="flex justify-between items-end mt-4 pt-4">
+            <div>
+              <p className="text-gray-500 text-xs uppercase font-bold mb-1">Current Status</p>
+              <span className="px-3 py-1 rounded-full text-xs font-bold border bg-green-100 text-green-700 border-green-200">
+                {transaction.status || 'Success'}
+              </span>
+            </div>
+            <div className="text-center">
+              <div className="h-10 border-b border-gray-400 w-32 mb-1"></div>
+              <p className="text-xs text-gray-400 uppercase">Authorized Signature</p>
+            </div>
+          </div>
         </div>
 
-        <div className="flex justify-between items-center py-4 border-t border-b border-gray-100">
-          <span className="text-gray-600 font-medium">Total Amount</span>
-          <span className={`text-3xl font-bold ${isCredit ? 'text-green-600' : 'text-red-600'}`}>
-             {isCredit ? '+' : '-'} {totalDisplay}
-          </span>
-        </div>
+        <div className="flex flex-wrap justify-between items-center bg-gray-50 p-4 rounded-xl border border-gray-200 gap-4">
+          <button
+            onClick={handleReportIssue}
+            className="flex items-center gap-2 text-red-600 hover:text-red-800 text-sm font-bold border border-red-200 bg-red-50 px-4 py-2 rounded-full hover:bg-red-100 transition-colors"
+          >
+            <XIcon className="w-4 h-4" /> Report an Issue
+          </button>
 
-        <div><p className="text-gray-500 text-xs uppercase font-bold mb-1">Narration</p><p className="text-gray-700 italic bg-gray-50 p-3 rounded border border-gray-100 min-h-[60px]">{transaction.narration || '-'}</p></div>
-        
-        <div className="flex justify-between items-end mt-4 pt-4">
-          <div><p className="text-gray-500 text-xs uppercase font-bold mb-1">Status</p><span className="px-3 py-1 rounded-full text-xs font-bold border bg-green-100 text-green-700 border-green-200">{transaction.status || 'Success'}</span></div>
-          <div className="text-center"><div className="h-10 border-b border-gray-400 w-32 mb-1"></div><p className="text-xs text-gray-400 uppercase">Authorized Signature</p></div>
-        </div>
-      </div>
-
-      <div className="flex flex-wrap justify-between items-center bg-gray-50 p-4 rounded-xl border border-gray-200 gap-4">
-        <button onClick={handleReportIssue} className="flex items-center gap-2 text-red-600 hover:text-red-800 text-sm font-bold border border-red-200 bg-red-50 px-4 py-2 rounded-full hover:bg-red-100 transition-colors"><XIcon className="w-4 h-4" /> Report an Issue</button>
-        <div className="flex gap-3">
-          <button onClick={onClose} className="px-6 py-2.5 rounded-full text-sm font-bold text-gray-600 hover:bg-gray-200 transition-colors">Close</button>
-          <button onClick={handleExportVoucher} className="flex items-center gap-2 px-6 py-2.5 rounded-full text-sm font-bold text-white bg-teal-500 hover:bg-teal-600 transition-all shadow-lg"><DocumentIcon className="w-4 h-4" /> Export PDF</button>
+          <div className="flex gap-3">
+            <button
+              onClick={onClose}
+              className="px-6 py-2.5 rounded-full text-sm font-bold text-gray-600 hover:bg-gray-200 transition-colors"
+            >
+              Close
+            </button>
+            <button
+              onClick={handleExportVoucher}
+              className="flex items-center gap-2 px-6 py-2.5 rounded-full text-sm font-bold text-white bg-teal-500 hover:bg-teal-600 transition-all shadow-lg"
+            >
+              <DocumentIcon className="w-4 h-4" /> Export PDF
+            </button>
+          </div>
         </div>
       </div>
     </div>
-  </div>
   );
 };
 
@@ -212,43 +300,43 @@ function Statement() {
         // 1. Filter for User & Sort Oldest to Newest for Calculation
         const myTx = allTx
           .filter((t) => String(t.userId) === String(userId))
-          .sort((a, b) => new Date(a.date) - new Date(b.date)); 
+          .sort((a, b) => new Date(a.date) - new Date(b.date));
 
         let runningBalance = 0;
 
         const processedTx = myTx.map((t) => {
           const numericVal = parseAmountToNumber(t.amount ?? t.amountValue ?? 0);
-          
+
           // ⭐ FIX: Robust Logic to determine Credit vs Debit (Aligned with Admin Side)
           const direction = t.details?.direction || "";
           const type = t.type || "";
 
-          const isCredit = 
-            direction === "Credit" || 
-            type.includes("Deposit") || 
+          const isCredit =
+            direction === "Credit" ||
+            type.includes("Deposit") ||
             type.includes("Credit") ||
             type.includes("Repayment"); // Repayment credits the Network, but usually implies money leaving user? 
-            // Wait - from User perspective:
-            // Deposit to Savings = Credit (+)
-            // Withdrawal from Savings = Debit (-)
-            // Loan Disbursement = Debit/Liability (+) ? No, standard statement usually tracks "Wallet Balance".
-            // Loan Disbursal = Money comes IN to wallet = Credit (+)
-            // Loan Repayment = Money goes OUT of wallet = Debit (-)
-            
-            // However, your system treats "Loan" head differently in AdminChart.
-            // Let's stick to the FinancialChart logic which users see:
-            // Credit = Deposit/Credit/Repayment(if treated as income to ledger?)
-            
+          // Wait - from User perspective:
+          // Deposit to Savings = Credit (+)
+          // Withdrawal from Savings = Debit (-)
+          // Loan Disbursement = Debit/Liability (+) ? No, standard statement usually tracks "Wallet Balance".
+          // Loan Disbursal = Money comes IN to wallet = Credit (+)
+          // Loan Repayment = Money goes OUT of wallet = Debit (-)
+
+          // However, your system treats "Loan" head differently in AdminChart.
+          // Let's stick to the FinancialChart logic which users see:
+          // Credit = Deposit/Credit/Repayment(if treated as income to ledger?)
+
           // Let's use the explicit check:
           let finalIsCredit = false;
-          
+
           if (direction === 'Credit' || type.includes('Deposit') || type.includes('Opening')) {
-             finalIsCredit = true;
+            finalIsCredit = true;
           } else if (direction === 'Debit' || type.includes('Withdraw')) {
-             finalIsCredit = false;
+            finalIsCredit = false;
           } else {
-             // Fallback based on type strings if direction is missing
-             finalIsCredit = !type.toLowerCase().includes('withdraw') && !type.toLowerCase().includes('debit');
+            // Fallback based on type strings if direction is missing
+            finalIsCredit = !type.toLowerCase().includes('withdraw') && !type.toLowerCase().includes('debit');
           }
 
           if (finalIsCredit) {
@@ -259,9 +347,9 @@ function Statement() {
 
           return {
             ...t,
-            displayAmount: `Rs. ${numericVal.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`, 
+            displayAmount: `Rs. ${numericVal.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`,
             isCredit: finalIsCredit,
-            runningBalance, 
+            runningBalance,
           };
         });
 
@@ -306,7 +394,7 @@ function Statement() {
 
     if (searchQuery) {
       const q = searchQuery.toLowerCase();
-      data = data.filter((t) => 
+      data = data.filter((t) =>
         t.type?.toLowerCase().includes(q) ||
         t.date?.toLowerCase().includes(q) ||
         t.voucherId?.toLowerCase().includes(q)
@@ -322,13 +410,13 @@ function Statement() {
     doc.text(`Generated: ${new Date().toLocaleDateString()}`, 14, 26);
 
     const tableColumn = ['Date', 'Voucher', 'Description', 'Amount', 'Balance'];
-    
+
     // ⭐ FIX: Add (Cr)/(Dr) signs to PDF
     const tableRows = filteredTransactions.map((item) => [
       item.date ? new Date(item.date).toLocaleDateString() : '-',
       item.voucherId || '-',
       item.type,
-      `${item.isCredit ? '(Cr) +' : '(Dr) -'} ${item.displayAmount}`, 
+      `${item.isCredit ? '(Cr) +' : '(Dr) -'} ${item.displayAmount}`,
       formatBalance(item.runningBalance),
     ]);
 
@@ -346,55 +434,135 @@ function Statement() {
   if (loading) return <div className="p-6 text-center">Loading statement...</div>;
 
   return (
-    <div className="bg-white p-6 min-h-[calc(100vh-8.5rem)]">
-      <div className="flex flex-col xl:flex-row items-start xl:items-center justify-between mb-8 gap-4">
-        <div className="relative flex-grow-0 w-full xl:w-80">
-          <span className="absolute inset-y-0 left-0 flex items-center pl-4"><SearchIcon className="h-5 w-5 text-gray-400" /></span>
-          <input type="text" placeholder="Search transactions..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="w-full bg-gray-100 rounded-full py-3 pl-11 pr-4" />
+    <div className="bg-white p-4 md:p-6 min-h-[calc(100vh-8.5rem)]">
+      {/* Controls Section — stacks on mobile */}
+      <div className="flex flex-col gap-3 mb-6 md:mb-8">
+        {/* Row 1: Search */}
+        <div className="relative w-full md:w-80">
+          <span className="absolute inset-y-0 left-0 flex items-center pl-4">
+            <SearchIcon className="h-5 w-5 text-gray-400" />
+          </span>
+          <input
+            type="text"
+            placeholder="Search transactions..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full bg-gray-100 text-gray-700 border border-transparent rounded-full py-2.5 md:py-3 pl-11 pr-4 text-sm md:text-base focus:outline-none focus:bg-white focus:border-gray-300"
+          />
         </div>
 
-        <div className="flex flex-wrap items-center gap-4 w-full xl:w-auto justify-end">
-          <div className="flex items-center gap-2 bg-gray-100 p-1.5 rounded-full overflow-x-auto">
+        {/* Row 2: Filters + Date Pickers + Export */}
+        <div className="flex flex-wrap items-center gap-2 md:gap-3">
+          <div className="flex items-center gap-1.5 bg-gray-100 p-1 md:p-1.5 rounded-full overflow-x-auto">
             {['all', 'today', 'week', 'month'].map((filter) => (
-              <button key={filter} onClick={() => handleFilterClick(filter)} className={`px-4 py-1.5 text-sm font-bold rounded-full ${dateFilter === filter ? 'bg-teal-500 text-white' : 'text-gray-500 hover:bg-gray-200'}`}>{filter.toUpperCase()}</button>
+              <button
+                key={filter}
+                onClick={() => handleFilterClick(filter)}
+                className={`px-3 md:px-4 py-1 md:py-1.5 text-xs md:text-sm font-bold rounded-full transition-all whitespace-nowrap ${dateFilter === filter
+                  ? 'bg-teal-500 text-white shadow-md'
+                  : 'text-gray-500 hover:text-gray-700 hover:bg-gray-200'
+                  }`}
+              >
+                {filter.charAt(0).toUpperCase() + filter.slice(1)}
+              </button>
             ))}
           </div>
-          <div className={`flex items-center gap-2 bg-gray-100 p-1.5 rounded-full ${dateFilter === 'custom' ? 'ring-2 ring-teal-500 bg-teal-50' : ''}`}>
-             <input type="date" value={fromDate} onChange={(e) => handleDateChange('from', e.target.value)} className="bg-transparent text-sm font-bold w-28" />
-             <input type="date" value={toDate} onChange={(e) => handleDateChange('to', e.target.value)} className="bg-transparent text-sm font-bold w-28" />
+
+          <div
+            className={`flex flex-col sm:flex-row items-stretch sm:items-center gap-2 bg-gray-100 p-1 md:p-1.5 rounded-xl sm:rounded-full transition-all ${dateFilter === 'custom' ? 'ring-2 ring-teal-500 bg-teal-50' : ''
+              }`}
+          >
+            <div className="flex items-center px-2 md:px-3 gap-2 sm:border-r border-gray-300 relative">
+              <span className="text-[10px] md:text-xs font-bold text-gray-500 uppercase">From</span>
+              <input
+                type="date"
+                value={fromDate}
+                onChange={(e) => handleDateChange('from', e.target.value)}
+                className="bg-transparent text-xs md:text-sm font-semibold text-gray-700 outline-none w-28 md:w-32 cursor-pointer"
+              />
+            </div>
+            <div className="flex items-center px-2 md:px-3 gap-2 relative">
+              <span className="text-[10px] md:text-xs font-bold text-gray-500 uppercase">To</span>
+              <input
+                type="date"
+                value={toDate}
+                onChange={(e) => handleDateChange('to', e.target.value)}
+                className="bg-transparent text-xs md:text-sm font-semibold text-gray-700 outline-none w-28 md:w-32 cursor-pointer"
+              />
+            </div>
           </div>
-          <button onClick={handleExportList} className="bg-teal-500 text-white font-bold py-3 px-6 rounded-full flex gap-2"><DocumentIcon className="w-5 h-5" /> Export</button>
+
+          <button
+            onClick={handleExportList}
+            className="bg-teal-500 text-white font-bold py-2 md:py-3 px-4 md:px-6 rounded-full hover:bg-teal-600 transition-all text-xs md:text-base whitespace-nowrap shadow-md flex items-center gap-1.5 md:gap-2"
+          >
+            <DocumentIcon className="w-4 h-4 md:w-5 md:h-5" />
+            <span className="hidden sm:inline">Export List</span>
+            <span className="sm:hidden">Export</span>
+          </button>
         </div>
       </div>
 
       <div className="w-full overflow-x-auto rounded-lg border border-gray-100">
-        <table className="min-w-full text-left">
+        <table className="w-full text-left">
           <thead className="bg-gray-50 text-gray-500">
             <tr>
-              <th className="py-4 px-4 text-xs font-bold uppercase text-left">S.N</th>
-              <th className="py-4 px-4 text-xs font-bold uppercase text-left">Date</th>
-              <th className="py-4 px-4 text-xs font-bold uppercase text-left">Voucher</th>
-              <th className="py-4 px-4 text-xs font-bold uppercase text-left">Description</th>
-              <th className="py-4 px-4 text-xs font-bold uppercase text-right">Amount</th>
-              <th className="py-4 px-4 text-xs font-bold uppercase text-right">Balance</th>
+              <th className="py-3 md:py-4 px-2 md:px-4 text-[10px] md:text-xs font-bold uppercase tracking-wider text-left">S.N</th>
+              <th className="py-3 md:py-4 px-2 md:px-4 text-[10px] md:text-xs font-bold uppercase tracking-wider text-left">Date</th>
+              <th className="py-3 md:py-4 px-2 md:px-4 text-[10px] md:text-xs font-bold uppercase tracking-wider text-left hidden md:table-cell">Voucher</th>
+              <th className="py-3 md:py-4 px-2 md:px-4 text-[10px] md:text-xs font-bold uppercase tracking-wider text-left">
+                Type
+              </th>
+              <th className="py-3 md:py-4 px-2 md:px-4 text-[10px] md:text-xs font-bold uppercase tracking-wider text-right">
+                Amount
+              </th>
+              <th className="py-3 md:py-4 px-2 md:px-4 text-[10px] md:text-xs font-bold uppercase tracking-wider text-right hidden md:table-cell">
+                Balance
+              </th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
-            {filteredTransactions.length > 0 ? filteredTransactions.map((t, index) => (
-              <tr key={index} onClick={() => setSelectedTransaction(t)} className="hover:bg-gray-50 cursor-pointer">
-                <td className="py-4 px-4 text-gray-600 text-sm font-medium">{index + 1}</td>
-                <td className="py-4 px-4 text-gray-600 text-sm whitespace-nowrap">{t.date ? new Date(t.date).toLocaleDateString() : '-'}</td>
-                <td className="py-4 px-4 text-gray-500 text-xs font-mono font-bold">{t.voucherId || '-'}</td>
-                <td className="py-4 px-4 text-gray-800 font-semibold text-sm">
-                  {t.type}
-                  <span className="block text-xs text-gray-400 font-normal font-mono mt-0.5">{t.transactionId?.substring(0, 8)}</span>
+            {filteredTransactions.length > 0 ? (
+              filteredTransactions.map((t, index) => (
+                <tr
+                  key={index}
+                  onClick={() => setSelectedTransaction(t)}
+                  className="hover:bg-gray-50 transition-colors cursor-pointer"
+                >
+                  <td className="py-3 md:py-4 px-2 md:px-4 text-gray-600 text-xs md:text-sm font-medium text-left">
+                    {index + 1}
+                  </td>
+                  <td className="py-3 md:py-4 px-2 md:px-4 text-gray-600 text-xs md:text-sm whitespace-nowrap text-left">
+                    {t.date}
+                  </td>
+                  <td className="py-3 md:py-4 px-2 md:px-4 text-gray-500 text-xs font-mono font-bold text-left hidden md:table-cell">
+                    {t.voucherId || '-'}
+                  </td>
+                  <td className="py-3 md:py-4 px-2 md:px-4 text-gray-800 font-semibold text-xs md:text-sm text-left">
+                    {t.type}
+                    <span className="block text-[10px] md:text-xs text-gray-400 font-normal font-mono mt-0.5 hidden md:block">
+                      ID: {t.transactionId ? t.transactionId.substring(0, 8) : 'N/A'}
+                    </span>
+                  </td>
+                  <td
+                    className={`py-3 md:py-4 px-2 md:px-4 font-bold text-right text-xs md:text-sm ${t.isCredit ? 'text-green-600' : 'text-red-600'
+                      }`}
+                  >
+                    {t.displayAmount}
+                  </td>
+                  <td className="py-3 md:py-4 px-2 md:px-4 font-bold text-right text-xs md:text-sm text-gray-900 hidden md:table-cell">
+                    {formatBalance(t.runningBalance)}
+                  </td>
+                </tr>
+              ))
+            ) : (
+              <tr>
+                <td colSpan="6" className="py-12 text-center text-gray-500">
+                  <p className="text-lg font-medium">No transactions found.</p>
+                  <p className="text-sm mt-1">Try adjusting your filters.</p>
                 </td>
-                <td className={`py-4 px-4 font-bold text-right text-sm ${t.isCredit ? 'text-green-600' : 'text-red-600'}`}>
-                   {t.isCredit ? '+' : '-'} {t.displayAmount}
-                </td>
-                <td className="py-4 px-4 font-bold text-right text-sm text-gray-900">{formatBalance(t.runningBalance)}</td>
               </tr>
-            )) : <tr><td colSpan="6" className="py-12 text-center text-gray-500">No transactions found.</td></tr>}
+            )}
           </tbody>
         </table>
       </div>

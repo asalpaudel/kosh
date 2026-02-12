@@ -142,13 +142,13 @@ const TransactionVoucher = ({ transaction, onClose, onStatusUpdate }) => {
         <div
           ref={voucherRef}
           id="printable-voucher"
-          className="bg-white p-8 border border-gray-200 shadow-sm rounded-lg text-gray-800 flex flex-col gap-6 relative overflow-hidden"
+          className="bg-white p-4 md:p-8 border border-gray-200 shadow-sm rounded-lg text-gray-800 flex flex-col gap-6 relative overflow-hidden"
         >
           <div className="absolute -right-10 -top-10 opacity-5 pointer-events-none">
             <Logo className="w-64 h-64 text-gray-900" />
           </div>
 
-          <div className="flex justify-between items-start border-b-2 border-gray-800 pb-4">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-start border-b-2 border-gray-800 pb-4 gap-3">
             <div className="flex items-center gap-3">
               {sahakariInfo.logoUrl ? (
                 <img
@@ -160,7 +160,7 @@ const TransactionVoucher = ({ transaction, onClose, onStatusUpdate }) => {
                 <Logo className="w-12 h-12 text-teal-600" />
               )}
               <div>
-                <h2 className="text-xl font-bold uppercase tracking-wide">
+                <h2 className="text-base sm:text-xl font-bold uppercase tracking-wide">
                   {sahakariInfo.name || "Sahakari Name"}
                 </h2>
                 <p className="text-xs text-gray-500">
@@ -181,7 +181,7 @@ const TransactionVoucher = ({ transaction, onClose, onStatusUpdate }) => {
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-8 text-sm">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-8 text-sm">
             <div>
               <p className="text-gray-500 text-xs uppercase font-bold">
                 Transaction Date
@@ -203,7 +203,7 @@ const TransactionVoucher = ({ transaction, onClose, onStatusUpdate }) => {
           </div>
 
           <div className="bg-gray-50 p-4 rounded-lg border border-gray-100">
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <p className="text-gray-500 text-xs uppercase font-bold mb-1">
                   Account / User
@@ -226,7 +226,7 @@ const TransactionVoucher = ({ transaction, onClose, onStatusUpdate }) => {
             </div>
 
             {transaction.details?.paymentMethod && (
-              <div className="mt-4 pt-4 border-t border-gray-200 grid grid-cols-3 gap-4 text-sm">
+              <div className="mt-4 pt-4 border-t border-gray-200 grid grid-cols-1 sm:grid-cols-3 gap-4 text-sm">
                 <div>
                   <span className="block text-xs text-gray-500 uppercase font-bold">
                     Method
@@ -559,28 +559,31 @@ function AdminTransactions() {
   };
 
   return (
-    <div className="bg-white p-6 min-h-[calc(100vh-8.5rem)]">
-      <div className="flex flex-col xl:flex-row items-start xl:items-center justify-between mb-8 gap-4">
-        <div className="relative flex-grow-0 w-full xl:w-80">
+    <div className="bg-white p-3 md:p-6 min-h-[calc(100vh-8.5rem)]">
+      {/* Controls Section — stacks on mobile */}
+      <div className="flex flex-col gap-3 mb-6 md:mb-8">
+        {/* Row 1: Search */}
+        <div className="relative w-full md:w-80">
           <span className="absolute inset-y-0 left-0 flex items-center pl-4">
             <SearchIcon className="h-5 w-5 text-gray-400" />
           </span>
           <input
             type="text"
             placeholder="Search Txn ID, Voucher, User..."
-            className="w-full bg-gray-100 text-gray-700 border border-transparent rounded-full py-3 pl-11 pr-4 text-base focus:outline-none focus:bg-white focus:border-gray-300"
+            className="w-full bg-gray-100 text-gray-700 border border-transparent rounded-full py-2.5 md:py-3 pl-11 pr-4 text-sm md:text-base focus:outline-none focus:bg-white focus:border-gray-300"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
           />
         </div>
 
-        <div className="flex flex-wrap items-center gap-4 w-full xl:w-auto justify-end">
-          <div className="flex items-center gap-2 bg-gray-100 p-1.5 rounded-full overflow-x-auto">
+        {/* Row 2: Filters + Date Pickers + Export — wraps on mobile */}
+        <div className="flex flex-wrap items-center gap-2 md:gap-3">
+          <div className="flex items-center gap-1.5 bg-gray-100 p-1 md:p-1.5 rounded-full overflow-x-auto">
             {["all", "today", "week", "month"].map((filter) => (
               <button
                 key={filter}
                 onClick={() => handleFilterClick(filter)}
-                className={`px-4 py-1.5 text-sm font-bold rounded-full transition-all whitespace-nowrap ${dateFilter === filter
+                className={`px-3 md:px-4 py-1 md:py-1.5 text-xs md:text-sm font-bold rounded-full transition-all whitespace-nowrap ${dateFilter === filter
                   ? "bg-teal-500 text-white shadow-md"
                   : "text-gray-500 hover:text-gray-700 hover:bg-gray-200"
                   }`}
@@ -591,11 +594,11 @@ function AdminTransactions() {
           </div>
 
           <div
-            className={`flex items-center gap-2 bg-gray-100 p-1.5 rounded-full transition-all ${dateFilter === "custom" ? "ring-2 ring-teal-500 bg-teal-50" : ""
+            className={`flex flex-col sm:flex-row items-stretch sm:items-center gap-2 bg-gray-100 p-1 md:p-1.5 rounded-xl sm:rounded-full transition-all ${dateFilter === "custom" ? "ring-2 ring-teal-500 bg-teal-50" : ""
               }`}
           >
-            <div className="flex items-center px-3 gap-2 border-r border-gray-300 relative">
-              <span className="text-xs font-bold text-gray-500 uppercase">
+            <div className="flex items-center px-2 md:px-3 gap-2 sm:border-r border-gray-300 relative">
+              <span className="text-[10px] md:text-xs font-bold text-gray-500 uppercase">
                 From
               </span>
               <div className="relative">
@@ -603,13 +606,13 @@ function AdminTransactions() {
                   type="date"
                   value={fromDate}
                   onChange={(e) => handleDateChange("from", e.target.value)}
-                  className="bg-transparent text-sm font-semibold text-gray-700 outline-none w-32 z-10 relative cursor-pointer"
+                  className="bg-transparent text-xs md:text-sm font-semibold text-gray-700 outline-none w-28 md:w-32 z-10 relative cursor-pointer"
                 />
                 <CalendarIcon className="w-4 h-4 text-teal-600 absolute right-0 top-1/2 -translate-y-1/2 pointer-events-none" />
               </div>
             </div>
-            <div className="flex items-center px-3 gap-2 relative">
-              <span className="text-xs font-bold text-gray-500 uppercase">
+            <div className="flex items-center px-2 md:px-3 gap-2 relative">
+              <span className="text-[10px] md:text-xs font-bold text-gray-500 uppercase">
                 To
               </span>
               <div className="relative">
@@ -617,7 +620,7 @@ function AdminTransactions() {
                   type="date"
                   value={toDate}
                   onChange={(e) => handleDateChange("to", e.target.value)}
-                  className="bg-transparent text-sm font-semibold text-gray-700 outline-none w-32 z-10 relative cursor-pointer"
+                  className="bg-transparent text-xs md:text-sm font-semibold text-gray-700 outline-none w-28 md:w-32 z-10 relative cursor-pointer"
                 />
                 <CalendarIcon className="w-4 h-4 text-teal-600 absolute right-0 top-1/2 -translate-y-1/2 pointer-events-none" />
               </div>
@@ -626,36 +629,38 @@ function AdminTransactions() {
 
           <button
             onClick={handleExportList}
-            className="bg-teal-500 text-white font-bold py-3 px-6 rounded-full hover:bg-teal-600 transition-all text-base whitespace-nowrap shadow-md flex items-center gap-2"
+            className="bg-teal-500 text-white font-bold py-2 md:py-3 px-4 md:px-6 rounded-full hover:bg-teal-600 transition-all text-xs md:text-base whitespace-nowrap shadow-md flex items-center gap-1.5 md:gap-2"
           >
-            <DocumentIcon className="w-5 h-5" /> Export List
+            <DocumentIcon className="w-4 h-4 md:w-5 md:h-5" />
+            <span className="hidden sm:inline">Export List</span>
+            <span className="sm:hidden">Export</span>
           </button>
         </div>
       </div>
 
       <div className="w-full overflow-x-auto rounded-lg border border-gray-100">
-        <table className="min-w-full text-left">
+        <table className="w-full text-left">
           <thead className="bg-gray-50 text-gray-500">
             <tr>
-              <th className="py-4 px-4 text-xs font-bold uppercase tracking-wider">
+              <th className="py-3 md:py-4 px-2 md:px-4 text-[10px] md:text-xs font-bold uppercase tracking-wider">
                 S.N
               </th>
-              <th className="py-4 px-4 text-xs font-bold uppercase tracking-wider">
+              <th className="py-3 md:py-4 px-2 md:px-4 text-[10px] md:text-xs font-bold uppercase tracking-wider hidden lg:table-cell">
                 Txn ID
               </th>
-              <th className="py-4 px-4 text-xs font-bold uppercase tracking-wider">
+              <th className="py-3 md:py-4 px-2 md:px-4 text-[10px] md:text-xs font-bold uppercase tracking-wider hidden md:table-cell">
                 Voucher
               </th>
-              <th className="py-4 px-4 text-xs font-bold uppercase tracking-wider">
+              <th className="py-3 md:py-4 px-2 md:px-4 text-[10px] md:text-xs font-bold uppercase tracking-wider">
                 Date
               </th>
-              <th className="py-4 px-4 text-xs font-bold uppercase tracking-wider">
+              <th className="py-3 md:py-4 px-2 md:px-4 text-[10px] md:text-xs font-bold uppercase tracking-wider">
                 User / Head
               </th>
-              <th className="py-4 px-4 text-xs font-bold uppercase tracking-wider">
+              <th className="py-3 md:py-4 px-2 md:px-4 text-[10px] md:text-xs font-bold uppercase tracking-wider">
                 Type
               </th>
-              <th className="py-4 px-4 text-xs font-bold uppercase tracking-wider text-right">
+              <th className="py-3 md:py-4 px-2 md:px-4 text-[10px] md:text-xs font-bold uppercase tracking-wider text-right">
                 Amount
               </th>
             </tr>
@@ -687,32 +692,32 @@ function AdminTransactions() {
                       className={`hover:bg-gray-50 transition-colors cursor-pointer ${isFrozen ? "bg-red-50 border-l-4 border-red-400" : ""
                         }`}
                     >
-                      <td className="py-4 px-4 text-gray-600 text-sm font-medium">
+                      <td className="py-3 md:py-4 px-2 md:px-4 text-gray-600 text-sm font-medium">
                         {index + 1}
                       </td>
-                      <td className="py-4 px-4 text-gray-500 text-xs font-mono">
+                      <td className="py-3 md:py-4 px-2 md:px-4 text-gray-500 text-xs font-mono hidden lg:table-cell">
                         {log.transactionId || log.id || "N/A"}
                       </td>
-                      <td className="py-4 px-4 text-gray-700 text-sm font-mono font-bold">
+                      <td className="py-3 md:py-4 px-2 md:px-4 text-gray-700 text-xs md:text-sm font-mono font-bold hidden md:table-cell">
                         {log.voucherId || (
                           <span className="text-gray-400 italic">N/A</span>
                         )}
                       </td>
-                      <td className="py-4 px-4 text-gray-600 text-sm">
+                      <td className="py-3 md:py-4 px-2 md:px-4 text-gray-600 text-xs md:text-sm">
                         {log.date
                           ? new Date(log.date).toLocaleDateString()
                           : "-"}
                       </td>
-                      <td className="py-4 px-4 text-gray-900 font-semibold text-sm">
+                      <td className="py-3 md:py-4 px-2 md:px-4 text-gray-900 font-semibold text-xs md:text-sm">
                         {log.userName || log.user}
                         {log.details?.internalHead && (
-                          <span className="text-xs text-gray-500 block">
+                          <span className="text-[10px] md:text-xs text-gray-500 block">
                             ({log.details.internalHead})
                           </span>
                         )}
                       </td>
-                      <td className="py-4 px-4 text-sm text-gray-600">
-                        <div className="flex items-center gap-2">
+                      <td className="py-3 md:py-4 px-2 md:px-4 text-xs md:text-sm text-gray-600">
+                        <div className="flex items-center gap-1 md:gap-2">
                           {log.type}
                           {isFrozen && (
                             <span className="text-[10px] px-1.5 py-0.5 bg-red-200 text-red-800 rounded font-bold">
@@ -722,7 +727,7 @@ function AdminTransactions() {
                         </div>
                       </td>
                       <td
-                        className={`py-4 px-4 font-bold text-right text-sm ${isCredit ? "text-green-600" : "text-red-600"
+                        className={`py-3 md:py-4 px-2 md:px-4 font-bold text-right text-xs md:text-sm ${isCredit ? "text-green-600" : "text-red-600"
                           }`}
                       >
                         Rs. {Math.abs(rawAmount).toLocaleString()}
@@ -741,7 +746,7 @@ function AdminTransactions() {
         </table>
       </div>
 
-      <div className="group fixed z-20 bottom-10 right-10 flex flex-col items-center gap-3">
+      <div className="group fixed z-20 bottom-20 right-6 md:bottom-10 md:right-10 flex flex-col items-center gap-3">
         <button
           title="New Transaction"
           onClick={() => setIsAddModalOpen(true)}
