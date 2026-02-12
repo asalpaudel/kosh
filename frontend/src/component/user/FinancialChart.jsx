@@ -6,7 +6,6 @@ const API_BASE = "http://localhost:8080/api";
 const parseAmount = (val) => {
   if (typeof val === 'number') return val;
   if (!val) return 0;
-  // Remove "Rs.", commas, and spaces, then parse
   return parseFloat(String(val).replace(/[^\d.-]/g, ''));
 };
 
@@ -35,12 +34,32 @@ const FinancialChart = () => {
         const seriesData = myTxns.map(t => {
           const amount = parseAmount(t.amount || t.amountValue);
           
-          // Determine if Credit or Debit based on type
-          if (t.type === 'Withdrawal' || (t.type && t.type.includes('Debit'))) {
-            currentBalance -= amount;
-          } else {
+          // ⭐ FIX: Robust Check for Credit vs Debit using Backend Data
+          const direction = t.details?.direction || "";
+          const type = t.type || "";
+
+          const isCredit = 
+            direction === "Credit" || 
+            type.includes("Deposit") || 
+            type.includes("Credit") ||
+            type.includes("Repayment"); // Repayment is a credit to the network, but usually debit to user wallet. 
+            // Wait, standard banking:
+            // Credit = Money In (Deposit)
+            // Debit = Money Out (Withdrawal)
+            
+          const isDebit = 
+            direction === "Debit" || 
+            type.includes("Withdraw") || 
+            type.includes("Debit") ||
+            type.includes("Disbursement");
+
+          // Apply to Balance
+          if (isCredit) {
             currentBalance += amount;
+          } else if (isDebit) {
+            currentBalance -= amount;
           }
+          // If neither (e.g., internal transfer not affecting wallet), balance stays same.
 
           return {
             x: new Date(t.date).getTime(),
@@ -48,7 +67,7 @@ const FinancialChart = () => {
           };
         });
 
-        // If no data, add a zero point for today so chart isn't empty
+        // If no data, add a zero point for today
         if (seriesData.length === 0) {
           seriesData.push({ x: Date.now(), y: 0 });
         }
@@ -68,21 +87,11 @@ const FinancialChart = () => {
     const today = new Date();
     let startDate;
 
-    // Determine start date based on filter
     switch (activeFilter) {
-      case '1W':
-        startDate = new Date(today.setDate(today.getDate() - 7));
-        break;
-      case '1M':
-        startDate = new Date(today.setMonth(today.getMonth() - 1));
-        break;
-      case '1Y':
-        startDate = new Date(today.setFullYear(today.getFullYear() - 1));
-        break;
-      case 'ALL':
-      default:
-        startDate = new Date(allData[0].x);
-        break;
+      case '1W': startDate = new Date(today.setDate(today.getDate() - 7)); break;
+      case '1M': startDate = new Date(today.setMonth(today.getMonth() - 1)); break;
+      case '1Y': startDate = new Date(today.setFullYear(today.getFullYear() - 1)); break;
+      case 'ALL': default: startDate = new Date(allData[0].x); break;
     }
 
     const startTime = startDate.getTime();
@@ -103,58 +112,24 @@ const FinancialChart = () => {
       ...filteredData
     ];
 
-    // Add a final point for 'now'
+    // Add final point for 'now'
     chartData.push({ x: Date.now(), y: chartData[chartData.length - 1].y });
 
-    setDisplaySeries([
-      {
-        name: 'Savings',
-        data: chartData,
-      },
-    ]);
+    setDisplaySeries([{ name: 'Wallet Balance', data: chartData }]);
   }, [activeFilter, allData]);
 
   const chartOptions = {
-    chart: {
-      type: 'line',
-      height: 350,
-      zoom: { enabled: false },
-      toolbar: { show: false },
-      animations: { enabled: true }
-    },
-    stroke: {
-      width: 4,
-      curve: 'smooth', // Restored smooth curve
-    },
-    xaxis: {
-      type: 'datetime',
-      tooltip: { enabled: false }
-    },
-    yaxis: {
-      title: { text: 'Amount (Rs)' },
-      labels: {
-        formatter: (value) => value.toLocaleString('en-IN')
-      }
-    },
+    chart: { type: 'line', height: 350, zoom: { enabled: false }, toolbar: { show: false }, animations: { enabled: true } },
+    stroke: { width: 4, curve: 'smooth' },
+    xaxis: { type: 'datetime', tooltip: { enabled: false } },
+    yaxis: { title: { text: 'Amount (Rs)' }, labels: { formatter: (val) => val.toLocaleString('en-IN') } },
     fill: {
       type: 'gradient',
-      gradient: {
-        shade: 'dark',
-        gradientToColors: ['#000000'], // Fade to Black on the right
-        shadeIntensity: 1,
-        type: 'horizontal',
-        opacityFrom: 1,
-        opacityTo: 1,
-        stops: [0, 100],
-      },
+      gradient: { shade: 'dark', gradientToColors: ['#000000'], shadeIntensity: 1, type: 'horizontal', opacityFrom: 1, opacityTo: 1, stops: [0, 100] },
     },
-    // Start with Green on the left
     colors: ['#3AC249'], 
     dataLabels: { enabled: false },
-    tooltip: {
-      x: { format: 'dd MMM yyyy' },
-      y: { formatter: (val) => `Rs. ${val.toLocaleString('en-IN')}` }
-    }
+    tooltip: { x: { format: 'dd MMM yyyy' }, y: { formatter: (val) => `Rs. ${val.toLocaleString('en-IN')}` } }
   };
 
   const timeRanges = ['1W', '1M', '1Y', 'ALL'];
@@ -162,24 +137,14 @@ const FinancialChart = () => {
   return (
     <div className="bg-white rounded-lg p-4 shadow-md col-span-2 flex flex-col">
       <div id="chart" className="flex-1">
-        <ReactApexChart
-          options={chartOptions}
-          series={displaySeries}
-          type="line"
-          height={300}
-        />
+        <ReactApexChart options={chartOptions} series={displaySeries} type="line" height={300} />
       </div>
-
       <div className="flex justify-center space-x-2 mt-4">
         {timeRanges.map(range => (
           <button
             key={range}
             onClick={() => setActiveFilter(range)}
-            className={`px-4 py-2 text-sm rounded-full font-semibold transition-colors ${
-              activeFilter === range
-                ? 'bg-black text-white'
-                : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-            }`}
+            className={`px-4 py-2 text-sm rounded-full font-semibold transition-colors ${activeFilter === range ? 'bg-black text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}`}
           >
             {range}
           </button>
