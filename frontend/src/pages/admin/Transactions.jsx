@@ -561,23 +561,24 @@ function AdminTransactions() {
   return (
     <div className="bg-white p-3 md:p-6 min-h-[calc(100vh-8.5rem)]">
       {/* Controls Section — stacks on mobile */}
-      <div className="flex flex-col gap-3 mb-6 md:mb-8">
+      {/* Controls Section — stacks on mobile, row on desktop */}
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6 md:mb-8">
         {/* Row 1: Search */}
-        <div className="relative w-full md:w-80">
+        <div className="relative w-full md:w-96">
           <span className="absolute inset-y-0 left-0 flex items-center pl-4">
             <SearchIcon className="h-5 w-5 text-gray-400" />
           </span>
           <input
             type="text"
             placeholder="Search Txn ID, Voucher, User..."
-            className="w-full bg-gray-100 text-gray-700 border border-transparent rounded-full py-2.5 md:py-3 pl-11 pr-4 text-sm md:text-base focus:outline-none focus:bg-white focus:border-gray-300"
+            className="w-full bg-gray-100 text-gray-700 border border-transparent rounded-full py-2.5 md:py-3 pl-11 pr-4 text-sm md:text-base focus:outline-none focus:bg-white focus:border-gray-300 transition-all"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
           />
         </div>
 
-        {/* Row 2: Filters + Date Pickers + Export — wraps on mobile */}
-        <div className="flex flex-wrap items-center gap-2 md:gap-3">
+        {/* Row 2: Filters + Date Pickers + Export */}
+        <div className="flex flex-wrap items-center justify-end gap-2 md:gap-3">
           <div className="flex items-center gap-1.5 bg-gray-100 p-1 md:p-1.5 rounded-full overflow-x-auto">
             {["all", "today", "week", "month"].map((filter) => (
               <button
