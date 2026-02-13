@@ -266,7 +266,7 @@ function Networks() {
   // UI helpers
   const getButtonClass = (viewName) =>
     activeView === viewName
-      ? "bg-gray-900 text-white"
+      ? "bg-[#21ab87] text-white shadow-sm"
       : "bg-gray-100 text-gray-700 hover:bg-gray-200";
 
   // Handlers
@@ -338,7 +338,7 @@ function Networks() {
           {/* Header */}
           <header className="space-y-6">
             {/* Controls */}
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-end gap-4">
               {/* Search */}
               <div className="relative w-full sm:w-96">
                 <span className="absolute inset-y-0 left-0 flex items-center pl-3">
@@ -627,7 +627,7 @@ function Networks() {
       <div className="fixed bottom-20 right-6 md:bottom-6 md:right-6 flex flex-col items-end gap-3 z-50">
         <button
           onClick={() => setIsAddNetworkModalOpen(true)}
-          className="flex items-center gap-2 px-4 py-2.5 bg-gray-900 text-white rounded-lg shadow-lg hover:bg-gray-800 transition text-sm font-medium"
+          className="flex items-center gap-2 px-4 py-2.5 bg-[#21ab87] text-white rounded-lg shadow-lg hover:bg-[#1e9e7c] active:scale-95 transition text-sm font-medium"
           title="Add Network"
         >
           <BuildingIcon className="w-4 h-4" />
@@ -635,7 +635,7 @@ function Networks() {
         </button>
         <button
           onClick={() => setIsAddUserModalOpen(true)}
-          className="flex items-center gap-2 px-4 py-2.5 bg-gray-900 text-white rounded-lg shadow-lg hover:bg-gray-800 transition text-sm font-medium"
+          className="flex items-center gap-2 px-4 py-2.5 bg-[#21ab87] text-white rounded-lg shadow-lg hover:bg-[#1e9e7c] active:scale-95 transition text-sm font-medium"
           title="Add User"
         >
           <UserCircleIcon className="w-4 h-4" />

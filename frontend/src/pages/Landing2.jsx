@@ -652,16 +652,16 @@ export default function Landing() {
 
               <div className="mt-8 grid grid-cols-3 gap-3">
                 <Card mode={mode} className="p-5">
-                  <div className="text-2xl font-bold">25+</div>
-                  <div className={["mt-1 text-sm", mode === "dark" ? "text-slate-200/80" : "text-slate-600"].join(" ")}>Voucher types</div>
+                  <div className="text-2xl font-bold">Email</div>
+                  <div className={["mt-1 text-sm", mode === "dark" ? "text-slate-200/80" : "text-slate-600"].join(" ")}>Notification</div>
                 </Card>
                 <Card mode={mode} className="p-5">
                   <div className="text-2xl font-bold">60+</div>
                   <div className={["mt-1 text-sm", mode === "dark" ? "text-slate-200/80" : "text-slate-600"].join(" ")}>Reports & ledgers</div>
                 </Card>
                 <Card mode={mode} className="p-5">
-                  <div className="text-2xl font-bold">Admin</div>
-                  <div className={["mt-1 text-sm", mode === "dark" ? "text-slate-200/80" : "text-slate-600"].join(" ")}>Staff roles</div>
+                  <div className="text-2xl font-bold">Role Based</div>
+                  <div className={["mt-1 text-sm", mode === "dark" ? "text-slate-200/80" : "text-slate-600"].join(" ")}>Access Control</div>
                 </Card>
               </div>
             </div>

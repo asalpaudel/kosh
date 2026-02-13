@@ -4,14 +4,12 @@ import { UserCircleIcon } from "../icons";
 const Stepper = ({ currentStep }) => (
   <div className="flex items-center justify-center w-full mb-4">
     <div
-      className={`flex flex-col items-center ${
-        currentStep >= 1 ? "text-teal-500" : "text-gray-400"
-      }`}
+      className={`flex flex-col items-center ${currentStep >= 1 ? "text-teal-500" : "text-gray-400"
+        }`}
     >
       <div
-        className={`w-8 h-8 rounded-full border-2 flex items-center justify-center font-bold ${
-          currentStep >= 1 ? "border-teal-500" : "border-gray-400"
-        }`}
+        className={`w-8 h-8 rounded-full border-2 flex items-center justify-center font-bold ${currentStep >= 1 ? "border-teal-500" : "border-gray-400"
+          }`}
       >
         1
       </div>
@@ -19,20 +17,17 @@ const Stepper = ({ currentStep }) => (
     </div>
 
     <div
-      className={`flex-1 h-1 mx-2 ${
-        currentStep >= 2 ? "bg-teal-500" : "bg-gray-300"
-      }`}
+      className={`flex-1 h-1 mx-2 ${currentStep >= 2 ? "bg-teal-500" : "bg-gray-300"
+        }`}
     ></div>
 
     <div
-      className={`flex flex-col items-center ${
-        currentStep >= 2 ? "text-teal-500" : "text-gray-400"
-      }`}
+      className={`flex flex-col items-center ${currentStep >= 2 ? "text-teal-500" : "text-gray-400"
+        }`}
     >
       <div
-        className={`w-8 h-8 rounded-full border-2 flex items-center justify-center font-bold ${
-          currentStep >= 2 ? "border-teal-500" : "border-gray-400"
-        }`}
+        className={`w-8 h-8 rounded-full border-2 flex items-center justify-center font-bold ${currentStep >= 2 ? "border-teal-500" : "border-gray-400"
+          }`}
       >
         2
       </div>
@@ -144,9 +139,9 @@ export default function AddUserForm({
       // Clean the apiBase to ensure no trailing slashes or extra characters
       const cleanApiBase = apiBase.replace(/\/+$/, '');
       const endpoint = `${cleanApiBase}/users`;
-      
+
       console.log("Full endpoint URL:", endpoint);
-      
+
       const res = await fetch(endpoint, {
         method: "POST",
         credentials: "include",
@@ -156,10 +151,10 @@ export default function AddUserForm({
       if (!res.ok) {
         let errorMessage;
         const contentType = res.headers.get("content-type");
-        
+
         console.error("Response status:", res.status);
         console.error("Response headers:", [...res.headers.entries()]);
-        
+
         if (contentType && contentType.includes("application/json")) {
           const errorData = await res.json();
           console.error("Error data:", errorData);
@@ -169,7 +164,7 @@ export default function AddUserForm({
           console.error("Error text:", text);
           errorMessage = `HTTP ${res.status}: ${text || 'Bad Request'}`;
         }
-        
+
         throw new Error(errorMessage);
       }
 
@@ -184,15 +179,15 @@ export default function AddUserForm({
       onClose?.();
     } catch (err) {
       console.error("Error adding admin:", err);
-      
+
       let displayError = err.message;
-      
+
       if (err.message.includes("admin limit")) {
         displayError = err.message;
       } else if (err.message.includes("Network not found")) {
         displayError = "The selected sahakari network was not found.";
       }
-      
+
       setError(displayError);
     } finally {
       setSaving(false);
@@ -233,7 +228,7 @@ export default function AddUserForm({
   );
 
   return (
-    <div className="flex flex-col gap-5 max-h-[80vh] overflow-y-auto pr-2">
+    <div className="flex flex-col gap-5">
       <div className="flex justify-center">
         <UserCircleIcon className="w-16 h-16 text-teal-500" />
       </div>
@@ -332,14 +327,14 @@ export default function AddUserForm({
                 </option>
               ))}
             </select>
-            
+
             {selectedNetwork && (
               <div className="mt-2 p-3 bg-blue-50 border border-blue-200 rounded-lg text-sm">
                 <p className="font-semibold text-blue-900">
                   {selectedNetwork.name}
                 </p>
                 <p className="text-blue-700">
-                  Admin Limit: {selectedNetwork.adminLimit || "Unlimited"} | 
+                  Admin Limit: {selectedNetwork.adminLimit || "Unlimited"} |
                   User Limit: {selectedNetwork.userLimit || "Unlimited"}
                 </p>
                 <p className="text-blue-600">

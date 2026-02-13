@@ -68,21 +68,21 @@ const RevenueOverview = ({ totals }) => {
   );
 };
 
-const NetworkSnapshot = () => (
-  <section className="space-y-6">
-    <div className="space-y-1">
-      <Kicker>Platform Health</Kicker>
-      <SectionTitle>Network Snapshot</SectionTitle>
-    </div>
+// const NetworkSnapshot = ({ stats }) => (
+//   <section className="space-y-6">
+//     <div className="space-y-1">
+//       <Kicker>Platform Health</Kicker>
+//       <SectionTitle>Network Snapshot</SectionTitle>
+//     </div>
 
-    <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-      <Stat label="Networks" value="130" />
-      <Stat label="Admins" value="150" />
-      <Stat label="Staff" value="1,150" />
-      <Stat label="Users" value="30,000" />
-    </div>
-  </section>
-);
+//     <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+//       <Stat label="Networks" value={stats?.networks?.toLocaleString() || "0"} />
+//       <Stat label="Admins" value={stats?.admins?.toLocaleString() || "0"} />
+//       <Stat label="Staff" value={stats?.staff?.toLocaleString() || "0"} />
+//       <Stat label="Users" value={stats?.users?.toLocaleString() || "0"} />
+//     </div>
+//   </section>
+// );
 
 const NarrativeSummary = ({ loading, monthlyRevenueData, totals }) => (
   <section className="space-y-4 max-w-3xl">
@@ -110,6 +110,12 @@ export default function Analytics() {
     custom: 0,
   });
   const [monthlyRevenueData, setMonthlyRevenueData] = useState([]);
+  const [networkStats, setNetworkStats] = useState({
+    networks: 0,
+    admins: 0,
+    staff: 0,
+    users: 0,
+  });
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -128,6 +134,13 @@ export default function Analytics() {
         );
         if (monthlyRes.ok) {
           setMonthlyRevenueData(await monthlyRes.json());
+        }
+
+        const snapshotRes = await fetch(`${API_BASE}/analytics/network-snapshot`, {
+          credentials: "include",
+        });
+        if (snapshotRes.ok) {
+          setNetworkStats(await snapshotRes.json());
         }
       } catch (err) {
         console.error(err);
@@ -368,19 +381,19 @@ export default function Analytics() {
             <div class="stats-grid">
               <div class="stat">
                 <div class="stat-label">Networks</div>
-                <div class="stat-value">130</div>
+                <div class="stat-value">${networkStats.networks.toLocaleString()}</div>
               </div>
               <div class="stat">
                 <div class="stat-label">Admins</div>
-                <div class="stat-value">150</div>
+                <div class="stat-value">${networkStats.admins.toLocaleString()}</div>
               </div>
               <div class="stat">
                 <div class="stat-label">Staff</div>
-                <div class="stat-value">1,150</div>
+                <div class="stat-value">${networkStats.staff.toLocaleString()}</div>
               </div>
               <div class="stat">
                 <div class="stat-label">Users</div>
-                <div class="stat-value">30,000</div>
+                <div class="stat-value">${networkStats.users.toLocaleString()}</div>
               </div>
             </div>
           </div>
@@ -442,7 +455,7 @@ export default function Analytics() {
 
         <Divider />
 
-        <NetworkSnapshot />
+        {/* <NetworkSnapshot stats={networkStats} /> */}
 
         <Divider />
 

@@ -436,8 +436,9 @@ function Statement() {
   return (
     <div className="bg-white p-4 md:p-6 min-h-[calc(100vh-8.5rem)]">
       {/* Controls Section — stacks on mobile */}
-      <div className="flex flex-col gap-3 mb-6 md:mb-8">
-        {/* Row 1: Search */}
+      {/* Controls Section */}
+      <div className="flex flex-col md:flex-row justify-between items-center gap-4 mb-6 md:mb-8">
+        {/* Search - Left Side */}
         <div className="relative w-full md:w-80">
           <span className="absolute inset-y-0 left-0 flex items-center pl-4">
             <SearchIcon className="h-5 w-5 text-gray-400" />
@@ -451,8 +452,9 @@ function Statement() {
           />
         </div>
 
-        {/* Row 2: Filters + Date Pickers + Export */}
-        <div className="flex flex-wrap items-center gap-2 md:gap-3">
+        {/* Filters & Actions - Right Side */}
+        <div className="flex flex-wrap items-center gap-2 md:gap-3 justify-end w-full md:w-auto">
+          {/* Filters */}
           <div className="flex items-center gap-1.5 bg-gray-100 p-1 md:p-1.5 rounded-full overflow-x-auto">
             {['all', 'today', 'week', 'month'].map((filter) => (
               <button
@@ -468,6 +470,7 @@ function Statement() {
             ))}
           </div>
 
+          {/* Date Picker */}
           <div
             className={`flex flex-col sm:flex-row items-stretch sm:items-center gap-2 bg-gray-100 p-1 md:p-1.5 rounded-xl sm:rounded-full transition-all ${dateFilter === 'custom' ? 'ring-2 ring-teal-500 bg-teal-50' : ''
               }`}
@@ -492,6 +495,7 @@ function Statement() {
             </div>
           </div>
 
+          {/* Export Button */}
           <button
             onClick={handleExportList}
             className="bg-teal-500 text-white font-bold py-2 md:py-3 px-4 md:px-6 rounded-full hover:bg-teal-600 transition-all text-xs md:text-base whitespace-nowrap shadow-md flex items-center gap-1.5 md:gap-2"

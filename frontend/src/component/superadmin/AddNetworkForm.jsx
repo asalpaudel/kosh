@@ -331,7 +331,7 @@ export default function AddNetworkForm({
         </div>
 
         {/* Scrollable Content */}
-        <div className="flex-1 overflow-y-auto px-6 py-6">
+        <div className="flex-1 px-6 py-6 overflow-y-auto">
           <div className="space-y-6">
             {/* Basic Information */}
             <div className="space-y-4">
@@ -382,7 +382,7 @@ export default function AddNetworkForm({
                     required
                   />
                   <p className="text-xs text-gray-500 mt-1">
-                    Format: 10 digits
+                    Format: 9 digits
                   </p>
                 </div>
                 <div>
@@ -502,11 +502,10 @@ export default function AddNetworkForm({
                 {Object.entries(PACKAGES).map(([key, pkg]) => (
                   <label
                     key={key}
-                    className={`relative flex flex-col p-4 border-2 rounded-lg cursor-pointer transition-all ${
-                      formData.packageType === key
-                        ? "border-teal-500 bg-teal-50"
-                        : "border-gray-200 hover:border-teal-300"
-                    }`}
+                    className={`relative flex flex-col p-4 border-2 rounded-lg cursor-pointer transition-all ${formData.packageType === key
+                      ? "border-teal-500 bg-teal-50"
+                      : "border-gray-200 hover:border-teal-300"
+                      }`}
                   >
                     <input
                       type="radio"

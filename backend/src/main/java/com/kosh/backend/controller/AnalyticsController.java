@@ -57,6 +57,17 @@ public class AnalyticsController {
         return response;
     }
 
+    // Network Snapshot
+    // @GetMapping("/network-snapshot")
+    // public Map<String, Long> getNetworkSnapshot() {
+    //     Map<String, Long> snapshot = new HashMap<>();
+    //     snapshot.put("networks", networkRepository.count());
+    //     snapshot.put("admins", userRepository.countByRole("ADMIN"));
+    //     snapshot.put("staff", userRepository.countByRole("STAFF"));
+    //     snapshot.put("users", userRepository.countByRole("USER"));
+    //     return snapshot;
+    // }
+
     // Total revenue by type (for percentages)
     @GetMapping("/total-revenue")
     public Map<String, Double> getTotalRevenue() {
