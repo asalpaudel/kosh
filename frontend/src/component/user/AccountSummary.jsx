@@ -1,6 +1,6 @@
+import { API_BASE } from "../../lib/apiClient";
 import React, { useState, useEffect } from 'react';
 
-const API_BASE = "http://localhost:8080/api";
 
 const formatAmount = (num) => {
   return num.toLocaleString('en-IN', {

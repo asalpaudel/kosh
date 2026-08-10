@@ -1,3 +1,4 @@
+import { API_BASE } from "../../lib/apiClient";
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -11,7 +12,6 @@ import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import html2canvas from 'html2canvas-pro';
 
-const API_BASE = "http://localhost:8080/api";
 
 const parseAmountToNumber = (raw) => {
   if (raw === null || raw === undefined) return 0;

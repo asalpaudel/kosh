@@ -1,3 +1,4 @@
+import { API_BASE } from "../lib/apiClient";
 import { NavLink, useNavigate } from "react-router-dom";
 import { useState } from "react";
 
@@ -45,7 +46,7 @@ export default function Login() {
     }
 
     try {
-      const response = await fetch("http://localhost:8080/api/auth/login", {
+      const response = await fetch(`${API_BASE}/auth/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
@@ -84,7 +85,7 @@ export default function Login() {
     setIsVerifying(true);
 
     try {
-      const response = await fetch("http://localhost:8080/api/auth/verify-2fa", {
+      const response = await fetch(`${API_BASE}/auth/verify-2fa`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",

@@ -1,7 +1,7 @@
+import { API_BASE } from "../../lib/apiClient";
 import React, { useState, useEffect } from 'react';
 import { PiggyBankIcon } from '../icons';
 
-const API_BASE = "http://localhost:8080/api";
 
 const PortfolioItem = ({ label, value, color, total }) => {
   // Calculate percentage based on total value (assets + liabilities magnitude)

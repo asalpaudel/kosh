@@ -1,3 +1,4 @@
+import { API_BASE } from "../../lib/apiClient";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
@@ -9,7 +10,7 @@ export default function SuperadminProtectedRoute({ children }) {
     useEffect(() => {
         const checkAuth = async () => {
             try {
-                const response = await fetch("http://localhost:8080/api/superadmin-auth/session", {
+                const response = await fetch(`${API_BASE}/superadmin-auth/session`, {
                     credentials: "include",
                 });
 

@@ -1,3 +1,4 @@
+import { API_BASE } from "../../lib/apiClient";
 import React, { useState, useMemo, useEffect } from "react";
 import { useLocation } from "react-router-dom";
 import {
@@ -16,7 +17,6 @@ import EditUserForm from "../../component/admin/EditUserForm.jsx";
 import ConfirmationModal from "../../component/ConfirmationModal.jsx";
 import { apiFetch } from "../../lib/apiClient";
 
-const API_BASE = "http://localhost:8080/api";
 
 const DetailItem = ({ label, value }) => (
   <div>

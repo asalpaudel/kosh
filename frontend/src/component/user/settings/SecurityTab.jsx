@@ -1,3 +1,4 @@
+import { API_BASE } from "../../../lib/apiClient";
 import React, { useState } from "react";
 import ConfirmationModal from "../../ConfirmationModal.jsx";
 
@@ -168,7 +169,7 @@ const ChangePasswordCard = ({ title }) => {
     setLoading(true);
 
     try {
-      const res = await fetch("http://localhost:8080/api/users/change-password", {
+      const res = await fetch(`${API_BASE}/users/change-password`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include", // Important for session

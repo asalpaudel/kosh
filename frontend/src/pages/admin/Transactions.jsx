@@ -1,3 +1,4 @@
+import { API_BASE } from "../../lib/apiClient";
 import React, { useState, useEffect, useMemo, useRef } from "react";
 import { useLocation } from "react-router-dom";
 import {
@@ -15,7 +16,6 @@ import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import html2canvas from "html2canvas-pro";
 
-const API_BASE = "http://localhost:8080/api";
 
 const TransactionVoucher = ({ transaction, onClose, onStatusUpdate }) => {
   const voucherRef = useRef(null);

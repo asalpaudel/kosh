@@ -1,3 +1,4 @@
+import { API_BASE as apiBase } from "../../lib/apiClient";
 import React, { useState, useEffect, useRef } from "react";
 import {
   ChevronLeft,
@@ -15,7 +16,6 @@ import Modal from "../../component/superadmin/Modal.jsx";
 import ApplyPackageForm from "../../component/user/ApplyPackageForm.jsx";
 import loanImage from "../../assets/image/loan.png";
 
-const apiBase = "http://localhost:8080/api";
 
 // Helper function to get banner URL
 const getBannerUrl = (pkg, type) => {

@@ -1,3 +1,4 @@
+import { API_BASE as apiBase } from "../../lib/apiClient";
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import {
@@ -9,7 +10,6 @@ import {
   XCircleIcon,
 } from "../../component/icons.jsx";
 
-const apiBase = "http://localhost:8080/api";
 
 const StatusIcon = ({ status }) => {
   switch (status) {

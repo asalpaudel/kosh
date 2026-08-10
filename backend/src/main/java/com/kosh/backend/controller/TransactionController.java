@@ -143,6 +143,11 @@ public class TransactionController {
             tx.setStatus((String) payload.getOrDefault("status", "Success"));
             tx.setType((String) payload.get("type"));
             tx.setAmount(Money.of(payload.get("amountValue")));
+            // A negative amount flips the direction of the posting: a "Debit" of -5000 passes
+            // the sufficient-funds check below and then credits the member instead.
+            if (tx.getAmount() == null || tx.getAmount().signum() <= 0) {
+                return reject(HttpStatus.BAD_REQUEST, "Amount must be greater than zero");
+            }
             tx.setNarration((String) payload.get("narration"));
             
             String dateStr = (String) payload.get("date");

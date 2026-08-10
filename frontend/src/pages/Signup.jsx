@@ -1,7 +1,7 @@
+import { API_BASE } from "../lib/apiClient";
 import { NavLink, useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
 
-const API_BASE = "http://localhost:8080/api";
 
 /* -------------------- STEPPER -------------------- */
 const Stepper = ({ currentStep }) => (

@@ -1,3 +1,4 @@
+import { API_BASE } from "../../lib/apiClient";
 import React, { useState } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
 import {
@@ -11,7 +12,6 @@ import {
 } from "../icons.jsx";
 import ConfirmationModal from "../ConfirmationModal.jsx";
 
-const API_BASE = "http://localhost:8080/api";
 
 function Sidebar() {
   const navigate = useNavigate();

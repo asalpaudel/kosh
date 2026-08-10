@@ -1,9 +1,9 @@
+import { API_BASE } from "../../../lib/apiClient";
 import React, { useState, useEffect } from "react";
 import Modal from "../../superadmin/Modal";
 import EditProfileModal from "./EditProfileModal";
 import { UserCircleIcon } from "../../icons";
 
-const API_BASE = "http://localhost:8080/api";
 
 const InfoItem = ({ label, value }) => (
   <div className="flex-1 min-w-[250px]">

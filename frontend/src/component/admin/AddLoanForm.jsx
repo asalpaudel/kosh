@@ -1,8 +1,8 @@
+import { API_BASE as apiBase } from "../../lib/apiClient";
 import React, { useState } from "react";
 import { BanknotesIcon } from "../icons";
 import { apiFetch } from "../../lib/apiClient";
 
-const apiBase = "http://localhost:8080/api";
 
 function AddLoanForm({ onAdded, onClose, networkId }) {
   const [formData, setFormData] = useState({

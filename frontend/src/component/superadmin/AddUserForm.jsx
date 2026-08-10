@@ -1,3 +1,4 @@
+import { API_BASE } from "../../lib/apiClient";
 import React, { useState, useEffect } from "react";
 import { UserCircleIcon } from "../icons";
 
@@ -39,7 +40,7 @@ const Stepper = ({ currentStep }) => (
 export default function AddUserForm({
   onClose,
   onUserAdded,
-  apiBase = "http://localhost:8080/api",
+  apiBase = API_BASE,
 }) {
   const [step, setStep] = useState(1);
   const [formData, setFormData] = useState({

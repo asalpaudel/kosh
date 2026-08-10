@@ -1,3 +1,4 @@
+import { API_BASE as apiBase } from "../../lib/apiClient";
 import React, { useState } from 'react';
 import {
   DocumentTextIcon,
@@ -5,7 +6,6 @@ import {
   BanknotesIcon,
 } from '../icons';
 
-const apiBase = "http://localhost:8080/api";
 
 // Form for Fixed Deposits
 const FixedDepositForm = ({ packageData, formData, setFormData }) => (

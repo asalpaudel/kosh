@@ -1,5 +1,7 @@
 package com.kosh.backend.controller;
 
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
 import java.time.LocalDateTime;
 
 import com.kosh.backend.service.OneTimeCode;
@@ -9,6 +11,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -18,6 +21,7 @@ import org.springframework.web.bind.annotation.RestController;
 import com.kosh.backend.model.ActivityLog;
 import com.kosh.backend.repository.ActivityLogRepository;
 import com.kosh.backend.service.EmailService;
+import com.kosh.backend.service.LoginThrottleService;
 
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpSession;
@@ -29,9 +33,20 @@ public class SuperAdminAuthController {
     @Value("${app.superadmin.email:}")
     private String authorizedEmail;
 
-    @Value("${app.auth.two-factor-enabled:true}")
-    private boolean twoFactorEnabled;
-    
+    /**
+     * BCrypt hash of the superadmin password. Empty means no superadmin can sign in: an
+     * unconfigured deployment must not fall back to email-only access.
+     */
+    @Value("${app.superadmin.password-hash:}")
+    private String authorizedPasswordHash;
+
+    /**
+     * Second factor on top of the password. Off by default; turn it on to mail a one-time
+     * code before the session is established.
+     */
+    @Value("${app.superadmin.otp-enabled:false}")
+    private boolean otpEnabled;
+
     // OTP Storage: email -> SuperAdminOtp
     private static class SuperAdminOtp {
         String otp;
@@ -46,10 +61,15 @@ public class SuperAdminAuthController {
     private final Map<String, SuperAdminOtp> otpStorage = new ConcurrentHashMap<>();
     private final EmailService emailService;
     private final ActivityLogRepository logRepo;
+    private final PasswordEncoder passwordEncoder;
+    private final LoginThrottleService throttle;
 
-    public SuperAdminAuthController(EmailService emailService, ActivityLogRepository logRepo) {
+    public SuperAdminAuthController(EmailService emailService, ActivityLogRepository logRepo,
+            PasswordEncoder passwordEncoder, LoginThrottleService throttle) {
         this.emailService = emailService;
         this.logRepo = logRepo;
+        this.passwordEncoder = passwordEncoder;
+        this.throttle = throttle;
     }
 
     /**
@@ -61,31 +81,50 @@ public class SuperAdminAuthController {
             HttpServletRequest request,
             HttpSession session) {
         String email = payload.get("email");
-        
-        if (email == null || email.trim().isEmpty()) {
+        String password = payload.get("password");
+
+        if (email == null || email.trim().isEmpty() || password == null || password.isEmpty()) {
             return ResponseEntity.badRequest().body(Map.of(
                 "success", false,
-                "message", "Email is required"
+                "message", "Email and password are required"
             ));
         }
-        
+
 
         email = email.trim().toLowerCase();
-        
-        // validation
-        if (!authorizedEmail.equalsIgnoreCase(email)) {
+
+        // A deployment without a configured superadmin credential has no superadmin.
+        if (authorizedEmail.isBlank() || authorizedPasswordHash.isBlank()) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of(
                 "success", false,
-                "message", "Unauthorized email address"
+                "message", "Superadmin access is not configured"
             ));
         }
 
-        if (!twoFactorEnabled) {
+        String throttleKey = "superadmin-login:" + email;
+        if (throttle.isBlocked(throttleKey)) {
+            return tooManyAttempts();
+        }
+
+        // One message for a wrong email and a wrong password, so the response cannot be
+        // used to confirm which address is the superadmin.
+        if (!authorizedEmail.equalsIgnoreCase(email)
+                || !passwordEncoder.matches(password, authorizedPasswordHash)) {
+            throttle.recordFailure(throttleKey);
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of(
+                "success", false,
+                "message", "Invalid credentials"
+            ));
+        }
+
+        throttle.clear(throttleKey);
+
+        if (!otpEnabled) {
             establishSession(email, request, session);
             return ResponseEntity.ok(Map.of(
                     "success", true,
                     "status", "LOGIN_SUCCESS",
-                    "message", "Development login successful",
+                    "message", "Login successful",
                     "role", "superadmin"));
         }
         
@@ -144,6 +183,11 @@ public class SuperAdminAuthController {
         }
         
         
+        String throttleKey = "superadmin-otp:" + email;
+        if (throttle.isBlocked(throttleKey)) {
+            return tooManyAttempts();
+        }
+
         SuperAdminOtp storedOtp = otpStorage.get(email);
         
         if (storedOtp == null) {
@@ -161,7 +205,13 @@ public class SuperAdminAuthController {
             ));
         }
         
-        if (!storedOtp.otp.equals(otp)) {
+        // A wrong code burns the stored one. Superadmin access rests on this single factor,
+        // so a code that survives a failed guess is a code that can be walked.
+        if (!MessageDigest.isEqual(
+                storedOtp.otp.getBytes(StandardCharsets.UTF_8),
+                otp.getBytes(StandardCharsets.UTF_8))) {
+            otpStorage.remove(email);
+            throttle.recordFailure(throttleKey);
             return ResponseEntity.badRequest().body(Map.of(
                 "success", false,
                 "message", "Invalid verification code"
@@ -170,14 +220,22 @@ public class SuperAdminAuthController {
         
         
         otpStorage.remove(email);
-        
-        
+        throttle.clear(throttleKey);
+
+
         establishSession(email, request, session);
 
         return ResponseEntity.ok(Map.of(
             "success", true,
             "message", "Login successful",
             "role", "superadmin"
+        ));
+    }
+
+    private static ResponseEntity<?> tooManyAttempts() {
+        return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS).body(Map.of(
+            "success", false,
+            "message", AuthController.TOO_MANY_ATTEMPTS
         ));
     }
 

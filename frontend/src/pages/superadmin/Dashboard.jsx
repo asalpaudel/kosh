@@ -1,3 +1,4 @@
+import { API_BASE } from "../../lib/apiClient";
 import React, { useEffect, useState } from "react";
 import {
   PieChart,
@@ -13,7 +14,6 @@ import {
 } from "recharts";
 import { apiFetch } from "../../lib/apiClient";
 
-const API_BASE = "http://localhost:8080/api";
 const COLORS = ["#3B82F6", "#10B981", "#F59E0B"];
 
 /* ----------------------------- UI Primitives ----------------------------- */

@@ -1,7 +1,7 @@
+import { API_BASE } from "../../lib/apiClient";
 import React, { useState, useEffect } from 'react';
 import { SearchIcon } from '../../component/icons.jsx';
 
-const API_BASE = "http://localhost:8080/api";
 
 function AdminHistory() {
   const [logs, setLogs] = useState([]);

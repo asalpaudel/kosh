@@ -1,3 +1,9 @@
+/**
+ * Root of the backend API. Set VITE_API_URL at build time (no trailing slash) to point a
+ * deployed frontend at its backend; the localhost default only serves local development.
+ */
+export const API_BASE = `${import.meta.env.VITE_API_URL ?? "http://localhost:8080"}/api`;
+
 export async function apiFetch(input, init = {}) {
   const response = await fetch(input, {
     ...init,

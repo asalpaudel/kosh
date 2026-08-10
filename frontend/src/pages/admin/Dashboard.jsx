@@ -1,3 +1,4 @@
+import { API_BASE as apiBase } from "../../lib/apiClient";
 import React, { useState, useEffect, useMemo } from "react";
 import { Link } from "react-router-dom";
 import {
@@ -8,7 +9,6 @@ import {
 } from "../../component/icons.jsx";
 import AdminChart from "../../component/admin/AdminChart";
 
-const apiBase = "http://localhost:8080/api";
 
 function AdminDashboard() {
   const [transactions, setTransactions] = useState([]);

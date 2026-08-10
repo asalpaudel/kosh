@@ -1,3 +1,4 @@
+import { API_BASE } from "../../lib/apiClient";
 import React, { useState, useEffect } from 'react';
 import { SearchIcon, SettingsIcon } from '../icons';
 import { useNavigate } from 'react-router-dom';
@@ -11,7 +12,7 @@ function Header({ pageName }) {
   useEffect(() => {
     const fetchSessionUser = async () => {
       try {
-        const response = await fetch("http://localhost:8080/api/session", {
+        const response = await fetch(`${API_BASE}/session`, {
           method: "GET",
           credentials: "include",
         });

@@ -1,9 +1,9 @@
+import { API_BASE as apiBase } from "../../lib/apiClient";
 import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import FinancialChart from '../../component/user/FinancialChart';
 import PortfolioSummary from '../../component/user/PortfolioSummary';
 
-const apiBase = "http://localhost:8080/api";
 
 // Helper to parse amounts safely
 const parseAmount = (val) => {

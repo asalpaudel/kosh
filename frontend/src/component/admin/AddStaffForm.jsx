@@ -1,3 +1,4 @@
+import { API_BASE } from "../../lib/apiClient";
 import React, { useState, useEffect } from "react";
 import { UserPlusIcon } from "../icons";
 import { apiFetch } from "../../lib/apiClient";
@@ -5,7 +6,7 @@ import { apiFetch } from "../../lib/apiClient";
 function AddStaffForm({
   onClose,
   onStaffAdded,
-  apiBase = "http://localhost:8080/api",
+  apiBase = API_BASE,
 }) {
   const [formData, setFormData] = useState({
     name: "",

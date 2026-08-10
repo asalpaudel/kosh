@@ -1,9 +1,9 @@
+import { API_BASE } from "../../lib/apiClient";
 import React, { useState, useEffect } from 'react';
 import { SearchIcon, SettingsIcon } from '../icons';
 import { useNavigate } from 'react-router-dom';
 import GlobalSearch from './GlobalSearch';
 
-const API_BASE = "http://localhost:8080/api";
 
 function Header({ pageName }) {
   const navigate = useNavigate();

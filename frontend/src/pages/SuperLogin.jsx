@@ -1,9 +1,11 @@
+import { API_BASE } from "../lib/apiClient";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Logo } from "../component/icons";
 
 export default function SuperLogin() {
     const [email, setEmail] = useState("");
+    const [password, setPassword] = useState("");
     const [otp, setOtp] = useState("");
     const [step, setStep] = useState("email"); // 'email' or 'otp'
     const [isLoading, setIsLoading] = useState(false);
@@ -16,18 +18,18 @@ export default function SuperLogin() {
         setErrorMessage("");
         setIsLoading(true);
 
-        if (!email.trim()) {
-            setErrorMessage("Please enter your email address.");
+        if (!email.trim() || !password) {
+            setErrorMessage("Please enter your email address and password.");
             setIsLoading(false);
             return;
         }
 
         try {
-            const response = await fetch("http://localhost:8080/api/superadmin-auth/login", {
+            const response = await fetch(`${API_BASE}/superadmin-auth/login`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 credentials: "include",
-                body: JSON.stringify({ email: email.trim() }),
+                body: JSON.stringify({ email: email.trim(), password }),
             });
 
             const data = await response.json();
@@ -64,7 +66,7 @@ export default function SuperLogin() {
         }
 
         try {
-            const response = await fetch("http://localhost:8080/api/superadmin-auth/verify-otp", {
+            const response = await fetch(`${API_BASE}/superadmin-auth/verify-otp`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 credentials: "include",
@@ -125,6 +127,21 @@ export default function SuperLogin() {
                                 />
                             </div>
 
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    Password
+                                </label>
+                                <input
+                                    type="password"
+                                    value={password}
+                                    onChange={(e) => setPassword(e.target.value)}
+                                    placeholder="Enter password"
+                                    autoComplete="current-password"
+                                    disabled={isLoading}
+                                    className="w-full px-4 py-3 rounded-xl bg-gray-50 border border-gray-200 text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-teal-500 focus:border-transparent outline-none transition duration-200 disabled:opacity-50 disabled:bg-gray-100"
+                                />
+                            </div>
+
                             {errorMessage && (
                                 <div className="rounded-lg p-3 text-sm bg-red-50 border border-red-100 text-red-600 flex items-center gap-2">
                                     <svg className="w-4 h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -145,10 +162,10 @@ export default function SuperLogin() {
                                             <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                                             <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
                                         </svg>
-                                        Sending code...
+                                        Signing in...
                                     </>
                                 ) : (
-                                    "Request Access"
+                                    "Sign In"
                                 )}
                             </button>
                         </form>

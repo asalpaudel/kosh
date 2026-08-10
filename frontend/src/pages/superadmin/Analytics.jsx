@@ -1,9 +1,9 @@
+import { API_BASE } from "../../lib/apiClient";
 import React, { useEffect, useState } from "react";
 import AnalyticsChart, {
   generateSummary,
 } from "../../component/superadmin/AnalyticsChart";
 
-const API_BASE = "http://localhost:8080/api";
 
 /* ----------------------------- UI Primitives ----------------------------- */
 

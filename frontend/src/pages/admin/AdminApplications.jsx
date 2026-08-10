@@ -1,3 +1,4 @@
+import { API_BASE as apiBase } from "../../lib/apiClient";
 import React, { useState, useEffect } from "react";
 import {
   DocumentTextIcon,
@@ -11,7 +12,6 @@ import {
 } from "../../component/icons.jsx";
 import ConfirmationModal from "../../component/ConfirmationModal.jsx";
 
-const apiBase = "http://localhost:8080/api";
 
 const STATUS_STYLES = {
   PENDING: "bg-amber-50 text-amber-700 border-amber-200",

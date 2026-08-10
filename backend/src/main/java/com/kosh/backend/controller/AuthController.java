@@ -1,5 +1,7 @@
 package com.kosh.backend.controller;
 
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
 import java.time.LocalDateTime;
 
 import com.kosh.backend.service.OneTimeCode;
@@ -8,6 +10,7 @@ import java.util.UUID;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -23,6 +26,7 @@ import com.kosh.backend.repository.ActivityLogRepository;
 import com.kosh.backend.repository.NetworkRepository;
 import com.kosh.backend.repository.UserRepository;
 import com.kosh.backend.service.EmailService;
+import com.kosh.backend.service.LoginThrottleService;
 
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
@@ -38,6 +42,7 @@ public class AuthController {
     private final ActivityLogRepository logRepo;
     private final PasswordEncoder passwordEncoder;
     private final EmailService emailService;
+    private final LoginThrottleService throttle;
 
     @Value("${server.servlet.session.cookie.secure:false}")
     private boolean secureCookies;
@@ -45,12 +50,22 @@ public class AuthController {
     @Value("${app.auth.two-factor-enabled:true}")
     private boolean twoFactorEnabled;
 
-    public AuthController(UserRepository repo, NetworkRepository networkRepo, ActivityLogRepository logRepo, PasswordEncoder passwordEncoder, EmailService emailService) {
+    public AuthController(UserRepository repo, NetworkRepository networkRepo, ActivityLogRepository logRepo,
+            PasswordEncoder passwordEncoder, EmailService emailService, LoginThrottleService throttle) {
         this.repo = repo;
         this.networkRepo = networkRepo;
         this.logRepo = logRepo;
         this.passwordEncoder = passwordEncoder;
         this.emailService = emailService;
+        this.throttle = throttle;
+    }
+
+    static final String TOO_MANY_ATTEMPTS =
+            "Too many failed attempts. Try again in " + LoginThrottleService.BLOCK_DURATION.toMinutes() + " minutes.";
+
+    private static ResponseEntity<?> tooManyAttempts() {
+        return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
+                .body(Map.of("success", false, "message", TOO_MANY_ATTEMPTS));
     }
 
     public static class LoginRequest {
@@ -83,15 +98,27 @@ public class AuthController {
 
     @PostMapping("/login")
     public ResponseEntity<?> login(@RequestBody LoginRequest req, HttpServletRequest request, HttpSession session) {
-        User user = repo.findByEmail(req.email);
+        // Accounts are stored with a lowercased email, so the lookup has to match that form.
+        String email = normalizeEmail(req.email);
+        String throttleKey = "login:" + email;
+
+        if (throttle.isBlocked(throttleKey)) {
+            return tooManyAttempts();
+        }
+
+        User user = repo.findByEmail(email);
 
         if (user == null) {
+            throttle.recordFailure(throttleKey);
             return ResponseEntity.ok(new LoginResponse(false, "Email not found", null, -1, null, null, null, null));
         }
 
         if (!passwordEncoder.matches(req.password, user.getPassword())) {
+            throttle.recordFailure(throttleKey);
             return ResponseEntity.ok(new LoginResponse(false, "Incorrect password", null, -1, null, null, null, null));
         }
+
+        throttle.clear(throttleKey);
 
         // Check Account Status
         if (user.getStatus() == null || !user.getStatus().equals("Active")) {
@@ -160,20 +187,40 @@ public class AuthController {
         String otp = (String) payload.get("otp");
         boolean trustDevice = (Boolean) payload.getOrDefault("trustDevice", false);
 
+        String twoFactorKey = "2fa:" + userId;
+        if (throttle.isBlocked(twoFactorKey)) {
+            return tooManyAttempts();
+        }
+
         User user = repo.findById(userId.intValue()).orElse(null);
 
         if (user == null) {
+            throttle.recordFailure(twoFactorKey);
             return ResponseEntity.badRequest().body(Map.of("success", false, "message", "User not found"));
         }
 
-        // Validate OTP
-        if (user.getTwoFactorCode() == null || 
-            !user.getTwoFactorCode().equals(otp) || 
-            user.getTwoFactorExpiry().isBefore(LocalDateTime.now())) {
+        // Validate OTP. A wrong or expired code burns the stored one: without that, the
+        // six-digit space can be walked in a few thousand requests before it expires.
+        boolean valid = user.getTwoFactorCode() != null
+                && user.getTwoFactorExpiry() != null
+                && user.getTwoFactorExpiry().isAfter(LocalDateTime.now())
+                && otp != null
+                && MessageDigest.isEqual(
+                        user.getTwoFactorCode().getBytes(StandardCharsets.UTF_8),
+                        otp.getBytes(StandardCharsets.UTF_8));
+
+        if (!valid) {
+            throttle.recordFailure(twoFactorKey);
+            if (user.getTwoFactorCode() != null) {
+                user.setTwoFactorCode(null);
+                user.setTwoFactorExpiry(null);
+                repo.save(user);
+            }
             return ResponseEntity.ok(Map.of("success", false, "message", "Invalid or expired code"));
         }
 
         // Clear OTP (Success)
+        throttle.clear(twoFactorKey);
         user.setTwoFactorCode(null);
         user.setTwoFactorExpiry(null);
 
@@ -229,6 +276,10 @@ public class AuthController {
         ));
     }
 
+    private static String normalizeEmail(String email) {
+        return email == null ? null : email.trim().toLowerCase();
+    }
+
     @PostMapping("/logout")
     public Map<String, String> logout(HttpSession session) {
         try {
@@ -251,7 +302,7 @@ public class AuthController {
 
     @PostMapping("/forgot-password")
     public Map<String, Object> forgotPassword(@RequestBody Map<String, String> payload) {
-        String email = payload.get("email");
+        String email = normalizeEmail(payload.get("email"));
         User user = repo.findByEmail(email);
 
         if (user == null) return Map.of("success", false, "message", "Email not found");
@@ -269,14 +320,27 @@ public class AuthController {
 
     @PostMapping("/reset-password")
     public Map<String, Object> resetPassword(@RequestBody Map<String, String> payload) {
-        String email = payload.get("email");
+        String email = normalizeEmail(payload.get("email"));
         String otp = payload.get("otp");
         String newPassword = payload.get("newPassword");
+        String throttleKey = "reset:" + email;
 
-        if (!emailService.validateOtp(email, otp)) return Map.of("success", false, "message", "Invalid or expired OTP");
+        if (throttle.isBlocked(throttleKey)) {
+            return Map.of("success", false, "message", TOO_MANY_ATTEMPTS);
+        }
+
+        if (newPassword == null || newPassword.length() < 8) {
+            return Map.of("success", false, "message", "Password must be at least 8 characters");
+        }
+
+        if (!emailService.validateOtp(email, otp)) {
+            throttle.recordFailure(throttleKey);
+            return Map.of("success", false, "message", "Invalid or expired OTP");
+        }
 
         User user = repo.findByEmail(email);
         if (user != null) {
+            throttle.clear(throttleKey);
             user.setPassword(passwordEncoder.encode(newPassword));
             repo.save(user);
             emailService.clearOtp(email);

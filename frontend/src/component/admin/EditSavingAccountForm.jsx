@@ -1,7 +1,7 @@
+import { API_BASE as apiBase } from "../../lib/apiClient";
 import React, { useState } from "react";
 import { apiFetch } from "../../lib/apiClient";
 
-const apiBase = "http://localhost:8080/api";
 
 export default function EditSavingAccountForm({ initialData, onClose, onUpdated }) {
   const [formData, setFormData] = useState({

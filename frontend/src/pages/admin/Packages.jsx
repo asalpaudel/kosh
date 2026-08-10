@@ -1,3 +1,4 @@
+import { API_BASE as apiBase } from "../../lib/apiClient";
 import React, { useState, useEffect } from "react";
 import { useLocation } from "react-router-dom"; // Added useLocation
 import {
@@ -20,7 +21,6 @@ import EditSavingAccountForm from "../../component/admin/EditSavingAccountForm.j
 import EditLoanPackageForm from "../../component/admin/EditLoanPackageForm.jsx";
 import ConfirmationModal from "../../component/ConfirmationModal.jsx";
 
-const apiBase = "http://localhost:8080/api";
 
 // ... (Keep PackageActions and ViewPackageModal components as they are) ...
 const PackageActions = ({ pkg, onView, onEdit, onDelete }) => (

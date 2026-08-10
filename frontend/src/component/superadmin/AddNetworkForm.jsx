@@ -1,3 +1,4 @@
+import { API_BASE } from "../../lib/apiClient";
 import React, { useState } from "react";
 import { apiFetch } from "../../lib/apiClient";
 
@@ -31,7 +32,7 @@ const PACKAGES = {
 export default function AddNetworkForm({
   onClose,
   onNetworkAdded,
-  apiBase = "http://localhost:8080/api",
+  apiBase = API_BASE,
 }) {
   const [formData, setFormData] = useState({
     registeredId: "",

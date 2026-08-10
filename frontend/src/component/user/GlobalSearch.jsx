@@ -1,3 +1,4 @@
+import { API_BASE } from "../../lib/apiClient";
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
@@ -10,7 +11,6 @@ import {
   DocumentTextIcon
 } from '../icons';
 
-const API_BASE = "http://localhost:8080/api";
 
 export default function GlobalSearch({ isOpen, onClose }) {
   const [query, setQuery] = useState("");

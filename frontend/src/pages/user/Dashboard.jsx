@@ -1,3 +1,4 @@
+import { API_BASE as apiBase } from "../../lib/apiClient";
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import AccountSummary from '../../component/user/AccountSummary';
@@ -5,7 +6,6 @@ import FinancialChart from '../../component/user/FinancialChart';
 import TransactionsList from '../../component/user/TransactionsList';
 import LoanAd from '../../component/user/LoanAd';
 
-const apiBase = "http://localhost:8080/api";
 
 function Dashboard() {
   const navigate = useNavigate();

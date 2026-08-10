@@ -1,3 +1,4 @@
+import { API_BASE as apiBase } from "../../lib/apiClient";
 import React, { useState, useEffect, useRef } from "react";
 import {
   BanknotesIcon,
@@ -8,7 +9,6 @@ import {
 } from "../icons";
 import ConfirmationModal from "../ConfirmationModal";
 
-const apiBase = "http://localhost:8080/api";
 
 // --- 📅 Helper: Custom Calendar Component ---
 const CustomCalendar = ({ selectedDate, onChange, onClose }) => {

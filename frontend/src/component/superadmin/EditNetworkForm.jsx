@@ -1,3 +1,4 @@
+import { API_BASE } from "../../lib/apiClient";
 import React, { useState } from "react";
 import { apiFetch } from "../../lib/apiClient";
 
@@ -5,7 +6,7 @@ export default function EditNetworkForm({
   initialData, 
   onClose, 
   onNetworkUpdated, 
-  apiBase = "http://localhost:8080/api" 
+  apiBase = API_BASE 
 }) {
   const [formData, setFormData] = useState({
     id: initialData.id,

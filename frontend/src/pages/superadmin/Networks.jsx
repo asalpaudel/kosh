@@ -1,3 +1,4 @@
+import { API_BASE } from "../../lib/apiClient";
 import React, { useState, useEffect } from "react";
 
 import {
@@ -21,7 +22,6 @@ import ConfirmationModal from "../../component/ConfirmationModal.jsx";
 import { apiFetch } from "../../lib/apiClient";
 
 // --- API BASE ---
-const API_BASE = "http://localhost:8080/api";
 
 /* ----------------------------- UI Primitives ----------------------------- */
 

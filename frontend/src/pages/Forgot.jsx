@@ -1,7 +1,7 @@
+import { API_BASE } from "../lib/apiClient";
 import React, { useState, useEffect } from "react";
 import { useNavigate, NavLink } from "react-router-dom";
 
-const API_BASE = "http://localhost:8080/api";
 
 export default function Forgot() {
   const navigate = useNavigate();

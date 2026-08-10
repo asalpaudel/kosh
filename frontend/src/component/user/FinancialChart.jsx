@@ -1,7 +1,7 @@
+import { API_BASE } from "../../lib/apiClient";
 import React, { useState, useEffect } from 'react';
 import ReactApexChart from 'react-apexcharts';
 
-const API_BASE = "http://localhost:8080/api";
 
 const parseAmount = (val) => {
   if (typeof val === 'number') return val;
