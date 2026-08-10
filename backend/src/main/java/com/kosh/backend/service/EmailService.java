@@ -1,8 +1,6 @@
 package com.kosh.backend.service;
 
 import java.math.BigDecimal;
-import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.Map;
@@ -14,6 +12,7 @@ import org.springframework.core.io.ByteArrayResource;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.stereotype.Service;
+import org.springframework.security.crypto.password.PasswordEncoder;
 
 import com.kosh.backend.model.Network;
 import com.kosh.backend.model.Transaction;
@@ -26,6 +25,9 @@ public class EmailService {
 
     @Autowired
     private JavaMailSender mailSender;
+
+    @Autowired
+    private PasswordEncoder passwordEncoder;
 
     @Value("${spring.mail.username:}")
     private String senderEmail;
@@ -120,7 +122,7 @@ public class EmailService {
 
     public String generateOtp(String email) {
         String otp = OneTimeCode.generate();
-        otpStorage.put(email, new PendingOtp(otp, LocalDateTime.now().plus(OTP_TTL)));
+        otpStorage.put(email, new PendingOtp(passwordEncoder.encode(otp), LocalDateTime.now().plus(OTP_TTL)));
         return otp;
     }
 
@@ -132,16 +134,14 @@ public class EmailService {
         PendingOtp pending = otpStorage.remove(email);
         if (pending == null || otp == null) return false;
         if (LocalDateTime.now().isAfter(pending.expiresAt())) return false;
-        return MessageDigest.isEqual(
-                pending.code().getBytes(StandardCharsets.UTF_8),
-                otp.getBytes(StandardCharsets.UTF_8));
+        return passwordEncoder.matches(otp, pending.verifier());
     }
 
     public void clearOtp(String email) {
         otpStorage.remove(email);
     }
 
-    private record PendingOtp(String code, LocalDateTime expiresAt) {
+    private record PendingOtp(String verifier, LocalDateTime expiresAt) {
     }
 
     /**

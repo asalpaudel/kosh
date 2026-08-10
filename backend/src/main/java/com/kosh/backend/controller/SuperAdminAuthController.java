@@ -1,7 +1,5 @@
 package com.kosh.backend.controller;
 
-import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
 import java.time.LocalDateTime;
 
 import com.kosh.backend.service.OneTimeCode;
@@ -49,11 +47,11 @@ public class SuperAdminAuthController {
 
     // OTP Storage: email -> SuperAdminOtp
     private static class SuperAdminOtp {
-        String otp;
+        String otpVerifier;
         LocalDateTime expiry;
 
-        SuperAdminOtp(String otp, LocalDateTime expiry) {
-            this.otp = otp;
+        SuperAdminOtp(String otpVerifier, LocalDateTime expiry) {
+            this.otpVerifier = otpVerifier;
             this.expiry = expiry;
         }
     }
@@ -133,7 +131,8 @@ public class SuperAdminAuthController {
         LocalDateTime expiry = LocalDateTime.now().plusMinutes(5);
         
         // Store OTP
-        otpStorage.put(email, new SuperAdminOtp(otp, expiry));
+        otpStorage.put(email, new SuperAdminOtp(passwordEncoder.encode(otp), expiry));
+        session.setAttribute("pendingSuperadminEmail", email);
         
         
         try {
@@ -175,10 +174,13 @@ public class SuperAdminAuthController {
         email = email.trim().toLowerCase();
         
         
-        if (!authorizedEmail.equalsIgnoreCase(email)) {
+        Object pendingEmail = session.getAttribute("pendingSuperadminEmail");
+        if (!(pendingEmail instanceof String challengeEmail)
+                || !challengeEmail.equalsIgnoreCase(email)
+                || !authorizedEmail.equalsIgnoreCase(email)) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of(
                 "success", false,
-                "message", "Unauthorized email address"
+                "message", "Login challenge is missing or expired"
             ));
         }
         
@@ -207,9 +209,7 @@ public class SuperAdminAuthController {
         
         // A wrong code burns the stored one. Superadmin access rests on this single factor,
         // so a code that survives a failed guess is a code that can be walked.
-        if (!MessageDigest.isEqual(
-                storedOtp.otp.getBytes(StandardCharsets.UTF_8),
-                otp.getBytes(StandardCharsets.UTF_8))) {
+        if (!passwordEncoder.matches(otp, storedOtp.otpVerifier)) {
             otpStorage.remove(email);
             throttle.recordFailure(throttleKey);
             return ResponseEntity.badRequest().body(Map.of(
@@ -220,6 +220,7 @@ public class SuperAdminAuthController {
         
         
         otpStorage.remove(email);
+        session.removeAttribute("pendingSuperadminEmail");
         throttle.clear(throttleKey);
 
 
@@ -241,6 +242,7 @@ public class SuperAdminAuthController {
 
     private void establishSession(String email, HttpServletRequest request, HttpSession session) {
         request.changeSessionId();
+        session.removeAttribute("pendingSuperadminEmail");
         session.setAttribute("superadminEmail", email);
         session.setAttribute("superadminRole", "superadmin");
         session.setAttribute("superadminLoggedIn", true);
@@ -291,12 +293,7 @@ public class SuperAdminAuthController {
             }
         } catch (Exception e) {}
 
-        session.removeAttribute("superadminEmail");
-        session.removeAttribute("superadminRole");
-        session.removeAttribute("superadminLoggedIn");
-        session.removeAttribute("userRole");
-        session.removeAttribute("userName");
-        session.removeAttribute("userEmail");
+        session.invalidate();
         
         return ResponseEntity.ok(Map.of(
             "success", true,

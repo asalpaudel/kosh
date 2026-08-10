@@ -6,6 +6,8 @@ import java.util.HashSet;
 import java.util.Set;
 
 import org.junit.jupiter.api.Test;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.test.util.ReflectionTestUtils;
 
 class OtpTest {
 
@@ -31,6 +33,7 @@ class OtpTest {
     @Test
     void storedOtpIsSingleUse() {
         EmailService service = new EmailService();
+        ReflectionTestUtils.setField(service, "passwordEncoder", new BCryptPasswordEncoder(4));
         String otp = service.generateOtp("member@example.test");
 
         assertThat(service.validateOtp("member@example.test", otp)).isTrue();
@@ -40,6 +43,7 @@ class OtpTest {
     @Test
     void wrongOrUnknownOtpIsRejected() {
         EmailService service = new EmailService();
+        ReflectionTestUtils.setField(service, "passwordEncoder", new BCryptPasswordEncoder(4));
         service.generateOtp("member@example.test");
 
         assertThat(service.validateOtp("member@example.test", "000000x")).isFalse();

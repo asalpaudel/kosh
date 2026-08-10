@@ -1,12 +1,9 @@
 package com.kosh.backend.controller;
 
-import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
 import java.time.LocalDateTime;
 
 import com.kosh.backend.service.OneTimeCode;
 import java.util.Map;
-import java.util.UUID;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
@@ -20,13 +17,13 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.kosh.backend.model.ActivityLog;
-import com.kosh.backend.model.Network;
 import com.kosh.backend.model.User;
 import com.kosh.backend.repository.ActivityLogRepository;
 import com.kosh.backend.repository.NetworkRepository;
 import com.kosh.backend.repository.UserRepository;
 import com.kosh.backend.service.EmailService;
 import com.kosh.backend.service.LoginThrottleService;
+import com.kosh.backend.service.SecureToken;
 
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
@@ -68,6 +65,13 @@ public class AuthController {
                 .body(Map.of("success", false, "message", TOO_MANY_ATTEMPTS));
     }
 
+    private static final String INVALID_CREDENTIALS = "Invalid email or password";
+    private static final String RESET_REQUESTED =
+            "If that account exists, a password reset code has been sent";
+    private static final String PENDING_2FA_USER_ID = "pending2faUserId";
+    private static final String DUMMY_PASSWORD_HASH =
+            "$2a$10$7EqJtq98hPqEX7fNZaFWoO5x5y5YI3Q3rQyV7QEqwSEY8VYq3M.4e";
+
     public static class LoginRequest {
         public String email;
         public String password;
@@ -106,16 +110,19 @@ public class AuthController {
             return tooManyAttempts();
         }
 
-        User user = repo.findByEmail(email);
+        User user = email == null || email.isBlank() ? null : repo.findByEmail(email);
 
-        if (user == null) {
+        if (user == null || req.password == null) {
+            if (req.password != null) passwordEncoder.matches(req.password, DUMMY_PASSWORD_HASH);
             throttle.recordFailure(throttleKey);
-            return ResponseEntity.ok(new LoginResponse(false, "Email not found", null, -1, null, null, null, null));
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(new LoginResponse(false, INVALID_CREDENTIALS, null, -1, null, null, null, null));
         }
 
         if (!passwordEncoder.matches(req.password, user.getPassword())) {
             throttle.recordFailure(throttleKey);
-            return ResponseEntity.ok(new LoginResponse(false, "Incorrect password", null, -1, null, null, null, null));
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(new LoginResponse(false, INVALID_CREDENTIALS, null, -1, null, null, null, null));
         }
 
         throttle.clear(throttleKey);
@@ -138,7 +145,8 @@ public class AuthController {
         Cookie[] cookies = request.getCookies();
         if (cookies != null && user.getTrustedDeviceToken() != null) {
             for (Cookie c : cookies) {
-                if ("trusted_device".equals(c.getName()) && c.getValue().equals(user.getTrustedDeviceToken())) {
+                if ("trusted_device".equals(c.getName())
+                        && SecureToken.matches(c.getValue(), user.getTrustedDeviceToken())) {
                     // Check if token is still valid (not expired)
                     if (user.getTrustedDeviceExpiry() != null && user.getTrustedDeviceExpiry().isAfter(LocalDateTime.now())) {
                         isDeviceTrusted = true;
@@ -155,9 +163,10 @@ public class AuthController {
         // Scenario 2: Unknown Device -> Trigger 2FA
         else {
             String otp = OneTimeCode.generate();
-            user.setTwoFactorCode(otp);
+            user.setTwoFactorCode(passwordEncoder.encode(otp));
             user.setTwoFactorExpiry(LocalDateTime.now().plusMinutes(10));
             repo.save(user);
+            session.setAttribute(PENDING_2FA_USER_ID, user.getId());
 
             // Send Email
             String subject = "Your Login Verification Code";
@@ -183,9 +192,13 @@ public class AuthController {
                                        HttpServletRequest request,
                                        HttpSession session) {
         
-        Long userId = ((Number) payload.get("userId")).longValue();
+        Object pendingUserId = session.getAttribute(PENDING_2FA_USER_ID);
+        if (!(pendingUserId instanceof Long userId)) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(Map.of("success", false, "message", "Login challenge is missing or expired"));
+        }
         String otp = (String) payload.get("otp");
-        boolean trustDevice = (Boolean) payload.getOrDefault("trustDevice", false);
+        boolean trustDevice = Boolean.TRUE.equals(payload.get("trustDevice"));
 
         String twoFactorKey = "2fa:" + userId;
         if (throttle.isBlocked(twoFactorKey)) {
@@ -205,9 +218,7 @@ public class AuthController {
                 && user.getTwoFactorExpiry() != null
                 && user.getTwoFactorExpiry().isAfter(LocalDateTime.now())
                 && otp != null
-                && MessageDigest.isEqual(
-                        user.getTwoFactorCode().getBytes(StandardCharsets.UTF_8),
-                        otp.getBytes(StandardCharsets.UTF_8));
+                && passwordEncoder.matches(otp, user.getTwoFactorCode());
 
         if (!valid) {
             throttle.recordFailure(twoFactorKey);
@@ -223,11 +234,12 @@ public class AuthController {
         throttle.clear(twoFactorKey);
         user.setTwoFactorCode(null);
         user.setTwoFactorExpiry(null);
+        session.removeAttribute(PENDING_2FA_USER_ID);
 
         // Handle "Trust This Device" Logic
         if (trustDevice) {
-            String token = UUID.randomUUID().toString();
-            user.setTrustedDeviceToken(token);
+            String token = SecureToken.generate();
+            user.setTrustedDeviceToken(SecureToken.verifier(token));
             user.setTrustedDeviceExpiry(LocalDateTime.now().plusDays(30)); // 30 Days Validity
             
             // Set Cookie
@@ -247,13 +259,14 @@ public class AuthController {
 
     // Helper method to finalize the session
     private ResponseEntity<?> performLogin(User user, HttpServletRequest request, HttpSession session) {
-        Long networkId = null;
-        if (!"superadmin".equals(user.getRole())) {
-            Network net = networkRepo.findByName(user.getSahakari());
-            if (net != null) networkId = net.getId();
+        Long networkId = "superadmin".equals(user.getRole()) ? null : user.getSahakariId();
+        if (!"superadmin".equals(user.getRole()) && networkId == null) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(Map.of("success", false, "message", "Account has no cooperative assignment"));
         }
 
         request.changeSessionId();
+        session.removeAttribute(PENDING_2FA_USER_ID);
         session.setAttribute("userEmail", user.getEmail());
         session.setAttribute("userId", user.getId());
         session.setAttribute("sahakariId", networkId);
@@ -281,7 +294,7 @@ public class AuthController {
     }
 
     @PostMapping("/logout")
-    public Map<String, String> logout(HttpSession session) {
+    public Map<String, String> logout(HttpSession session, HttpServletResponse response) {
         try {
             String userRole = (String) session.getAttribute("userRole");
             if (userRole != null && ("admin".equals(userRole) || "superadmin".equals(userRole))) {
@@ -296,6 +309,16 @@ public class AuthController {
             }
         } catch (Exception e) {}
 
+        Object userId = session.getAttribute("userId");
+        if (userId instanceof Long id) {
+            repo.findById(id.intValue()).ifPresent(user -> {
+                user.setTrustedDeviceToken(null);
+                user.setTrustedDeviceExpiry(null);
+                repo.save(user);
+            });
+        }
+        response.addHeader(HttpHeaders.SET_COOKIE, ResponseCookie.from("trusted_device", "")
+                .maxAge(0).path("/").httpOnly(true).secure(secureCookies).sameSite("Lax").build().toString());
         session.invalidate();
         return Map.of("success", "true", "message", "Logged out successfully");
     }
@@ -303,18 +326,27 @@ public class AuthController {
     @PostMapping("/forgot-password")
     public Map<String, Object> forgotPassword(@RequestBody Map<String, String> payload) {
         String email = normalizeEmail(payload.get("email"));
+        if (email == null || email.isBlank()) {
+            return Map.of("success", true, "message", RESET_REQUESTED);
+        }
+        String throttleKey = "forgot:" + email;
+        if (throttle.isBlocked(throttleKey)) {
+            return Map.of("success", true, "message", RESET_REQUESTED);
+        }
+        throttle.recordFailure(throttleKey);
         User user = repo.findByEmail(email);
 
-        if (user == null) return Map.of("success", false, "message", "Email not found");
+        if (user == null) return Map.of("success", true, "message", RESET_REQUESTED);
 
         Network network = (user.getSahakariId() != null) ? networkRepo.findById(user.getSahakariId()).orElse(null) : null;
 
         try {
             String otp = emailService.generateOtp(email);
             emailService.sendOtpEmail(email, user.getName(), otp, network);
-            return Map.of("success", true, "message", "OTP sent to your email");
+            return Map.of("success", true, "message", RESET_REQUESTED);
         } catch (Exception e) {
-            return Map.of("success", false, "message", "Failed to send email");
+            emailService.clearOtp(email);
+            return Map.of("success", true, "message", RESET_REQUESTED);
         }
     }
 
@@ -324,6 +356,10 @@ public class AuthController {
         String otp = payload.get("otp");
         String newPassword = payload.get("newPassword");
         String throttleKey = "reset:" + email;
+
+        if (email == null || email.isBlank() || otp == null) {
+            return Map.of("success", false, "message", "Invalid or expired OTP");
+        }
 
         if (throttle.isBlocked(throttleKey)) {
             return Map.of("success", false, "message", TOO_MANY_ATTEMPTS);
@@ -342,6 +378,8 @@ public class AuthController {
         if (user != null) {
             throttle.clear(throttleKey);
             user.setPassword(passwordEncoder.encode(newPassword));
+            user.setTrustedDeviceToken(null);
+            user.setTrustedDeviceExpiry(null);
             repo.save(user);
             emailService.clearOtp(email);
             return Map.of("success", true, "message", "Password changed successfully");

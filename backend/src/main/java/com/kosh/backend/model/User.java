@@ -52,10 +52,12 @@ public class User {
     
     @JsonIgnore
     private String twoFactorCode; // Stores the 6-digit OTP
+    @JsonIgnore
     private LocalDateTime twoFactorExpiry; 
     
     @JsonIgnore
     private String trustedDeviceToken; 
+    @JsonIgnore
     private LocalDateTime trustedDeviceExpiry; 
 
     // ⭐ Photo as BLOB

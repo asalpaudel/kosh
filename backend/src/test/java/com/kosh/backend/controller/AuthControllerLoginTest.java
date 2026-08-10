@@ -5,6 +5,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.never;
 
 import java.time.LocalDateTime;
 import java.util.Map;
@@ -65,9 +66,10 @@ class AuthControllerLoginTest {
     @Test
     void aWrongTwoFactorCodeBurnsTheStoredCode() {
         User user = activeMember();
-        user.setTwoFactorCode("123456");
+        user.setTwoFactorCode("otp-hash");
         user.setTwoFactorExpiry(LocalDateTime.now().plusMinutes(10));
         when(userRepository.findById(7)).thenReturn(Optional.of(user));
+        when(passwordEncoder.matches("000000", "otp-hash")).thenReturn(false);
 
         assertThat(success(submitOtp(user.getId(), "000000"))).isFalse();
         assertThat(user.getTwoFactorCode()).isNull();
@@ -78,12 +80,58 @@ class AuthControllerLoginTest {
         verify(userRepository, times(1)).save(any(User.class));
     }
 
+    @Test
+    void unknownEmailAndWrongPasswordHaveTheSameResponse() {
+        ReflectionTestUtils.setField(controller, "twoFactorEnabled", false);
+        User user = activeMember();
+        when(userRepository.findByEmail(any())).thenAnswer(invocation ->
+                "known@example.test".equals(invocation.getArgument(0)) ? user : null);
+        when(passwordEncoder.matches(any(), any())).thenReturn(false);
+
+        var missingSession = new MockHttpSession();
+        var missing = controller.login(loginRequest("missing@example.test", "wrong"),
+                requestWithSession(missingSession), missingSession);
+        var wrongSession = new MockHttpSession();
+        var wrong = controller.login(loginRequest("known@example.test", "wrong"),
+                requestWithSession(wrongSession), wrongSession);
+
+        assertThat(((AuthController.LoginResponse) missing.getBody()).message)
+                .isEqualTo(((AuthController.LoginResponse) wrong.getBody()).message);
+        assertThat(missing.getStatusCode()).isEqualTo(wrong.getStatusCode());
+    }
+
+    @Test
+    void twoFactorVerificationRequiresTheServerSideLoginChallenge() {
+        var response = controller.verify2FA(Map.of("userId", 7L, "otp", "123456"),
+                new MockHttpServletResponse(), new MockHttpServletRequest(), new MockHttpSession());
+
+        assertThat(response.getStatusCode().value()).isEqualTo(401);
+        verify(userRepository, never()).findById(any());
+    }
+
+    @Test
+    void loginStoresOnlyAHashOfTheTwoFactorCode() {
+        ReflectionTestUtils.setField(controller, "twoFactorEnabled", true);
+        User user = activeMember();
+        when(userRepository.findByEmail(user.getEmail())).thenReturn(user);
+        when(passwordEncoder.matches("secret", "hashed")).thenReturn(true);
+        when(passwordEncoder.encode(any())).thenReturn("otp-verifier");
+        MockHttpSession session = new MockHttpSession();
+
+        controller.login(loginRequest(user.getEmail(), "secret"), requestWithSession(session), session);
+
+        assertThat(user.getTwoFactorCode()).isEqualTo("otp-verifier");
+        assertThat(session.getAttribute("pending2faUserId")).isEqualTo(user.getId());
+    }
+
     private Object submitOtp(Long userId, String otp) {
+        MockHttpSession session = new MockHttpSession();
+        session.setAttribute("pending2faUserId", userId);
         return controller.verify2FA(
                 Map.of("userId", userId, "otp", otp),
                 new MockHttpServletResponse(),
                 new MockHttpServletRequest(),
-                new MockHttpSession()).getBody();
+                session).getBody();
     }
 
     @SuppressWarnings("unchecked")
@@ -98,6 +146,12 @@ class AuthControllerLoginTest {
         return request;
     }
 
+    private MockHttpServletRequest requestWithSession(MockHttpSession session) {
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        request.setSession(session);
+        return request;
+    }
+
     private User activeMember() {
         User user = new User();
         user.setId(7L);
@@ -106,6 +160,7 @@ class AuthControllerLoginTest {
         user.setRole("member");
         user.setStatus("Active");
         user.setSahakari("Kosh Cooperative");
+        user.setSahakariId(3L);
         user.setPassword("hashed");
         return user;
     }

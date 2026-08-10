@@ -6,7 +6,6 @@ export default function Login() {
   const [formData, setFormData] = useState({ email: "", password: "" });
   const [otpData, setOtpData] = useState({ otp: "", trustDevice: false });
   const [step, setStep] = useState("credentials"); // 'credentials' or '2fa'
-  const [tempUserId, setTempUserId] = useState(null);
   const [errorMessage, setErrorMessage] = useState("");
   const [isPending, setIsPending] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -56,7 +55,6 @@ export default function Login() {
       const data = await response.json();
 
       if (data.status === "2FA_REQUIRED") {
-        setTempUserId(data.userId);
         setStep("2fa");
         setErrorMessage(""); 
         setIsLoading(false);
@@ -90,7 +88,6 @@ export default function Login() {
         headers: { "Content-Type": "application/json" },
         credentials: "include",
         body: JSON.stringify({
-          userId: tempUserId,
           otp: otpData.otp,
           trustDevice: otpData.trustDevice
         }),
