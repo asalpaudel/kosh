@@ -232,13 +232,15 @@ public class ApplicationController {
             User admin = userRepo.findById(adminId.intValue())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Admin not found"));
 
-            FixedDepositApplication app = fdAppRepo.findById(id)
+            FixedDepositApplication app = fdAppRepo.findByIdForReview(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Application not found"));
 
             if (access.isForeign(app.getNetwork(), session)) return forbidden();
 
-            String statusStr = request.get("status").toString();
-            ApplicationStatus status = ApplicationStatus.valueOf(statusStr);
+            if (app.getStatus() != ApplicationStatus.PENDING) {
+                return rejected(HttpStatus.CONFLICT, Map.of("error", "Application has already been reviewed"));
+            }
+            ApplicationStatus status = reviewDecision(request.get("status"));
             String notes = request.containsKey("reviewNotes") ? request.get("reviewNotes").toString() : null;
 
             if (status == ApplicationStatus.APPROVED) {
@@ -249,6 +251,13 @@ public class ApplicationController {
                 if (request.containsKey("duration")) {
                     Integer newDuration = Integer.valueOf(request.get("duration").toString());
                     app.setDepositTerm(newDuration);
+                }
+
+                if (app.getDepositAmount() == null || app.getDepositAmount().signum() <= 0
+                        || app.getDepositAmount().compareTo(app.getFixedDeposit().getMinAmount()) < 0
+                        || app.getDepositTerm() == null
+                        || app.getDepositTerm() < app.getFixedDeposit().getMinDuration()) {
+                    return rejected(HttpStatus.BAD_REQUEST, Map.of("error", "Approved fixed-deposit terms are invalid"));
                 }
 
                 // ⭐ UPDATED: Re-validate User Balance (since amount might have increased)
@@ -337,9 +346,10 @@ public class ApplicationController {
             app.setReviewNotes(notes);
 
             return ResponseEntity.ok(fdAppRepo.save(app));
+        } catch (IllegalArgumentException e) {
+            return rejected(HttpStatus.BAD_REQUEST, Map.of("error", "Invalid review decision or terms"));
         } catch (Exception e) {
-            e.printStackTrace();
-            return rejected(HttpStatus.INTERNAL_SERVER_ERROR, e.getMessage());
+            return rejected(HttpStatus.INTERNAL_SERVER_ERROR, Map.of("error", "Unable to review application"));
         }
     }
 
@@ -446,13 +456,15 @@ public class ApplicationController {
             User admin = userRepo.findById(adminId.intValue())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Admin not found"));
 
-            SavingAccountApplication app = saAppRepo.findById(id)
+            SavingAccountApplication app = saAppRepo.findByIdForReview(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Application not found"));
 
             if (access.isForeign(app.getNetwork(), session)) return forbidden();
 
-            String statusStr = request.get("status").toString();
-            ApplicationStatus status = ApplicationStatus.valueOf(statusStr);
+            if (app.getStatus() != ApplicationStatus.PENDING) {
+                return rejected(HttpStatus.CONFLICT, Map.of("error", "Application has already been reviewed"));
+            }
+            ApplicationStatus status = reviewDecision(request.get("status"));
             String notes = request.containsKey("reviewNotes") ? request.get("reviewNotes").toString() : null;
 
             if (status == ApplicationStatus.APPROVED) {
@@ -463,6 +475,10 @@ public class ApplicationController {
 
                 User user = app.getUser();
                 BigDecimal amount = app.getInitialDeposit();
+                if (amount == null || amount.signum() <= 0
+                        || amount.compareTo(app.getSavingAccount().getMinBalance()) < 0) {
+                    return rejected(HttpStatus.BAD_REQUEST, Map.of("error", "Approved savings amount is invalid"));
+                }
 
                 // CREDIT: Initial Deposit added to user account 
                 Transaction tx = new Transaction();
@@ -504,9 +520,10 @@ public class ApplicationController {
             app.setReviewNotes(notes);
 
             return ResponseEntity.ok(saAppRepo.save(app));
+        } catch (IllegalArgumentException e) {
+            return rejected(HttpStatus.BAD_REQUEST, Map.of("error", "Invalid review decision or terms"));
         } catch (Exception e) {
-            e.printStackTrace();
-            return rejected(HttpStatus.INTERNAL_SERVER_ERROR, e.getMessage());
+            return rejected(HttpStatus.INTERNAL_SERVER_ERROR, Map.of("error", "Unable to review application"));
         }
     }
 
@@ -597,13 +614,15 @@ public class ApplicationController {
             User admin = userRepo.findById(adminId.intValue())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Admin not found"));
 
-            LoanApplication application = loanAppRepo.findById(id)
+            LoanApplication application = loanAppRepo.findByIdForReview(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Application not found"));
 
             if (access.isForeign(application.getNetwork(), session)) return forbidden();
 
-            String statusStr = request.get("status").toString();
-            ApplicationStatus status = ApplicationStatus.valueOf(statusStr);
+            if (application.getStatus() != ApplicationStatus.PENDING) {
+                return rejected(HttpStatus.CONFLICT, Map.of("error", "Application has already been reviewed"));
+            }
+            ApplicationStatus status = reviewDecision(request.get("status"));
             String notes = request.containsKey("reviewNotes") ? request.get("reviewNotes").toString() : null;
 
             if (status == ApplicationStatus.APPROVED) {
@@ -612,11 +631,16 @@ public class ApplicationController {
                 BigDecimal approvedAmt = request.containsKey("approvedAmount")
                     ? Money.of(request.get("approvedAmount"))
                     : application.getRequestedAmount();
+                if (approvedAmt == null || approvedAmt.signum() <= 0
+                        || approvedAmt.compareTo(application.getLoanPackage().getMaxAmount()) > 0) {
+                    return rejected(HttpStatus.BAD_REQUEST, Map.of("error", "Approved loan amount is invalid"));
+                }
                 
                 application.setApprovedAmount(approvedAmt);
 
                 User user = application.getUser();
                 Long networkId = application.getNetwork().getId();
+                networkRepo.lockForPosting(networkId);
 
                 // ⭐ 2. Calculate Current Reserve using NEW FORMULA
                 // Liquidity comes from the ledger, so two loans approved at the same moment
@@ -640,6 +664,9 @@ public class ApplicationController {
                 int duration = request.containsKey("duration") 
                     ? Integer.parseInt(request.get("duration").toString()) 
                     : application.getLoanPackage().getMaxDuration();
+                if (duration <= 0 || duration > application.getLoanPackage().getMaxDuration()) {
+                    return rejected(HttpStatus.BAD_REQUEST, Map.of("error", "Approved loan duration is invalid"));
+                }
                 application.setDurationInMonths(duration);
                 application.setStartDate(LocalDate.now());
 
@@ -718,9 +745,19 @@ public class ApplicationController {
             application.setReviewNotes(notes);
 
             return ResponseEntity.ok(loanAppRepo.save(application));
+        } catch (IllegalArgumentException e) {
+            return rejected(HttpStatus.BAD_REQUEST, Map.of("error", "Invalid review decision or terms"));
         } catch (Exception e) {
-            e.printStackTrace();
-            return rejected(HttpStatus.INTERNAL_SERVER_ERROR, e.getMessage());
+            return rejected(HttpStatus.INTERNAL_SERVER_ERROR, Map.of("error", "Unable to review application"));
         }
+    }
+
+    private ApplicationStatus reviewDecision(Object rawStatus) {
+        if (rawStatus == null) throw new IllegalArgumentException("Missing review decision");
+        ApplicationStatus status = ApplicationStatus.valueOf(rawStatus.toString());
+        if (status != ApplicationStatus.APPROVED && status != ApplicationStatus.REJECTED) {
+            throw new IllegalArgumentException("Unsupported review decision");
+        }
+        return status;
     }
 }

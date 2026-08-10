@@ -29,6 +29,7 @@ import com.kosh.backend.model.Network;
 import com.kosh.backend.model.SavingAccount;
 import com.kosh.backend.model.SavingAccountApplication;
 import com.kosh.backend.model.User;
+import com.kosh.backend.model.ApplicationStatus;
 import com.kosh.backend.repository.ActivityLogRepository;
 import com.kosh.backend.repository.FixedDepositApplicationRepository;
 import com.kosh.backend.repository.FixedDepositRepository;
@@ -177,7 +178,7 @@ class TenantIsolationTest {
         LoanApplication foreign = new LoanApplication();
         foreign.setNetwork(network(OTHER_NETWORK));
         when(userRepo.findById(1)).thenReturn(Optional.of(admin()));
-        when(loanAppRepo.findById(99L)).thenReturn(Optional.of(foreign));
+        when(loanAppRepo.findByIdForReview(99L)).thenReturn(Optional.of(foreign));
 
         var response = applicationController.reviewLoanApplication(
                 99L, Map.of("status", "APPROVED"), adminSession());
@@ -196,8 +197,8 @@ class TenantIsolationTest {
         foreignSa.setNetwork(network(OTHER_NETWORK));
 
         when(userRepo.findById(1)).thenReturn(Optional.of(admin()));
-        when(fdAppRepo.findById(5L)).thenReturn(Optional.of(foreignFd));
-        when(saAppRepo.findById(6L)).thenReturn(Optional.of(foreignSa));
+        when(fdAppRepo.findByIdForReview(5L)).thenReturn(Optional.of(foreignFd));
+        when(saAppRepo.findByIdForReview(6L)).thenReturn(Optional.of(foreignSa));
 
         MockHttpSession session = adminSession();
 
@@ -227,6 +228,23 @@ class TenantIsolationTest {
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
         verify(loanAppRepo, never()).save(any());
+    }
+
+    @Test
+    void reviewedApplicationsCannotBeApprovedOrRejectedAgain() {
+        LoanApplication reviewed = new LoanApplication();
+        reviewed.setNetwork(network(OWN_NETWORK));
+        reviewed.setStatus(ApplicationStatus.APPROVED);
+        when(userRepo.findById(1)).thenReturn(Optional.of(admin()));
+        when(loanAppRepo.findByIdForReview(88L)).thenReturn(Optional.of(reviewed));
+
+        var response = applicationController.reviewLoanApplication(
+                88L, Map.of("status", "APPROVED"), adminSession());
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
+        verify(loanAppRepo, never()).save(any());
+        verify(transactionRepo, never()).save(any());
+        verify(loanService, never()).generateRepaymentSchedule(any());
     }
 
     // ------------------------------------------------------------- transactions
