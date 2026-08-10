@@ -25,6 +25,8 @@ public final class Accounts {
     // Equity.
     public static final String SHARE_CAPITAL = "3000";
     public static final String RESERVE_FUND = "3100";
+    /** Where balances carried in from before the ledger existed are recognised. */
+    public static final String OPENING_BALANCE_EQUITY = "3800";
     public static final String RETAINED_EARNINGS = "3900";
 
     // Income and expense.
@@ -44,6 +46,7 @@ public final class Accounts {
             new Definition(FIXED_DEPOSITS, "Member Fixed Deposits", AccountType.LIABILITY),
             new Definition(SHARE_CAPITAL, "Share Capital", AccountType.EQUITY),
             new Definition(RESERVE_FUND, "Statutory Reserve Fund", AccountType.EQUITY),
+            new Definition(OPENING_BALANCE_EQUITY, "Opening Balance Equity", AccountType.EQUITY),
             new Definition(RETAINED_EARNINGS, "Retained Earnings", AccountType.EQUITY),
             new Definition(INTEREST_INCOME, "Interest Income on Loans", AccountType.INCOME),
             new Definition(FEE_INCOME, "Fees and Charges", AccountType.INCOME),

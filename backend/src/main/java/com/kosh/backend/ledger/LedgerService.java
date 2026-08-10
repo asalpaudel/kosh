@@ -164,23 +164,26 @@ public class LedgerService {
     }
 
     /**
-     * Gives a cooperative its chart of accounts the first time it posts, so cooperatives
-     * created before the ledger existed are not a special case.
+     * Makes sure the cooperative has every account the posting code relies on. Adds only
+     * what is missing, so cooperatives created before an account was introduced pick it up
+     * and any account a cooperative added itself is left alone.
      */
     @Transactional(propagation = Propagation.MANDATORY)
     public void ensureChartOfAccounts(Network network) {
-        if (accountRepo.existsByNetworkId(network.getId())) return;
-
-        List<Account> accounts = new ArrayList<>();
+        List<Account> missing = new ArrayList<>();
         for (Accounts.Definition definition : Accounts.defaults()) {
+            if (accountRepo.findByNetworkIdAndCode(network.getId(), definition.code()).isPresent()) continue;
+
             Account account = new Account();
             account.setNetwork(network);
             account.setCode(definition.code());
             account.setName(definition.name());
             account.setType(definition.type());
-            accounts.add(account);
+            missing.add(account);
         }
-        accountRepo.saveAll(accounts);
+        if (!missing.isEmpty()) {
+            accountRepo.saveAll(missing);
+        }
     }
 
     /**

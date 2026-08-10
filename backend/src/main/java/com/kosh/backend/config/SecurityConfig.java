@@ -99,6 +99,12 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.GET, "/api/transactions/sahakari").hasRole("ADMIN")
                 .requestMatchers(HttpMethod.GET, "/api/transactions").authenticated()
 
+                // The books are readable by the cooperative's own admin; a posted entry can
+                // only ever be reversed, never edited, so that is the single write allowed.
+                .requestMatchers(HttpMethod.GET, "/api/ledger/**").hasRole("ADMIN")
+                .requestMatchers(HttpMethod.POST, "/api/ledger/entries/*/reverse",
+                    "/api/ledger/opening-balances").hasRole("ADMIN")
+
                 .requestMatchers("/api/analytics/admin/**", "/api/history/admin").hasRole("ADMIN")
                 .requestMatchers("/api/analytics/**", "/api/history/superadmin").hasRole("SUPERADMIN")
                 .anyRequest().denyAll()
