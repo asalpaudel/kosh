@@ -84,7 +84,7 @@ class TenantIsolationTest {
     private TransactionController transactionController() {
         return new TransactionController(transactionRepo, userRepo, networkRepo, logRepo, emailService,
                 fdAppRepo, fixedDepositRepo, loanAppRepo, loanPackageRepo, saAppRepo, savingAccountRepo,
-                access, ledger, ledgerReports);
+                access, ledger, ledgerReports, repaymentScheduleRepo);
     }
 
     // ------------------------------------------------------------------ finance

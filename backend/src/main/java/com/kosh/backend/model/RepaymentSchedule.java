@@ -27,6 +27,12 @@ public class RepaymentSchedule {
     @Column(precision = 18, scale = 2)
     private BigDecimal totalDue;        // principal + interest
 
+    @Column(name = "interest_paid", nullable = false, precision = 18, scale = 2)
+    private BigDecimal interestPaid = BigDecimal.ZERO;
+
+    @Column(name = "principal_paid", nullable = false, precision = 18, scale = 2)
+    private BigDecimal principalPaid = BigDecimal.ZERO;
+
     private String status = "PENDING"; // PENDING, PAID, PARTIAL, OVERDUE
     private LocalDate paidDate;
     
@@ -51,6 +57,18 @@ public class RepaymentSchedule {
 
     public BigDecimal getTotalDue() { return totalDue; }
     public void setTotalDue(BigDecimal totalDue) { this.totalDue = totalDue; }
+
+    public BigDecimal getInterestPaid() { return interestPaid != null ? interestPaid : BigDecimal.ZERO; }
+    public void setInterestPaid(BigDecimal interestPaid) { this.interestPaid = interestPaid; }
+
+    public BigDecimal getPrincipalPaid() { return principalPaid != null ? principalPaid : BigDecimal.ZERO; }
+    public void setPrincipalPaid(BigDecimal principalPaid) { this.principalPaid = principalPaid; }
+
+    /** What is still owed on this installment, interest and principal together. */
+    public BigDecimal outstanding() {
+        return getInterestAmount().subtract(getInterestPaid())
+                .add(getPrincipalAmount().subtract(getPrincipalPaid()));
+    }
 
     public String getStatus() { return status; }
     public void setStatus(String status) { this.status = status; }

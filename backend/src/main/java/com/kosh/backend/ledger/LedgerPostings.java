@@ -120,6 +120,42 @@ public final class LedgerPostings {
         };
     }
 
+    /**
+     * A loan repayment, split the way the schedule allocates it.
+     *
+     * <p>The interest share is income the cooperative has earned; only the principal share
+     * reduces what the member owes. Anything beyond the outstanding schedule is treated as
+     * an overpayment and parked in the member's savings rather than silently absorbed.
+     */
+    public static List<LedgerLine> loanRepayment(User member,
+                                                 BigDecimal principal,
+                                                 BigDecimal interest,
+                                                 BigDecimal overpayment,
+                                                 String paymentMethod,
+                                                 String memo) {
+        if (member == null) {
+            throw new IllegalArgumentException("A member transaction must name the member");
+        }
+        BigDecimal received = principal.add(interest).add(overpayment);
+        if (received.signum() <= 0) {
+            throw new IllegalArgumentException("A repayment must be a positive amount");
+        }
+
+        List<LedgerLine> lines = new java.util.ArrayList<>();
+        lines.add(LedgerLine.debit(settlementAccount(paymentMethod), received, memo));
+        if (principal.signum() > 0) {
+            lines.add(LedgerLine.memberCredit(Accounts.LOANS_RECEIVABLE, member, principal, "Principal"));
+        }
+        if (interest.signum() > 0) {
+            lines.add(LedgerLine.credit(Accounts.INTEREST_INCOME, interest, "Interest on loan"));
+        }
+        if (overpayment.signum() > 0) {
+            lines.add(LedgerLine.memberCredit(Accounts.MEMBER_SAVINGS, member, overpayment,
+                    "Repayment in excess of the schedule"));
+        }
+        return lines;
+    }
+
     /** Savings moved into a fixed deposit: the cooperative owes the same money under a different head. */
     public static List<LedgerLine> savingsToFixedDeposit(User member, BigDecimal amount, String memo) {
         return List.of(LedgerLine.memberDebit(Accounts.MEMBER_SAVINGS, member, amount, memo),

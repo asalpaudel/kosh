@@ -86,6 +86,13 @@ INSERT INTO repayment_schedules (
     (12, 1, 12, '2026-06-01', 8796.87, 88.01, 8884.88, 'PENDING', NULL)
 ON CONFLICT (id) DO NOTHING;
 
+-- Installments marked PAID are settled in full, so allocation of a later repayment
+-- starts from the first genuinely outstanding installment.
+UPDATE repayment_schedules
+   SET interest_paid = interest_amount,
+       principal_paid = principal_amount
+ WHERE status = 'PAID';
+
 INSERT INTO transactions (
     id, voucher_id, date, status, user_id, user_name, network_id, type, amount,
     narration, application_id, application_type, network_reserve, mode, fy_type,

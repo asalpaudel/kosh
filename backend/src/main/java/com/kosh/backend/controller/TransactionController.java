@@ -26,6 +26,7 @@ import com.kosh.backend.model.LoanPackage;
 import com.kosh.backend.model.Network;
 import com.kosh.backend.model.SavingAccount;
 import com.kosh.backend.model.SavingAccountApplication;
+import com.kosh.backend.model.RepaymentSchedule;
 import com.kosh.backend.model.Transaction;
 import com.kosh.backend.model.TransactionType;
 import com.kosh.backend.model.User;
@@ -38,12 +39,15 @@ import com.kosh.backend.repository.NetworkRepository;
 import com.kosh.backend.repository.SavingAccountApplicationRepository;
 import com.kosh.backend.repository.SavingAccountRepository;
 import com.kosh.backend.repository.TransactionRepository;
+import com.kosh.backend.repository.RepaymentScheduleRepository;
 import com.kosh.backend.repository.UserRepository;
 import com.kosh.backend.service.EmailService;
+import com.kosh.backend.ledger.LedgerLine;
 import com.kosh.backend.ledger.LedgerPostings;
 import com.kosh.backend.ledger.LedgerReports;
 import com.kosh.backend.ledger.LedgerService;
 import com.kosh.backend.service.Money;
+import com.kosh.backend.service.RepaymentAllocation;
 import com.kosh.backend.service.NetworkAccessService;
 
 import org.springframework.transaction.annotation.Transactional;
@@ -72,6 +76,7 @@ public class TransactionController {
     private final NetworkAccessService access;
     private final LedgerService ledger;
     private final LedgerReports reports;
+    private final RepaymentScheduleRepository scheduleRepo;
 
     public TransactionController(
             TransactionRepository transactionRepo, 
@@ -87,11 +92,13 @@ public class TransactionController {
             SavingAccountRepository saPackageRepo,
             NetworkAccessService access,
             LedgerService ledger,
-            LedgerReports reports) {
+            LedgerReports reports,
+            RepaymentScheduleRepository scheduleRepo) {
 
         this.access = access;
         this.ledger = ledger;
         this.reports = reports;
+        this.scheduleRepo = scheduleRepo;
 
         this.transactionRepo = transactionRepo;
         this.userRepo = userRepo;
@@ -335,9 +342,7 @@ public class TransactionController {
             ledger.post(network, tx.getDate(),
                     tx.getNarration() != null ? tx.getNarration() : tx.getType(),
                     tx.getVoucherId(), "transaction", savedTx.getId(), adminName,
-                    LedgerPostings.forTransaction(tx.getMode(), tx.getAccountHead(), tx.getDirection(),
-                            tx.getPaymentMethod(), tx.getNetworkLedger(), tx.getAmount(), targetUser,
-                            tx.getType()));
+                    journalLinesFor(tx, targetUser));
 
             // Record the cooperative's liquid position as it stands once this entry is in.
             // Derived from the ledger inside the same serialised posting, so concurrent
@@ -372,6 +377,33 @@ public class TransactionController {
             e.printStackTrace();
             return reject(HttpStatus.BAD_REQUEST, e.getMessage());
         }
+    }
+
+
+    /**
+     * Chooses how a posted transaction is recorded. A loan repayment against a known loan
+     * is split between interest and principal by the repayment schedule; everything else
+     * maps straight through.
+     */
+    private List<LedgerLine> journalLinesFor(Transaction tx, User member) {
+        boolean isLoanRepayment = LedgerPostings.LOAN.equals(tx.getAccountHead())
+                && "Credit".equalsIgnoreCase(tx.getDirection())
+                && "loan".equals(tx.getApplicationType())
+                && tx.getApplicationId() != null;
+
+        if (isLoanRepayment) {
+            List<RepaymentSchedule> schedule =
+                    scheduleRepo.findByLoanApplicationIdOrderByDueDateAsc(tx.getApplicationId());
+            if (!schedule.isEmpty()) {
+                RepaymentAllocation.Result allocation = RepaymentAllocation.allocate(schedule, tx.getAmount());
+                scheduleRepo.saveAll(allocation.touched());
+                return LedgerPostings.loanRepayment(member, allocation.principal(), allocation.interest(),
+                        allocation.unallocated(), tx.getPaymentMethod(), tx.getType());
+            }
+        }
+
+        return LedgerPostings.forTransaction(tx.getMode(), tx.getAccountHead(), tx.getDirection(),
+                tx.getPaymentMethod(), tx.getNetworkLedger(), tx.getAmount(), member, tx.getType());
     }
 
     /**
