@@ -6,6 +6,7 @@ import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 import org.springframework.http.HttpStatus;
@@ -39,6 +40,8 @@ import com.kosh.backend.repository.SavingAccountRepository;
 import com.kosh.backend.repository.TransactionRepository;
 import com.kosh.backend.repository.UserRepository;
 import com.kosh.backend.service.EmailService;
+import com.kosh.backend.ledger.LedgerPostings;
+import com.kosh.backend.ledger.LedgerService;
 import com.kosh.backend.service.Money;
 import com.kosh.backend.service.NetworkAccessService;
 
@@ -66,6 +69,7 @@ public class TransactionController {
     private final SavingAccountApplicationRepository saAppRepo;
     private final SavingAccountRepository saPackageRepo;
     private final NetworkAccessService access;
+    private final LedgerService ledger;
 
     public TransactionController(
             TransactionRepository transactionRepo, 
@@ -79,9 +83,11 @@ public class TransactionController {
             LoanPackageRepository loanPackageRepo,
             SavingAccountApplicationRepository saAppRepo,
             SavingAccountRepository saPackageRepo,
-            NetworkAccessService access) {
+            NetworkAccessService access,
+            LedgerService ledger) {
 
         this.access = access;
+        this.ledger = ledger;
 
         this.transactionRepo = transactionRepo;
         this.userRepo = userRepo;
@@ -117,7 +123,12 @@ public class TransactionController {
             Transaction tx = new Transaction();
             
             // Basic Mapping
-            tx.setVoucherId((String) payload.get("voucherId"));
+            // The cooperative's own entries carry no member voucher book, but every row
+            // still needs a reference an operator can quote back.
+            String voucherId = (String) payload.get("voucherId");
+            tx.setVoucherId(voucherId != null && !voucherId.isBlank()
+                    ? voucherId
+                    : "NET-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase());
             tx.setStatus((String) payload.getOrDefault("status", "Success"));
             tx.setType((String) payload.get("type"));
             tx.setAmount(Money.of(payload.get("amountValue")));
@@ -343,6 +354,15 @@ public class TransactionController {
             tx.setNetworkReserve(totalSavings.add(totalFD).subtract(totalLoans).add(totalNetwork));
 
             Transaction savedTx = transactionRepo.save(tx);
+
+            // The journal is the accounting record; the transaction row above stays as the
+            // operational one. Both are written in the same transaction, so they cannot diverge.
+            ledger.post(network, tx.getDate(),
+                    tx.getNarration() != null ? tx.getNarration() : tx.getType(),
+                    tx.getVoucherId(), "transaction", savedTx.getId(), adminName,
+                    LedgerPostings.forTransaction(tx.getMode(), tx.getAccountHead(), tx.getDirection(),
+                            tx.getPaymentMethod(), tx.getNetworkLedger(), tx.getAmount(), targetUser,
+                            tx.getType()));
 
             // Log Activity
             try {

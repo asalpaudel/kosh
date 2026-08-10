@@ -28,7 +28,6 @@ public class LoanPackage {
     @JoinColumn(name = "network_id", nullable = false)
     private Network network;
 
-    @Lob
     @Basic(fetch = FetchType.LAZY)
     @Column(name = "banner_data", columnDefinition = "bytea")
     @JsonIgnore

@@ -41,6 +41,7 @@ import com.kosh.backend.repository.SavingAccountRepository;
 import com.kosh.backend.repository.TransactionRepository;
 import com.kosh.backend.repository.UserRepository;
 import com.kosh.backend.service.EmailService;
+import com.kosh.backend.ledger.LedgerService;
 import com.kosh.backend.service.LoanService;
 import com.kosh.backend.service.NetworkAccessService;
 
@@ -68,6 +69,7 @@ class TenantIsolationTest {
     @Mock ActivityLogRepository logRepo;
     @Mock EmailService emailService;
     @Mock LoanService loanService;
+    @Mock LedgerService ledger;
 
     @Spy NetworkAccessService access = new NetworkAccessService();
 
@@ -79,7 +81,8 @@ class TenantIsolationTest {
 
     private TransactionController transactionController() {
         return new TransactionController(transactionRepo, userRepo, networkRepo, logRepo, emailService,
-                fdAppRepo, fixedDepositRepo, loanAppRepo, loanPackageRepo, saAppRepo, savingAccountRepo, access);
+                fdAppRepo, fixedDepositRepo, loanAppRepo, loanPackageRepo, saAppRepo, savingAccountRepo,
+                access, ledger);
     }
 
     // ------------------------------------------------------------------ finance

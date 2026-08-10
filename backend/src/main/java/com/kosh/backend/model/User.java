@@ -12,7 +12,6 @@ import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
-import jakarta.persistence.Lob;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
 import jakarta.persistence.Version;
@@ -60,7 +59,6 @@ public class User {
     private LocalDateTime trustedDeviceExpiry; 
 
     // ⭐ Photo as BLOB
-    @Lob
     @Basic(fetch = FetchType.LAZY)
     @Column(name = "photo_data", columnDefinition = "bytea")
     @JsonIgnore
@@ -70,7 +68,6 @@ public class User {
     private String photoType;
 
     // ⭐ Citizenship as BLOB
-    @Lob
     @Basic(fetch = FetchType.LAZY)
     @Column(name = "citizenship_data", columnDefinition = "bytea")
     @JsonIgnore
@@ -80,7 +77,6 @@ public class User {
     private String citizenshipType;
 
     // ⭐ Signature as BLOB
-    @Lob
     @Basic(fetch = FetchType.LAZY)
     @Column(name = "signature_data", columnDefinition = "bytea")
     @JsonIgnore

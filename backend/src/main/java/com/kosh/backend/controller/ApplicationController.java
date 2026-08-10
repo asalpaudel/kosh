@@ -42,6 +42,8 @@ import com.kosh.backend.repository.TransactionRepository;
 import com.kosh.backend.repository.UserRepository;
 import com.kosh.backend.repository.RepaymentScheduleRepository;
 import com.kosh.backend.service.LoanService;
+import com.kosh.backend.ledger.LedgerPostings;
+import com.kosh.backend.ledger.LedgerService;
 import com.kosh.backend.service.Money;
 import com.kosh.backend.service.NetworkAccessService;
 
@@ -91,6 +93,9 @@ public class ApplicationController {
 
     @Autowired
     private NetworkAccessService access;
+
+    @Autowired
+    private LedgerService ledger;
 
     // Helper to generate voucher ID
     private String generateVoucherId() {
@@ -314,6 +319,12 @@ public class ApplicationController {
 
                 transactionRepo.save(creditTx);
                 userRepo.save(user); // Save final balance
+
+                ledger.post(app.getNetwork(), LocalDate.now(),
+                        "Fixed deposit #" + app.getId() + " funded from member savings",
+                        creditTx.getVoucherId(), "fixed-deposit-application", app.getId(), admin.getName(),
+                        LedgerPostings.savingsToFixedDeposit(user, amount,
+                                "FD for " + app.getDepositTerm() + " months @ " + rate + "%"));
             }
             
             app.setStatus(status);
@@ -475,6 +486,12 @@ public class ApplicationController {
                 
                 transactionRepo.save(tx);
                 userRepo.save(user);
+
+                ledger.post(app.getNetwork(), LocalDate.now(),
+                        "Savings account #" + app.getId() + " opened",
+                        tx.getVoucherId(), "saving-account-application", app.getId(), admin.getName(),
+                        LedgerPostings.forTransaction("member", LedgerPostings.SAVINGS, "Credit",
+                                tx.getPaymentMethod(), null, amount, user, "Initial deposit"));
             }
 
             app.setStatus(status);
@@ -693,6 +710,11 @@ public class ApplicationController {
                 expenseTx.setNetworkReserve(currentReserve.subtract(approvedAmt).subtract(approvedAmt));
 
                 transactionRepo.save(expenseTx);
+
+                ledger.post(application.getNetwork(), LocalDate.now(),
+                        "Loan #" + application.getId() + " disbursed",
+                        loanTx.getVoucherId(), "loan-application", application.getId(), admin.getName(),
+                        LedgerPostings.loanDisbursedToSavings(user, approvedAmt, application.getPurpose()));
             }
 
             application.setStatus(status);

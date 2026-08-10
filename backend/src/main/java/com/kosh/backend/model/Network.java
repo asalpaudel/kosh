@@ -29,7 +29,6 @@ public class Network {
     private BigDecimal packagePrice;
     
     // ⭐ Store document as binary data
-    @Lob
     @Column(name = "document_data", columnDefinition = "bytea")
     @JsonIgnore
     private byte[] documentData;
@@ -38,7 +37,6 @@ public class Network {
     private String documentType; // MIME type (e.g., "application/pdf")
     
     // ⭐ Store logo as binary data
-    @Lob
     @Column(name = "logo_data", columnDefinition = "bytea")
     @JsonIgnore
     private byte[] logoData;
