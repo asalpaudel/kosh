@@ -38,6 +38,11 @@ import com.kosh.backend.repository.SavingAccountRepository;
 import com.kosh.backend.repository.TransactionRepository;
 import com.kosh.backend.repository.UserRepository;
 import com.kosh.backend.service.EmailService;
+import com.kosh.backend.service.NetworkAccessService;
+
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.interceptor.TransactionAspectSupport;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import jakarta.servlet.http.HttpSession;
 
@@ -58,6 +63,7 @@ public class TransactionController {
     private final LoanPackageRepository loanPackageRepo;
     private final SavingAccountApplicationRepository saAppRepo;
     private final SavingAccountRepository saPackageRepo;
+    private final NetworkAccessService access;
 
     public TransactionController(
             TransactionRepository transactionRepo, 
@@ -70,8 +76,11 @@ public class TransactionController {
             LoanApplicationRepository loanAppRepo,
             LoanPackageRepository loanPackageRepo,
             SavingAccountApplicationRepository saAppRepo,
-            SavingAccountRepository saPackageRepo) {
-        
+            SavingAccountRepository saPackageRepo,
+            NetworkAccessService access) {
+
+        this.access = access;
+
         this.transactionRepo = transactionRepo;
         this.userRepo = userRepo;
         this.networkRepo = networkRepo;
@@ -88,6 +97,7 @@ public class TransactionController {
     }
 
     @PostMapping
+    @Transactional
     public ResponseEntity<?> addTransaction(@RequestBody Map<String, Object> payload, HttpSession session) {
         try {
             Long adminId = (Long) session.getAttribute("userId");
@@ -135,7 +145,11 @@ public class TransactionController {
                 Long targetUserId = Long.valueOf(payload.get("userId").toString());
                 targetUser = userRepo.findById(targetUserId.intValue())
                     .orElseThrow(() -> new RuntimeException("User not found"));
-                
+
+                if (!networkId.equals(targetUser.getSahakariId())) {
+                    return reject(HttpStatus.FORBIDDEN, "Member belongs to another cooperative");
+                }
+
                 tx.setUser(targetUser);
                 tx.setUserName(targetUser.getName());
             } else {
@@ -143,6 +157,24 @@ public class TransactionController {
             }
 
             tx.setNetwork(network);
+
+            // --- USER BALANCE UPDATE ---
+            // Runs before any application row is written so a rejected withdrawal cannot
+            // leave an APPROVED application behind with no matching ledger entry.
+            if (targetUser != null && !"Loan".equals(tx.getAccountHead())) {
+                double currentBalance = targetUser.getBalance();
+                double amount = tx.getAmount();
+
+                if ("Credit".equalsIgnoreCase(tx.getDirection())) {
+                    targetUser.setBalance(currentBalance + amount);
+                } else if ("Debit".equalsIgnoreCase(tx.getDirection())) {
+                    if (currentBalance < amount) {
+                        return reject(HttpStatus.BAD_REQUEST, "Insufficient user balance.");
+                    }
+                    targetUser.setBalance(currentBalance - amount);
+                }
+                userRepo.save(targetUser);
+            }
 
             // ========================================================================
             // ⭐ LOGIC FIX: Check if this is a NEW Application or an Existing one
@@ -168,6 +200,9 @@ public class TransactionController {
                 // --- 1. LOAN CREATION (Only if new) ---
                 if ("Loan".equals(head)) {
                     LoanPackage packageEntity = loanPackageRepo.findById(packageId).orElse(null);
+                    if (packageEntity != null && access.isForeign(packageEntity.getNetwork(), session)) {
+                        return reject(HttpStatus.FORBIDDEN, "Package belongs to another cooperative");
+                    }
                     if (packageEntity != null) {
                         LoanApplication loanApp = new LoanApplication();
                         loanApp.setUser(targetUser);
@@ -200,6 +235,9 @@ public class TransactionController {
                 // --- 2. FIXED DEPOSIT CREATION (Only if new) ---
                 else if ("Fixed Deposit".equals(head)) {
                     FixedDeposit packageEntity = fdPackageRepo.findById(packageId).orElse(null);
+                    if (packageEntity != null && access.isForeign(packageEntity.getNetwork(), session)) {
+                        return reject(HttpStatus.FORBIDDEN, "Package belongs to another cooperative");
+                    }
                     if (packageEntity != null) {
                         FixedDepositApplication fdApp = new FixedDepositApplication();
                         fdApp.setUser(targetUser);
@@ -230,6 +268,9 @@ public class TransactionController {
                 // --- 3. SAVINGS ACCOUNT CREATION (Only if new) ---
                 else if ("Savings".equals(head)) {
                     SavingAccount packageEntity = saPackageRepo.findById(packageId).orElse(null);
+                    if (packageEntity != null && access.isForeign(packageEntity.getNetwork(), session)) {
+                        return reject(HttpStatus.FORBIDDEN, "Package belongs to another cooperative");
+                    }
                     if (packageEntity != null) {
                         SavingAccountApplication saApp = new SavingAccountApplication();
                         saApp.setUser(targetUser);
@@ -255,36 +296,20 @@ public class TransactionController {
             // --- EXISTING APPLICATION LINKING ---
             else if (payload.get("applicationId") != null) {
                 // If ID exists, just link it. Do NOT create a new Application entity.
-                tx.setApplicationId(((Number) payload.get("applicationId")).longValue());
-                tx.setApplicationType((String) payload.get("applicationType"));
-                System.out.println("🔗 Linked to Existing Application: #" + tx.getApplicationId());
+                Long applicationId = ((Number) payload.get("applicationId")).longValue();
+                String applicationType = (String) payload.get("applicationType");
+
+                if (!applicationBelongsToNetwork(applicationId, applicationType, networkId)) {
+                    return reject(HttpStatus.FORBIDDEN, "Application belongs to another cooperative");
+                }
+
+                tx.setApplicationId(applicationId);
+                tx.setApplicationType(applicationType);
             }
 
             // ========================================================================
             // END APPLICATION LOGIC
             // ========================================================================
-
-            // --- USER BALANCE UPDATE ---
-            if (targetUser != null) {
-                Double currentBalance = targetUser.getBalance() != null ? targetUser.getBalance() : 0.0;
-                Double amount = tx.getAmount();
-                String accountHead = tx.getAccountHead();
-
-                // Only update User "Wallet" Balance if it's NOT a Loan
-                // (Assuming Loans are separate from the main Savings Balance)
-                if (!"Loan".equals(accountHead)) {
-                    if ("Credit".equalsIgnoreCase(tx.getDirection())) {
-                        targetUser.setBalance(currentBalance + amount);
-                    } else if ("Debit".equalsIgnoreCase(tx.getDirection())) {
-                        if (currentBalance < amount) {
-                            return ResponseEntity.badRequest()
-                                .body(Map.of("error", "Insufficient user balance."));
-                        }
-                        targetUser.setBalance(currentBalance - amount);
-                    }
-                    userRepo.save(targetUser);
-                }
-            }
 
             // --- NETWORK RESERVE CALCULATION ---
             Double totalSavings = transactionRepo.getBalanceByHead(networkId, "Savings");
@@ -347,8 +372,30 @@ public class TransactionController {
 
         } catch (Exception e) {
             e.printStackTrace();
-            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+            return reject(HttpStatus.BAD_REQUEST, e.getMessage());
         }
+    }
+
+    /**
+     * Rejects the request and rolls the surrounding transaction back, so no partial
+     * money movement survives a failed or refused posting.
+     */
+    private ResponseEntity<?> reject(HttpStatus status, String message) {
+        if (TransactionSynchronizationManager.isActualTransactionActive()) {
+            TransactionAspectSupport.currentTransactionStatus().setRollbackOnly();
+        }
+        return ResponseEntity.status(status).body(Map.of("error", message == null ? "Request failed" : message));
+    }
+
+    private boolean applicationBelongsToNetwork(Long applicationId, String applicationType, Long networkId) {
+        if (applicationId == null || applicationType == null) return false;
+        Network owner = switch (applicationType) {
+            case "loan" -> loanAppRepo.findById(applicationId).map(LoanApplication::getNetwork).orElse(null);
+            case "fixed-deposit" -> fdAppRepo.findById(applicationId).map(FixedDepositApplication::getNetwork).orElse(null);
+            case "saving-account" -> saAppRepo.findById(applicationId).map(SavingAccountApplication::getNetwork).orElse(null);
+            default -> null;
+        };
+        return owner != null && networkId.equals(owner.getId());
     }
 
     @GetMapping

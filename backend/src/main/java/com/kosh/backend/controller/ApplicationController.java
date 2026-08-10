@@ -40,7 +40,12 @@ import com.kosh.backend.repository.SavingAccountRepository;
 import com.kosh.backend.repository.TransactionRepository;
 import com.kosh.backend.repository.UserRepository;
 import com.kosh.backend.repository.RepaymentScheduleRepository;
-import com.kosh.backend.service.LoanService; 
+import com.kosh.backend.service.LoanService;
+import com.kosh.backend.service.NetworkAccessService;
+
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.interceptor.TransactionAspectSupport;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import jakarta.servlet.http.HttpSession;
 
@@ -82,9 +87,29 @@ public class ApplicationController {
     @Autowired
     private LoanService loanService;
 
+    @Autowired
+    private NetworkAccessService access;
+
     // Helper to generate voucher ID
     private String generateVoucherId() {
         return "AUTO-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase();
+    }
+
+    private ResponseEntity<?> forbidden() {
+        return ResponseEntity.status(HttpStatus.FORBIDDEN)
+            .body(Map.of("error", "Not permitted for this cooperative"));
+    }
+
+    /**
+     * Marks the surrounding transaction for rollback so that a business rejection cannot
+     * leave partial writes (or dirty managed entities) behind when the method returns
+     * a normal error response instead of throwing.
+     */
+    private ResponseEntity<?> rejected(HttpStatus status, Object body) {
+        if (TransactionSynchronizationManager.isActualTransactionActive()) {
+            TransactionAspectSupport.currentTransactionStatus().setRollbackOnly();
+        }
+        return ResponseEntity.status(status).body(body);
     }
 
     // ============================================================================
@@ -116,6 +141,8 @@ public class ApplicationController {
             
             Network network = networkRepo.findById(networkId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Network not found"));
+
+            if (access.isForeign(fixedDeposit.getNetwork(), session)) return forbidden();
 
             // Validate amounts
             if (depositAmount < fixedDeposit.getMinAmount()) {
@@ -172,13 +199,15 @@ public class ApplicationController {
     }
 
     @GetMapping("/fixed-deposit/network/{networkId}")
-    public ResponseEntity<List<FixedDepositApplication>> getNetworkFixedDepositApplications(
-            @PathVariable Long networkId) {
+    public ResponseEntity<?> getNetworkFixedDepositApplications(
+            @PathVariable Long networkId, HttpSession session) {
+        if (!access.canViewNetwork(networkId, session)) return forbidden();
         return ResponseEntity.ok(fdAppRepo.findByNetworkId(networkId));
     }
 
     // ⭐ UPDATED: Fixed Deposit Review with Double Transaction & Maturity Calculation
     @PutMapping("/fixed-deposit/{id}/review")
+    @Transactional
     public ResponseEntity<?> reviewFixedDepositApplication(
             @PathVariable Long id,
             @RequestBody Map<String, Object> request,
@@ -194,6 +223,8 @@ public class ApplicationController {
 
             FixedDepositApplication app = fdAppRepo.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Application not found"));
+
+            if (access.isForeign(app.getNetwork(), session)) return forbidden();
 
             String statusStr = request.get("status").toString();
             ApplicationStatus status = ApplicationStatus.valueOf(statusStr);
@@ -213,7 +244,7 @@ public class ApplicationController {
                 // ⭐ UPDATED: Re-validate User Balance (since amount might have increased)
                 User user = app.getUser();
                 if (user.getBalance() < app.getDepositAmount()) {
-                    return ResponseEntity.badRequest().body("Insufficient user balance for the approved amount.");
+                    return rejected(HttpStatus.BAD_REQUEST, "Insufficient user balance for the approved amount.");
                 }
 
                 // ⭐ 1. Calculate Maturity Details
@@ -290,7 +321,7 @@ public class ApplicationController {
             return ResponseEntity.ok(fdAppRepo.save(app));
         } catch (Exception e) {
             e.printStackTrace();
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(e.getMessage());
+            return rejected(HttpStatus.INTERNAL_SERVER_ERROR, e.getMessage());
         }
     }
 
@@ -322,6 +353,8 @@ public class ApplicationController {
             
             Network network = networkRepo.findById(networkId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Network not found"));
+
+            if (access.isForeign(savingAccount.getNetwork(), session)) return forbidden();
 
             // Check if user already has a savings account
             List<SavingAccountApplication> existingApplications = saAppRepo.findByUserId(userId);
@@ -373,13 +406,15 @@ public class ApplicationController {
     }
 
     @GetMapping("/saving-account/network/{networkId}")
-    public ResponseEntity<List<SavingAccountApplication>> getNetworkSavingAccountApplications(
-            @PathVariable Long networkId) {
+    public ResponseEntity<?> getNetworkSavingAccountApplications(
+            @PathVariable Long networkId, HttpSession session) {
+        if (!access.canViewNetwork(networkId, session)) return forbidden();
         return ResponseEntity.ok(saAppRepo.findByNetworkId(networkId));
     }
 
     // ⭐ UPDATED: Saving Account Review with Single Transaction
     @PutMapping("/saving-account/{id}/review")
+    @Transactional
     public ResponseEntity<?> reviewSavingAccountApplication(
             @PathVariable Long id,
             @RequestBody Map<String, Object> request,
@@ -395,6 +430,8 @@ public class ApplicationController {
 
             SavingAccountApplication app = saAppRepo.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Application not found"));
+
+            if (access.isForeign(app.getNetwork(), session)) return forbidden();
 
             String statusStr = request.get("status").toString();
             ApplicationStatus status = ApplicationStatus.valueOf(statusStr);
@@ -446,7 +483,7 @@ public class ApplicationController {
             return ResponseEntity.ok(saAppRepo.save(app));
         } catch (Exception e) {
             e.printStackTrace();
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(e.getMessage());
+            return rejected(HttpStatus.INTERNAL_SERVER_ERROR, e.getMessage());
         }
     }
 
@@ -479,6 +516,8 @@ public class ApplicationController {
             
             Network network = networkRepo.findById(networkId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Network not found"));
+
+            if (access.isForeign(loanPackage.getNetwork(), session)) return forbidden();
 
             if (requestedAmount > loanPackage.getMaxAmount()) {
                 return ResponseEntity.badRequest()
@@ -513,13 +552,15 @@ public class ApplicationController {
     }
 
     @GetMapping("/loan/network/{networkId}")
-    public ResponseEntity<List<LoanApplication>> getNetworkLoanApplications(
-            @PathVariable Long networkId) {
+    public ResponseEntity<?> getNetworkLoanApplications(
+            @PathVariable Long networkId, HttpSession session) {
+        if (!access.canViewNetwork(networkId, session)) return forbidden();
         return ResponseEntity.ok(loanAppRepo.findByNetworkId(networkId));
     }
 
     // ⭐ UPDATED: Loan Review with 70% Reserve Check, Financial Terms, and Schedule Generation
     @PutMapping("/loan/{id}/review")
+    @Transactional
     public ResponseEntity<?> reviewLoanApplication(
             @PathVariable Long id,
             @RequestBody Map<String, Object> request,
@@ -535,6 +576,8 @@ public class ApplicationController {
 
             LoanApplication application = loanAppRepo.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Application not found"));
+
+            if (access.isForeign(application.getNetwork(), session)) return forbidden();
 
             String statusStr = request.get("status").toString();
             ApplicationStatus status = ApplicationStatus.valueOf(statusStr);
@@ -568,11 +611,11 @@ public class ApplicationController {
 
                 // ⭐ 3. Validate Loan Amount (70% Rule) based on APPROVED Amount
                 if (approvedAmt > (currentReserve * 0.7)) {
-                    return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                        .body("Loan rejected: Insufficient liquidity. " +
-                              "Loan amount (" + approvedAmt + ") exceeds 70% of network reserve (" + 
-                              String.format("%.2f", currentReserve * 0.7) + "). " +
-                              "Current Reserve: " + currentReserve);
+                    return rejected(HttpStatus.BAD_REQUEST,
+                        "Loan rejected: Insufficient liquidity. " +
+                        "Loan amount (" + approvedAmt + ") exceeds 70% of network reserve (" +
+                        String.format("%.2f", currentReserve * 0.7) + "). " +
+                        "Current Reserve: " + currentReserve);
                 }
 
                 // ⭐ 4. Set Financial Terms (Rate, Duration, Start Date)
@@ -657,53 +700,7 @@ public class ApplicationController {
             return ResponseEntity.ok(loanAppRepo.save(application));
         } catch (Exception e) {
             e.printStackTrace();
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(e.getMessage());
+            return rejected(HttpStatus.INTERNAL_SERVER_ERROR, e.getMessage());
         }
     }
-
-    // ⭐ NEW: Generate Repayment Schedule using Reducing Balance Method
-        private void generateRepaymentSchedule(LoanApplication loanApp) {
-            Double principal = loanApp.getApprovedAmount();
-            Double annualRate = loanApp.getInterestRate();
-            Integer months = loanApp.getDurationInMonths();
-            
-            // Monthly interest rate
-            Double monthlyRate = annualRate / 12 / 100;
-            
-            // Calculate EMI using reducing balance formula
-            // EMI = [P x R x (1+R)^N] / [(1+R)^N - 1]
-            Double emi = principal * monthlyRate * Math.pow(1 + monthlyRate, months) 
-                        / (Math.pow(1 + monthlyRate, months) - 1);
-            
-            Double remainingPrincipal = principal;
-            LocalDate currentDate = loanApp.getStartDate();
-            
-            for (int i = 1; i <= months; i++) {
-                RepaymentSchedule schedule = new RepaymentSchedule();
-                schedule.setLoanApplication(loanApp);
-                schedule.setInstallmentNumber(i);
-                schedule.setDueDate(currentDate.plusMonths(i));
-                
-                // Calculate interest on remaining principal
-                Double interestAmount = remainingPrincipal * monthlyRate;
-                Double principalAmount = emi - interestAmount;
-                
-                // Last installment adjustment (handle rounding)
-                if (i == months) {
-                    principalAmount = remainingPrincipal;
-                    emi = principalAmount + interestAmount;
-                }
-                
-                schedule.setPrincipalAmount(principalAmount);
-                schedule.setInterestAmount(interestAmount);
-                schedule.setTotalDue(emi);
-                schedule.setStatus("PENDING");
-                
-                repaymentScheduleRepo.save(schedule);
-                
-                remainingPrincipal -= principalAmount;
-            }
-            
-            System.out.println("✅ Generated " + months + " repayment schedules for Loan #" + loanApp.getId());
-        }
 }

@@ -5,51 +5,69 @@ import com.kosh.backend.repository.FixedDepositRepository;
 import com.kosh.backend.repository.LoanPackageRepository;
 import com.kosh.backend.repository.SavingAccountRepository;
 import com.kosh.backend.repository.NetworkRepository;
-import org.springframework.beans.factory.annotation.Autowired;
+import com.kosh.backend.service.NetworkAccessService;
 import org.springframework.http.*;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
-import org.springframework.web.server.ResponseStatusException;
+
+import jakarta.servlet.http.HttpSession;
+
 import java.util.List;
 
 @RestController
 @RequestMapping("/api/finance")
 public class FinanceController {
 
-    @Autowired
-    private FixedDepositRepository fixedDepositRepo;
+    private final FixedDepositRepository fixedDepositRepo;
+    private final SavingAccountRepository savingAccountRepo;
+    private final LoanPackageRepository loanPackageRepo;
+    private final NetworkRepository networkRepo;
+    private final NetworkAccessService access;
 
-    @Autowired
-    private SavingAccountRepository savingAccountRepo;
+    public FinanceController(FixedDepositRepository fixedDepositRepo,
+                             SavingAccountRepository savingAccountRepo,
+                             LoanPackageRepository loanPackageRepo,
+                             NetworkRepository networkRepo,
+                             NetworkAccessService access) {
+        this.fixedDepositRepo = fixedDepositRepo;
+        this.savingAccountRepo = savingAccountRepo;
+        this.loanPackageRepo = loanPackageRepo;
+        this.networkRepo = networkRepo;
+        this.access = access;
+    }
 
-    @Autowired
-    private LoanPackageRepository loanPackageRepo;
+    private ResponseEntity<Object> forbidden() {
+        return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Not permitted for this cooperative");
+    }
 
-    @Autowired
-    private NetworkRepository networkRepo;
+    private ResponseEntity<Object> notFound(String what) {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(what + " not found");
+    }
 
     // ============================================================================
     // FIXED DEPOSIT
     // ============================================================================
-    
+
     @GetMapping("/fixed-deposits/{networkId}")
-    public ResponseEntity<List<FixedDeposit>> getFixedDeposits(@PathVariable Long networkId) {
-        List<FixedDeposit> deposits = fixedDepositRepo.findByNetworkId(networkId);
-        return ResponseEntity.ok(deposits);
+    public ResponseEntity<Object> getFixedDeposits(@PathVariable Long networkId, HttpSession session) {
+        if (!access.canViewNetwork(networkId, session)) return forbidden();
+        return ResponseEntity.ok(fixedDepositRepo.findByNetworkId(networkId));
     }
 
     @PostMapping("/fixed-deposits/{networkId}")
-    public ResponseEntity<?> addFixedDeposit(
+    public ResponseEntity<Object> addFixedDeposit(
             @PathVariable Long networkId,
             @RequestParam("name") String name,
             @RequestParam("interestRate") Double interestRate,
             @RequestParam("minDuration") Integer minDuration,
             @RequestParam("minAmount") Double minAmount,
             @RequestParam(value = "description", required = false) String description,
-            @RequestParam(value = "banner", required = false) MultipartFile banner) {
+            @RequestParam(value = "banner", required = false) MultipartFile banner,
+            HttpSession session) {
+        if (!access.canViewNetwork(networkId, session)) return forbidden();
         try {
-            Network network = networkRepo.findById(networkId)
-                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Network not found"));
+            Network network = networkRepo.findById(networkId).orElse(null);
+            if (network == null) return notFound("Network");
 
             FixedDeposit fd = new FixedDeposit();
             fd.setNetwork(network);
@@ -58,12 +76,7 @@ public class FinanceController {
             fd.setMinDuration(minDuration);
             fd.setMinAmount(minAmount);
             fd.setDescription(description);
-
-            if (banner != null && !banner.isEmpty()) {
-                fd.setBannerData(banner.getBytes());
-                fd.setBannerName(banner.getOriginalFilename());
-                fd.setBannerType(banner.getContentType());
-            }
+            applyBanner(fd::setBannerData, fd::setBannerName, fd::setBannerType, banner);
 
             return ResponseEntity.ok(fixedDepositRepo.save(fd));
         } catch (Exception e) {
@@ -73,20 +86,15 @@ public class FinanceController {
     }
 
     @GetMapping("/fixed-deposits/{id}/banner")
-    public ResponseEntity<byte[]> getFixedDepositBanner(@PathVariable Long id) {
-        return fixedDepositRepo.findById(id)
-                .filter(fd -> fd.getBannerData() != null)
-                .map(fd -> {
-                    HttpHeaders headers = new HttpHeaders();
-                    headers.setContentType(MediaType.parseMediaType(fd.getBannerType()));
-                    headers.setContentDisposition(ContentDisposition.inline().filename(fd.getBannerName()).build());
-                    return new ResponseEntity<>(fd.getBannerData(), headers, HttpStatus.OK);
-                })
-                .orElse(ResponseEntity.notFound().build());
+    public ResponseEntity<byte[]> getFixedDepositBanner(@PathVariable Long id, HttpSession session) {
+        FixedDeposit fd = fixedDepositRepo.findById(id).orElse(null);
+        if (fd == null || fd.getBannerData() == null) return ResponseEntity.notFound().build();
+        if (access.isForeign(fd.getNetwork(), session)) return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        return bannerResponse(fd.getBannerData(), fd.getBannerName(), fd.getBannerType());
     }
 
     @PutMapping(value = "/fixed-deposits/{id}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public ResponseEntity<?> updateFixedDeposit(
+    public ResponseEntity<Object> updateFixedDeposit(
             @PathVariable Long id,
             @RequestParam("name") String name,
             @RequestParam("interestRate") Double interestRate,
@@ -94,63 +102,65 @@ public class FinanceController {
             @RequestParam("minAmount") Double minAmount,
             @RequestParam(value = "description", required = false) String description,
             @RequestParam(value = "removeBanner", required = false, defaultValue = "false") Boolean removeBanner,
-            @RequestParam(value = "banner", required = false) MultipartFile banner) {
-        
-        return fixedDepositRepo.findById(id)
-                .map(fd -> {
-                    try {
-                        fd.setName(name);
-                        fd.setInterestRate(interestRate);
-                        fd.setMinDuration(minDuration);
-                        fd.setMinAmount(minAmount);
-                        fd.setDescription(description);
-                        
-                        if (removeBanner != null && removeBanner) {
-                            fd.setBannerData(null);
-                            fd.setBannerName(null);
-                            fd.setBannerType(null);
-                        } else if (banner != null && !banner.isEmpty()) {
-                            fd.setBannerData(banner.getBytes());
-                            fd.setBannerName(banner.getOriginalFilename());
-                            fd.setBannerType(banner.getContentType());
-                        }
-                        
-                        return ResponseEntity.ok((Object) fixedDepositRepo.save(fd));
-                    } catch (Exception e) {
-                        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                                .body((Object) ("Error: " + e.getMessage()));
-                    }
-                })
-                .orElse(ResponseEntity.status(HttpStatus.NOT_FOUND).body("Fixed Deposit not found"));
+            @RequestParam(value = "banner", required = false) MultipartFile banner,
+            HttpSession session) {
+
+        FixedDeposit fd = fixedDepositRepo.findById(id).orElse(null);
+        if (fd == null) return notFound("Fixed Deposit");
+        if (access.isForeign(fd.getNetwork(), session)) return forbidden();
+
+        try {
+            fd.setName(name);
+            fd.setInterestRate(interestRate);
+            fd.setMinDuration(minDuration);
+            fd.setMinAmount(minAmount);
+            fd.setDescription(description);
+            if (Boolean.TRUE.equals(removeBanner)) {
+                fd.setBannerData(null);
+                fd.setBannerName(null);
+                fd.setBannerType(null);
+            } else {
+                applyBanner(fd::setBannerData, fd::setBannerName, fd::setBannerType, banner);
+            }
+            return ResponseEntity.ok(fixedDepositRepo.save(fd));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body("Error: " + e.getMessage());
+        }
     }
 
     @DeleteMapping("/fixed-deposits/{id}")
-    public ResponseEntity<Void> deleteFixedDeposit(@PathVariable Long id) {
-        fixedDepositRepo.deleteById(id);
+    public ResponseEntity<Object> deleteFixedDeposit(@PathVariable Long id, HttpSession session) {
+        FixedDeposit fd = fixedDepositRepo.findById(id).orElse(null);
+        if (fd == null) return notFound("Fixed Deposit");
+        if (access.isForeign(fd.getNetwork(), session)) return forbidden();
+        fixedDepositRepo.delete(fd);
         return ResponseEntity.ok().build();
     }
 
     // ============================================================================
     // SAVING ACCOUNT
     // ============================================================================
-    
+
     @GetMapping("/saving-accounts/{networkId}")
-    public ResponseEntity<List<SavingAccount>> getSavingAccounts(@PathVariable Long networkId) {
-        List<SavingAccount> accounts = savingAccountRepo.findByNetworkId(networkId);
-        return ResponseEntity.ok(accounts);
+    public ResponseEntity<Object> getSavingAccounts(@PathVariable Long networkId, HttpSession session) {
+        if (!access.canViewNetwork(networkId, session)) return forbidden();
+        return ResponseEntity.ok(savingAccountRepo.findByNetworkId(networkId));
     }
 
     @PostMapping("/saving-accounts/{networkId}")
-    public ResponseEntity<?> addSavingAccount(
+    public ResponseEntity<Object> addSavingAccount(
             @PathVariable Long networkId,
             @RequestParam("name") String name,
             @RequestParam("interestRate") Double interestRate,
             @RequestParam("minBalance") Double minBalance,
             @RequestParam(value = "description", required = false) String description,
-            @RequestParam(value = "banner", required = false) MultipartFile banner) {
+            @RequestParam(value = "banner", required = false) MultipartFile banner,
+            HttpSession session) {
+        if (!access.canViewNetwork(networkId, session)) return forbidden();
         try {
-            Network network = networkRepo.findById(networkId)
-                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Network not found"));
+            Network network = networkRepo.findById(networkId).orElse(null);
+            if (network == null) return notFound("Network");
 
             SavingAccount sa = new SavingAccount();
             sa.setNetwork(network);
@@ -158,12 +168,7 @@ public class FinanceController {
             sa.setInterestRate(interestRate);
             sa.setMinBalance(minBalance);
             sa.setDescription(description);
-
-            if (banner != null && !banner.isEmpty()) {
-                sa.setBannerData(banner.getBytes());
-                sa.setBannerName(banner.getOriginalFilename());
-                sa.setBannerType(banner.getContentType());
-            }
+            applyBanner(sa::setBannerData, sa::setBannerName, sa::setBannerType, banner);
 
             return ResponseEntity.ok(savingAccountRepo.save(sa));
         } catch (Exception e) {
@@ -173,83 +178,80 @@ public class FinanceController {
     }
 
     @GetMapping("/saving-accounts/{id}/banner")
-    public ResponseEntity<byte[]> getSavingAccountBanner(@PathVariable Long id) {
-        return savingAccountRepo.findById(id)
-                .filter(sa -> sa.getBannerData() != null)
-                .map(sa -> {
-                    HttpHeaders headers = new HttpHeaders();
-                    headers.setContentType(MediaType.parseMediaType(sa.getBannerType()));
-                    headers.setContentDisposition(ContentDisposition.inline().filename(sa.getBannerName()).build());
-                    return new ResponseEntity<>(sa.getBannerData(), headers, HttpStatus.OK);
-                })
-                .orElse(ResponseEntity.notFound().build());
+    public ResponseEntity<byte[]> getSavingAccountBanner(@PathVariable Long id, HttpSession session) {
+        SavingAccount sa = savingAccountRepo.findById(id).orElse(null);
+        if (sa == null || sa.getBannerData() == null) return ResponseEntity.notFound().build();
+        if (access.isForeign(sa.getNetwork(), session)) return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        return bannerResponse(sa.getBannerData(), sa.getBannerName(), sa.getBannerType());
     }
 
     @PutMapping(value = "/saving-accounts/{id}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public ResponseEntity<?> updateSavingAccount(
+    public ResponseEntity<Object> updateSavingAccount(
             @PathVariable Long id,
             @RequestParam("name") String name,
             @RequestParam("interestRate") Double interestRate,
             @RequestParam("minBalance") Double minBalance,
             @RequestParam(value = "description", required = false) String description,
             @RequestParam(value = "removeBanner", required = false, defaultValue = "false") Boolean removeBanner,
-            @RequestParam(value = "banner", required = false) MultipartFile banner) {
-        
-        return savingAccountRepo.findById(id)
-                .map(sa -> {
-                    try {
-                        sa.setName(name);
-                        sa.setInterestRate(interestRate);
-                        sa.setMinBalance(minBalance);
-                        sa.setDescription(description);
-                        
-                        if (removeBanner != null && removeBanner) {
-                            sa.setBannerData(null);
-                            sa.setBannerName(null);
-                            sa.setBannerType(null);
-                        } else if (banner != null && !banner.isEmpty()) {
-                            sa.setBannerData(banner.getBytes());
-                            sa.setBannerName(banner.getOriginalFilename());
-                            sa.setBannerType(banner.getContentType());
-                        }
-                        
-                        return ResponseEntity.ok((Object) savingAccountRepo.save(sa));
-                    } catch (Exception e) {
-                        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                                .body((Object) ("Error: " + e.getMessage()));
-                    }
-                })
-                .orElse(ResponseEntity.status(HttpStatus.NOT_FOUND).body("Saving Account not found"));
+            @RequestParam(value = "banner", required = false) MultipartFile banner,
+            HttpSession session) {
+
+        SavingAccount sa = savingAccountRepo.findById(id).orElse(null);
+        if (sa == null) return notFound("Saving Account");
+        if (access.isForeign(sa.getNetwork(), session)) return forbidden();
+
+        try {
+            sa.setName(name);
+            sa.setInterestRate(interestRate);
+            sa.setMinBalance(minBalance);
+            sa.setDescription(description);
+            if (Boolean.TRUE.equals(removeBanner)) {
+                sa.setBannerData(null);
+                sa.setBannerName(null);
+                sa.setBannerType(null);
+            } else {
+                applyBanner(sa::setBannerData, sa::setBannerName, sa::setBannerType, banner);
+            }
+            return ResponseEntity.ok(savingAccountRepo.save(sa));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body("Error: " + e.getMessage());
+        }
     }
 
     @DeleteMapping("/saving-accounts/{id}")
-    public ResponseEntity<Void> deleteSavingAccount(@PathVariable Long id) {
-        savingAccountRepo.deleteById(id);
+    public ResponseEntity<Object> deleteSavingAccount(@PathVariable Long id, HttpSession session) {
+        SavingAccount sa = savingAccountRepo.findById(id).orElse(null);
+        if (sa == null) return notFound("Saving Account");
+        if (access.isForeign(sa.getNetwork(), session)) return forbidden();
+        savingAccountRepo.delete(sa);
         return ResponseEntity.ok().build();
     }
 
     // ============================================================================
     // LOAN PACKAGE
     // ============================================================================
-    
+
     @GetMapping("/loan-packages/{networkId}")
-    public ResponseEntity<List<LoanPackage>> getLoanPackages(@PathVariable Long networkId) {
-        List<LoanPackage> packages = loanPackageRepo.findByNetworkId(networkId);
-        return ResponseEntity.ok(packages);
+    public ResponseEntity<Object> getLoanPackages(@PathVariable Long networkId, HttpSession session) {
+        if (!access.canViewNetwork(networkId, session)) return forbidden();
+        return ResponseEntity.ok(loanPackageRepo.findByNetworkId(networkId));
     }
 
     @PostMapping("/loan-packages/{networkId}")
-    public ResponseEntity<?> addLoanPackage(
+    public ResponseEntity<Object> addLoanPackage(
             @PathVariable Long networkId,
             @RequestParam("name") String name,
             @RequestParam("interestRate") Double interestRate,
             @RequestParam("maxAmount") Double maxAmount,
             @RequestParam("maxDuration") Integer maxDuration,
             @RequestParam(value = "description", required = false) String description,
-            @RequestParam(value = "banner", required = false) MultipartFile banner) {
+            @RequestParam(value = "banner", required = false) MultipartFile banner,
+            HttpSession session) {
+        if (!access.canViewNetwork(networkId, session)) return forbidden();
         try {
-            Network network = networkRepo.findById(networkId)
-                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Network not found"));
+            Network network = networkRepo.findById(networkId).orElse(null);
+            if (network == null) return notFound("Network");
 
             LoanPackage lp = new LoanPackage();
             lp.setNetwork(network);
@@ -258,12 +260,7 @@ public class FinanceController {
             lp.setMaxAmount(maxAmount);
             lp.setMaxDuration(maxDuration);
             lp.setDescription(description);
-
-            if (banner != null && !banner.isEmpty()) {
-                lp.setBannerData(banner.getBytes());
-                lp.setBannerName(banner.getOriginalFilename());
-                lp.setBannerType(banner.getContentType());
-            }
+            applyBanner(lp::setBannerData, lp::setBannerName, lp::setBannerType, banner);
 
             return ResponseEntity.ok(loanPackageRepo.save(lp));
         } catch (Exception e) {
@@ -273,20 +270,15 @@ public class FinanceController {
     }
 
     @GetMapping("/loan-packages/{id}/banner")
-    public ResponseEntity<byte[]> getLoanPackageBanner(@PathVariable Long id) {
-        return loanPackageRepo.findById(id)
-                .filter(lp -> lp.getBannerData() != null)
-                .map(lp -> {
-                    HttpHeaders headers = new HttpHeaders();
-                    headers.setContentType(MediaType.parseMediaType(lp.getBannerType()));
-                    headers.setContentDisposition(ContentDisposition.inline().filename(lp.getBannerName()).build());
-                    return new ResponseEntity<>(lp.getBannerData(), headers, HttpStatus.OK);
-                })
-                .orElse(ResponseEntity.notFound().build());
+    public ResponseEntity<byte[]> getLoanPackageBanner(@PathVariable Long id, HttpSession session) {
+        LoanPackage lp = loanPackageRepo.findById(id).orElse(null);
+        if (lp == null || lp.getBannerData() == null) return ResponseEntity.notFound().build();
+        if (access.isForeign(lp.getNetwork(), session)) return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        return bannerResponse(lp.getBannerData(), lp.getBannerName(), lp.getBannerType());
     }
 
     @PutMapping(value = "/loan-packages/{id}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public ResponseEntity<?> updateLoanPackage(
+    public ResponseEntity<Object> updateLoanPackage(
             @PathVariable Long id,
             @RequestParam("name") String name,
             @RequestParam("interestRate") Double interestRate,
@@ -294,39 +286,62 @@ public class FinanceController {
             @RequestParam("maxDuration") Integer maxDuration,
             @RequestParam(value = "description", required = false) String description,
             @RequestParam(value = "removeBanner", required = false, defaultValue = "false") Boolean removeBanner,
-            @RequestParam(value = "banner", required = false) MultipartFile banner) {
-        
-        return loanPackageRepo.findById(id)
-                .map(lp -> {
-                    try {
-                        lp.setName(name);
-                        lp.setInterestRate(interestRate);
-                        lp.setMaxAmount(maxAmount);
-                        lp.setMaxDuration(maxDuration);
-                        lp.setDescription(description);
-                        
-                        if (removeBanner != null && removeBanner) {
-                            lp.setBannerData(null);
-                            lp.setBannerName(null);
-                            lp.setBannerType(null);
-                        } else if (banner != null && !banner.isEmpty()) {
-                            lp.setBannerData(banner.getBytes());
-                            lp.setBannerName(banner.getOriginalFilename());
-                            lp.setBannerType(banner.getContentType());
-                        }
-                        
-                        return ResponseEntity.ok((Object) loanPackageRepo.save(lp));
-                    } catch (Exception e) {
-                        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                                .body((Object) ("Error: " + e.getMessage()));
-                    }
-                })
-                .orElse(ResponseEntity.status(HttpStatus.NOT_FOUND).body("Loan Package not found"));
+            @RequestParam(value = "banner", required = false) MultipartFile banner,
+            HttpSession session) {
+
+        LoanPackage lp = loanPackageRepo.findById(id).orElse(null);
+        if (lp == null) return notFound("Loan Package");
+        if (access.isForeign(lp.getNetwork(), session)) return forbidden();
+
+        try {
+            lp.setName(name);
+            lp.setInterestRate(interestRate);
+            lp.setMaxAmount(maxAmount);
+            lp.setMaxDuration(maxDuration);
+            lp.setDescription(description);
+            if (Boolean.TRUE.equals(removeBanner)) {
+                lp.setBannerData(null);
+                lp.setBannerName(null);
+                lp.setBannerType(null);
+            } else {
+                applyBanner(lp::setBannerData, lp::setBannerName, lp::setBannerType, banner);
+            }
+            return ResponseEntity.ok(loanPackageRepo.save(lp));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body("Error: " + e.getMessage());
+        }
     }
 
     @DeleteMapping("/loan-packages/{id}")
-    public ResponseEntity<Void> deleteLoanPackage(@PathVariable Long id) {
-        loanPackageRepo.deleteById(id);
+    public ResponseEntity<Object> deleteLoanPackage(@PathVariable Long id, HttpSession session) {
+        LoanPackage lp = loanPackageRepo.findById(id).orElse(null);
+        if (lp == null) return notFound("Loan Package");
+        if (access.isForeign(lp.getNetwork(), session)) return forbidden();
+        loanPackageRepo.delete(lp);
         return ResponseEntity.ok().build();
+    }
+
+    // ============================================================================
+    // SHARED HELPERS
+    // ============================================================================
+
+    private interface BytesSetter { void accept(byte[] value); }
+
+    private interface TextSetter { void accept(String value); }
+
+    private void applyBanner(BytesSetter data, TextSetter name, TextSetter type, MultipartFile banner)
+            throws java.io.IOException {
+        if (banner == null || banner.isEmpty()) return;
+        data.accept(banner.getBytes());
+        name.accept(banner.getOriginalFilename());
+        type.accept(banner.getContentType());
+    }
+
+    private ResponseEntity<byte[]> bannerResponse(byte[] data, String name, String type) {
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.parseMediaType(type));
+        headers.setContentDisposition(ContentDisposition.inline().filename(name).build());
+        return new ResponseEntity<>(data, headers, HttpStatus.OK);
     }
 }
