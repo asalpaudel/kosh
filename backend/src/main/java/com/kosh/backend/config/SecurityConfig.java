@@ -11,6 +11,10 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.AnonymousAuthenticationFilter;
 import org.springframework.security.web.authentication.HttpStatusEntryPoint;
+import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
+import org.springframework.security.web.csrf.CsrfFilter;
+import org.springframework.security.web.csrf.CsrfTokenRequestAttributeHandler;
+import org.springframework.security.web.util.matcher.AntPathRequestMatcher;
 
 @Configuration
 @EnableWebSecurity
@@ -24,10 +28,27 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
-            // CSRF remains a tracked blocker until token bootstrapping is rolled out to
-            // every mutating frontend request.
-            .csrf(csrf -> csrf.disable())
+            // Sessions are cookie-based, so every mutating request from an authenticated
+            // user must carry a CSRF token. The token cookie is readable by JavaScript on
+            // purpose: the SPA copies it into the X-XSRF-TOKEN header.
+            //
+            // The pre-authentication endpoints are exempt. They run before a session
+            // exists, so there is no authenticated context for a forged request to ride,
+            // and requiring a token there would mean priming a cookie before the very
+            // first login can be attempted.
+            .csrf(csrf -> csrf
+                .csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())
+                .csrfTokenRequestHandler(new CsrfTokenRequestAttributeHandler())
+                .ignoringRequestMatchers(
+                    new AntPathRequestMatcher("/api/auth/login", "POST"),
+                    new AntPathRequestMatcher("/api/auth/verify-2fa", "POST"),
+                    new AntPathRequestMatcher("/api/auth/forgot-password", "POST"),
+                    new AntPathRequestMatcher("/api/auth/reset-password", "POST"),
+                    new AntPathRequestMatcher("/api/superadmin-auth/login", "POST"),
+                    new AntPathRequestMatcher("/api/superadmin-auth/verify-otp", "POST"),
+                    new AntPathRequestMatcher("/api/users", "POST")))
             .cors(cors -> {})
+            .addFilterAfter(new CsrfCookieFilter(), CsrfFilter.class)
             .addFilterBefore(new SessionAuthenticationFilter(), AnonymousAuthenticationFilter.class)
             .exceptionHandling(exceptions -> exceptions
                 .authenticationEntryPoint(new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED)))

@@ -1,5 +1,6 @@
 package com.kosh.backend.config;
 
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
@@ -33,25 +34,37 @@ class SecurityConfigAuthorizationTest {
 
     @Test
     void anonymousMutationIsUnauthorized() throws Exception {
-        mockMvc.perform(post("/api/networks"))
+        mockMvc.perform(post("/api/networks").with(csrf()))
                 .andExpect(status().isUnauthorized());
     }
 
     @Test
+    void mutationWithoutCsrfTokenIsRejected() throws Exception {
+        mockMvc.perform(post("/api/transactions").session(session("admin")))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void loginDoesNotRequireACsrfTokenBecauseNoSessionExistsYet() throws Exception {
+        mockMvc.perform(post("/api/auth/login"))
+                .andExpect(status().isOk());
+    }
+
+    @Test
     void memberCannotPostTransactions() throws Exception {
-        mockMvc.perform(post("/api/transactions").session(session("member")))
+        mockMvc.perform(post("/api/transactions").with(csrf()).session(session("member")))
                 .andExpect(status().isForbidden());
     }
 
     @Test
     void administratorCanPostTransactions() throws Exception {
-        mockMvc.perform(post("/api/transactions").session(session("admin")))
+        mockMvc.perform(post("/api/transactions").with(csrf()).session(session("admin")))
                 .andExpect(status().isOk());
     }
 
     @Test
     void superAdministratorCanManageCooperatives() throws Exception {
-        mockMvc.perform(post("/api/networks").session(session("superadmin")))
+        mockMvc.perform(post("/api/networks").with(csrf()).session(session("superadmin")))
                 .andExpect(status().isOk());
     }
 
@@ -81,13 +94,13 @@ class SecurityConfigAuthorizationTest {
 
     @Test
     void administratorCannotCallSuperAdminUpdateCommand() throws Exception {
-        mockMvc.perform(put("/api/users/17/superadmin").session(session("admin")))
+        mockMvc.perform(put("/api/users/17/superadmin").with(csrf()).session(session("admin")))
                 .andExpect(status().isForbidden());
     }
 
     @Test
     void superAdministratorCanCallSuperAdminUpdateCommand() throws Exception {
-        mockMvc.perform(put("/api/users/17/superadmin").session(session("superadmin")))
+        mockMvc.perform(put("/api/users/17/superadmin").with(csrf()).session(session("superadmin")))
                 .andExpect(status().isOk());
     }
 
@@ -112,6 +125,11 @@ class SecurityConfigAuthorizationTest {
 
         @PostMapping("/api/transactions")
         String createTransaction() {
+            return "ok";
+        }
+
+        @PostMapping("/api/auth/login")
+        String login() {
             return "ok";
         }
 
