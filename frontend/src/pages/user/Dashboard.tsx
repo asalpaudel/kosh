@@ -1,19 +1,33 @@
 import { API_BASE as apiBase } from "../../lib/apiClient";
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import AccountSummary from '../../component/user/AccountSummary';
 import FinancialChart from '../../component/user/FinancialChart';
 import TransactionsList from '../../component/user/TransactionsList';
 import LoanAd from '../../component/user/LoanAd';
+import { isRecord, stringField } from '../../lib/validation';
+
+interface SessionData {
+  userEmail: string;
+  sahakariId: number;
+  userRole: string;
+}
+
+function parseSession(value: unknown): SessionData | null {
+  if (!isRecord(value) || typeof value.sahakariId !== "number") return null;
+  const userEmail = stringField(value, "userEmail");
+  const userRole = stringField(value, "userRole");
+  return userEmail && userRole ? { userEmail, userRole, sahakariId: value.sahakariId } : null;
+}
 
 
 function Dashboard() {
   const navigate = useNavigate();
-  const [sessionData, setSessionData] = useState(null);
+  const [sessionData, setSessionData] = useState<SessionData | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const fetchSession = async () => {
+    const fetchSession = async (): Promise<void> => {
       try {
         const response = await fetch(`${apiBase}/session`, {
           method: "GET",
@@ -21,39 +35,20 @@ function Dashboard() {
         });
 
         if (response.ok) {
-          const data = await response.json();
-          console.log("Session data:", data);
-          
-          // Check if session has error (no userEmail)
-          if (data.error) {
-            console.error("Session error:", data.error);
-            navigate('/');
-            return;
-          }
-          
-          setSessionData(data);
-
-          // If user doesn't have sahakariId, redirect to login
-          if (!data.sahakariId && data.userRole !== "superadmin") {
-            console.error("No sahakariId found in session");
-            navigate('/');
-          }
-        } else if (response.status === 401) {
-          console.error("Unauthorized - no session");
-          navigate('/');
+          const data = parseSession(await response.json());
+          if (data) setSessionData(data);
+          else void navigate('/');
         } else {
-          console.error("Failed to fetch session data");
-          navigate('/');
+          void navigate('/');
         }
-      } catch (error) {
-        console.error("Error fetching session:", error);
-        navigate('/');
+      } catch {
+        void navigate('/');
       } finally {
         setLoading(false);
       }
     };
 
-    fetchSession();
+    void fetchSession();
   }, [navigate]);
 
   if (loading) {
@@ -76,19 +71,16 @@ function Dashboard() {
       <div className="container mx-auto py-6">
         <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-6">
           <div className="col-span-full">
-            <AccountSummary
-              sahakariId={sessionData.sahakariId}
-              userEmail={sessionData.userEmail}
-            />
+            <AccountSummary />
           </div>
 
           <div className="md:col-span-2 lg:col-span-3 flex flex-col gap-6">
-            <FinancialChart sahakariId={sessionData.sahakariId} />
-            <TransactionsList sahakariId={sessionData.sahakariId} />
+            <FinancialChart />
+            <TransactionsList />
           </div>
 
           <div className="md:col-span-1 lg:col-span-1">
-            <LoanAd sahakariId={sessionData.sahakariId} />
+            <LoanAd />
           </div>
         </div>
       </div>
