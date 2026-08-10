@@ -5,6 +5,7 @@ import java.util.Map;
 import java.util.Random;
 import java.util.concurrent.ConcurrentHashMap;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -23,8 +24,8 @@ import jakarta.servlet.http.HttpSession;
 @RequestMapping("/api/superadmin-auth")
 public class SuperAdminAuthController {
 
-    // ⭐ HARDCODED AUTHORIZED EMAIL
-    private static final String AUTHORIZED_EMAIL = "REMOVED_SUPERADMIN_EMAIL";
+    @Value("${app.superadmin.email:}")
+    private String authorizedEmail;
     
     // OTP Storage: email -> SuperAdminOtp
     private static class SuperAdminOtp {
@@ -64,7 +65,7 @@ public class SuperAdminAuthController {
         email = email.trim().toLowerCase();
         
         // validation
-        if (!AUTHORIZED_EMAIL.equalsIgnoreCase(email)) {
+        if (!authorizedEmail.equalsIgnoreCase(email)) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of(
                 "success", false,
                 "message", "Unauthorized email address"
@@ -115,7 +116,7 @@ public class SuperAdminAuthController {
         email = email.trim().toLowerCase();
         
         
-        if (!AUTHORIZED_EMAIL.equalsIgnoreCase(email)) {
+        if (!authorizedEmail.equalsIgnoreCase(email)) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of(
                 "success", false,
                 "message", "Unauthorized email address"

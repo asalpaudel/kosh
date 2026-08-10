@@ -5,6 +5,7 @@ import java.util.Map;
 import java.util.Random;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.ByteArrayResource;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
@@ -22,6 +23,9 @@ public class EmailService {
     @Autowired
     private JavaMailSender mailSender;
 
+    @Value("${spring.mail.username:}")
+    private String senderEmail;
+
     private final Map<String, String> otpStorage = new HashMap<>();
 
     /**
@@ -31,8 +35,7 @@ public class EmailService {
         MimeMessage message = mailSender.createMimeMessage();
         MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
 
-        // Make sure this matches spring.mail.username in application.properties
-        helper.setFrom("REMOVED_MAIL_USERNAME"); 
+        helper.setFrom(senderEmail);
         helper.setTo(toEmail);
         helper.setSubject("Password Reset Request");
 
@@ -92,8 +95,7 @@ public class EmailService {
             MimeMessage message = mailSender.createMimeMessage();
             MimeMessageHelper helper = new MimeMessageHelper(message, "UTF-8");
             
-            // Ensure this matches your application.properties
-            helper.setFrom("REMOVED_MAIL_USERNAME"); 
+            helper.setFrom(senderEmail);
             helper.setTo(to);
             helper.setSubject(subject);
             
@@ -131,7 +133,7 @@ public class EmailService {
             MimeMessage message = mailSender.createMimeMessage();
             MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
 
-            helper.setFrom("REMOVED_MAIL_USERNAME");
+            helper.setFrom(senderEmail);
             helper.setTo(toEmail);
             helper.setSubject("Transaction Voucher - " + (tx.getVoucherId() != null ? tx.getVoucherId() : "TXN#" + tx.getId()));
 
