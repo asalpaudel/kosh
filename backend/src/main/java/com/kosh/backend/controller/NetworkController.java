@@ -28,6 +28,8 @@ import com.kosh.backend.repository.ActivityLogRepository;
 import com.kosh.backend.repository.NetworkRepository;
 import com.kosh.backend.service.Money;
 import com.kosh.backend.service.NetworkAccessService;
+import com.kosh.backend.service.FileSecurity;
+import com.kosh.backend.service.FileSecurity.StoredFile;
 
 import jakarta.servlet.http.HttpSession;
 
@@ -69,19 +71,18 @@ public class NetworkController {
             // Handle Base64 document
             Map<String, String> documentData = (Map<String, String>) payload.get("document");
             if (documentData != null && documentData.get("data") != null) {
-                byte[] documentBytes = Base64.getDecoder().decode(documentData.get("data"));
-                network.setDocumentData(documentBytes);
-                network.setDocumentName(documentData.get("filename"));
-                network.setDocumentType(documentData.get("type")); // MIME type
+                StoredFile document = FileSecurity.validateBase64(documentData.get("data"),
+                        documentData.get("filename"), FileSecurity.Kind.DOCUMENT);
+                applyFile(network::setDocumentData, network::setDocumentName,
+                        network::setDocumentType, document);
             }
 
             // Handle Base64 logo
             Map<String, String> logoData = (Map<String, String>) payload.get("logo");
             if (logoData != null && logoData.get("data") != null) {
-                byte[] logoBytes = Base64.getDecoder().decode(logoData.get("data"));
-                network.setLogoData(logoBytes);
-                network.setLogoName(logoData.get("filename"));
-                network.setLogoType(logoData.get("type")); // MIME type
+                StoredFile logo = FileSecurity.validateBase64(logoData.get("data"),
+                        logoData.get("filename"), FileSecurity.Kind.IMAGE);
+                applyFile(network::setLogoData, network::setLogoName, network::setLogoType, logo);
             }
 
             Network saved = networkRepository.save(network);
@@ -102,7 +103,7 @@ public class NetworkController {
             return ResponseEntity.ok(saved);
 
         } catch (Exception e) {
-            return ResponseEntity.badRequest().body("Error creating network: " + e.getMessage());
+            return ResponseEntity.badRequest().body("Invalid cooperative data or upload");
         }
     }
 
@@ -143,16 +144,14 @@ public class NetworkController {
 
             // Store document as binary
             if (document != null && !document.isEmpty()) {
-                network.setDocumentData(document.getBytes());
-                network.setDocumentName(document.getOriginalFilename());
-                network.setDocumentType(document.getContentType());
+                applyFile(network::setDocumentData, network::setDocumentName, network::setDocumentType,
+                        FileSecurity.validate(document, FileSecurity.Kind.DOCUMENT));
             }
 
             // Store logo as binary
             if (logo != null && !logo.isEmpty()) {
-                network.setLogoData(logo.getBytes());
-                network.setLogoName(logo.getOriginalFilename());
-                network.setLogoType(logo.getContentType());
+                applyFile(network::setLogoData, network::setLogoName, network::setLogoType,
+                        FileSecurity.validate(logo, FileSecurity.Kind.IMAGE));
             }
 
             Network saved = networkRepository.save(network);
@@ -173,7 +172,7 @@ public class NetworkController {
             return ResponseEntity.ok(saved);
 
         } catch (Exception e) {
-            return ResponseEntity.badRequest().body("Error creating network: " + e.getMessage());
+            return ResponseEntity.badRequest().body("Invalid cooperative data or upload");
         }
     }
 
@@ -205,16 +204,7 @@ public class NetworkController {
         }
         return networkRepository.findById(id)
                 .filter(network -> network.getDocumentData() != null)
-                .map(network -> {
-                    HttpHeaders headers = new HttpHeaders();
-                    headers.setContentType(MediaType.parseMediaType(network.getDocumentType()));
-                    headers.setContentDisposition(
-                        ContentDisposition.attachment()
-                            .filename(network.getDocumentName())
-                            .build()
-                    );
-                    return new ResponseEntity<>(network.getDocumentData(), headers, HttpStatus.OK);
-                })
+                .map(network -> fileResponse(network.getDocumentData(), network.getDocumentName(), false))
                 .orElse(ResponseEntity.notFound().build());
     }
 
@@ -223,16 +213,7 @@ public class NetworkController {
     public ResponseEntity<byte[]> downloadLogo(@PathVariable Long id) {
         return networkRepository.findById(id)
                 .filter(network -> network.getLogoData() != null)
-                .map(network -> {
-                    HttpHeaders headers = new HttpHeaders();
-                    headers.setContentType(MediaType.parseMediaType(network.getLogoType()));
-                    headers.setContentDisposition(
-                        ContentDisposition.inline()
-                            .filename(network.getLogoName())
-                            .build()
-                    );
-                    return new ResponseEntity<>(network.getLogoData(), headers, HttpStatus.OK);
-                })
+                .map(network -> fileResponse(network.getLogoData(), network.getLogoName(), true))
                 .orElse(ResponseEntity.notFound().build());
     }
 
@@ -248,8 +229,9 @@ public class NetworkController {
                     String base64 = Base64.getEncoder().encodeToString(network.getDocumentData());
                     Map<String, String> response = new HashMap<>();
                     response.put("data", base64);
-                    response.put("filename", network.getDocumentName());
-                    response.put("type", network.getDocumentType());
+                    response.put("filename", FileSecurity.safeStoredFilename(
+                            network.getDocumentName(), network.getDocumentData()));
+                    response.put("type", FileSecurity.detectedContentType(network.getDocumentData()));
                     return ResponseEntity.ok(response);
                 })
                 .orElse(ResponseEntity.notFound().build());
@@ -264,8 +246,9 @@ public class NetworkController {
                     String base64 = Base64.getEncoder().encodeToString(network.getLogoData());
                     Map<String, String> response = new HashMap<>();
                     response.put("data", base64);
-                    response.put("filename", network.getLogoName());
-                    response.put("type", network.getLogoType());
+                    response.put("filename", FileSecurity.safeStoredFilename(
+                            network.getLogoName(), network.getLogoData()));
+                    response.put("type", FileSecurity.detectedContentType(network.getLogoData()));
                     return ResponseEntity.ok(response);
                 })
                 .orElse(ResponseEntity.notFound().build());
@@ -379,5 +362,29 @@ public class NetworkController {
         map.put("logoType", network.getLogoType());
         
         return map;
+    }
+
+    private interface BytesSetter { void accept(byte[] value); }
+    private interface TextSetter { void accept(String value); }
+
+    private void applyFile(BytesSetter data, TextSetter name, TextSetter type, StoredFile file) {
+        data.accept(file.data());
+        name.accept(file.filename());
+        type.accept(file.contentType());
+    }
+
+    private ResponseEntity<byte[]> fileResponse(byte[] data, String name, boolean inline) {
+        HttpHeaders headers = new HttpHeaders();
+        String detectedType = FileSecurity.detectedContentType(data);
+        if (inline && !detectedType.startsWith("image/")) {
+            return ResponseEntity.status(HttpStatus.UNSUPPORTED_MEDIA_TYPE).build();
+        }
+        headers.setContentType(MediaType.parseMediaType(detectedType));
+        var disposition = inline ? ContentDisposition.inline() : ContentDisposition.attachment();
+        headers.setContentDisposition(disposition
+                .filename(FileSecurity.safeStoredFilename(name, data), java.nio.charset.StandardCharsets.UTF_8)
+                .build());
+        headers.setCacheControl(org.springframework.http.CacheControl.noStore().cachePrivate());
+        return new ResponseEntity<>(data, headers, HttpStatus.OK);
     }
 }

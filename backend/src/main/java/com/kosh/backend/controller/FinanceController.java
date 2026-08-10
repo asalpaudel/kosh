@@ -6,6 +6,8 @@ import com.kosh.backend.repository.LoanPackageRepository;
 import com.kosh.backend.repository.SavingAccountRepository;
 import com.kosh.backend.repository.NetworkRepository;
 import com.kosh.backend.service.NetworkAccessService;
+import com.kosh.backend.service.FileSecurity;
+import com.kosh.backend.service.FileSecurity.StoredFile;
 import org.springframework.http.*;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
@@ -80,9 +82,11 @@ public class FinanceController {
             applyBanner(fd::setBannerData, fd::setBannerName, fd::setBannerType, banner);
 
             return ResponseEntity.ok(fixedDepositRepo.save(fd));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body("Invalid financial product data or banner");
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body("Error: " + e.getMessage());
+                    .body("Unable to create financial product");
         }
     }
 
@@ -91,7 +95,7 @@ public class FinanceController {
         FixedDeposit fd = fixedDepositRepo.findById(id).orElse(null);
         if (fd == null || fd.getBannerData() == null) return ResponseEntity.notFound().build();
         if (access.isForeign(fd.getNetwork(), session)) return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
-        return bannerResponse(fd.getBannerData(), fd.getBannerName(), fd.getBannerType());
+        return bannerResponse(fd.getBannerData(), fd.getBannerName());
     }
 
     @PutMapping(value = "/fixed-deposits/{id}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
@@ -124,9 +128,11 @@ public class FinanceController {
                 applyBanner(fd::setBannerData, fd::setBannerName, fd::setBannerType, banner);
             }
             return ResponseEntity.ok(fixedDepositRepo.save(fd));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body("Invalid financial product data or banner");
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body("Error: " + e.getMessage());
+                    .body("Unable to update financial product");
         }
     }
 
@@ -172,9 +178,11 @@ public class FinanceController {
             applyBanner(sa::setBannerData, sa::setBannerName, sa::setBannerType, banner);
 
             return ResponseEntity.ok(savingAccountRepo.save(sa));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body("Invalid financial product data or banner");
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body("Error: " + e.getMessage());
+                    .body("Unable to create financial product");
         }
     }
 
@@ -183,7 +191,7 @@ public class FinanceController {
         SavingAccount sa = savingAccountRepo.findById(id).orElse(null);
         if (sa == null || sa.getBannerData() == null) return ResponseEntity.notFound().build();
         if (access.isForeign(sa.getNetwork(), session)) return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
-        return bannerResponse(sa.getBannerData(), sa.getBannerName(), sa.getBannerType());
+        return bannerResponse(sa.getBannerData(), sa.getBannerName());
     }
 
     @PutMapping(value = "/saving-accounts/{id}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
@@ -214,9 +222,11 @@ public class FinanceController {
                 applyBanner(sa::setBannerData, sa::setBannerName, sa::setBannerType, banner);
             }
             return ResponseEntity.ok(savingAccountRepo.save(sa));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body("Invalid financial product data or banner");
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body("Error: " + e.getMessage());
+                    .body("Unable to update financial product");
         }
     }
 
@@ -264,9 +274,11 @@ public class FinanceController {
             applyBanner(lp::setBannerData, lp::setBannerName, lp::setBannerType, banner);
 
             return ResponseEntity.ok(loanPackageRepo.save(lp));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body("Invalid financial product data or banner");
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body("Error: " + e.getMessage());
+                    .body("Unable to create financial product");
         }
     }
 
@@ -275,7 +287,7 @@ public class FinanceController {
         LoanPackage lp = loanPackageRepo.findById(id).orElse(null);
         if (lp == null || lp.getBannerData() == null) return ResponseEntity.notFound().build();
         if (access.isForeign(lp.getNetwork(), session)) return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
-        return bannerResponse(lp.getBannerData(), lp.getBannerName(), lp.getBannerType());
+        return bannerResponse(lp.getBannerData(), lp.getBannerName());
     }
 
     @PutMapping(value = "/loan-packages/{id}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
@@ -308,9 +320,11 @@ public class FinanceController {
                 applyBanner(lp::setBannerData, lp::setBannerName, lp::setBannerType, banner);
             }
             return ResponseEntity.ok(loanPackageRepo.save(lp));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body("Invalid financial product data or banner");
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body("Error: " + e.getMessage());
+                    .body("Unable to update financial product");
         }
     }
 
@@ -334,15 +348,23 @@ public class FinanceController {
     private void applyBanner(BytesSetter data, TextSetter name, TextSetter type, MultipartFile banner)
             throws java.io.IOException {
         if (banner == null || banner.isEmpty()) return;
-        data.accept(banner.getBytes());
-        name.accept(banner.getOriginalFilename());
-        type.accept(banner.getContentType());
+        StoredFile safe = FileSecurity.validate(banner, FileSecurity.Kind.IMAGE);
+        data.accept(safe.data());
+        name.accept(safe.filename());
+        type.accept(safe.contentType());
     }
 
-    private ResponseEntity<byte[]> bannerResponse(byte[] data, String name, String type) {
+    private ResponseEntity<byte[]> bannerResponse(byte[] data, String name) {
         HttpHeaders headers = new HttpHeaders();
-        headers.setContentType(MediaType.parseMediaType(type));
-        headers.setContentDisposition(ContentDisposition.inline().filename(name).build());
+        String detectedType = FileSecurity.detectedContentType(data);
+        if (!detectedType.startsWith("image/")) {
+            return ResponseEntity.status(HttpStatus.UNSUPPORTED_MEDIA_TYPE).build();
+        }
+        headers.setContentType(MediaType.parseMediaType(detectedType));
+        headers.setContentDisposition(ContentDisposition.inline()
+                .filename(FileSecurity.safeStoredFilename(name, data), java.nio.charset.StandardCharsets.UTF_8)
+                .build());
+        headers.setCacheControl(CacheControl.noStore().cachePrivate());
         return new ResponseEntity<>(data, headers, HttpStatus.OK);
     }
 }

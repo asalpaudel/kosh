@@ -30,6 +30,8 @@ import com.kosh.backend.model.User;
 import com.kosh.backend.repository.ActivityLogRepository;
 import com.kosh.backend.repository.NetworkRepository;
 import com.kosh.backend.repository.UserRepository;
+import com.kosh.backend.service.FileSecurity;
+import com.kosh.backend.service.FileSecurity.StoredFile;
 
 import jakarta.servlet.http.HttpSession;
 
@@ -179,26 +181,20 @@ public class UserController {
 
             // ⭐ Handle photo upload
             if (photo != null && !photo.isEmpty()) {
-                user.setPhotoData(photo.getBytes());
-                user.setPhotoName(photo.getOriginalFilename());
-                user.setPhotoType(photo.getContentType());
-                System.out.println("Photo uploaded: " + photo.getOriginalFilename());
+                applyFile(user::setPhotoData, user::setPhotoName, user::setPhotoType,
+                        FileSecurity.validate(photo, FileSecurity.Kind.IMAGE));
             }
 
             // ⭐ Handle citizenship upload
             if (citizenship != null && !citizenship.isEmpty()) {
-                user.setCitizenshipData(citizenship.getBytes());
-                user.setCitizenshipName(citizenship.getOriginalFilename());
-                user.setCitizenshipType(citizenship.getContentType());
-                System.out.println("Citizenship uploaded: " + citizenship.getOriginalFilename());
+                applyFile(user::setCitizenshipData, user::setCitizenshipName, user::setCitizenshipType,
+                        FileSecurity.validate(citizenship, FileSecurity.Kind.DOCUMENT));
             }
 
             // ⭐ Handle signature upload
             if (signature != null && !signature.isEmpty()) {
-                user.setSignatureData(signature.getBytes());
-                user.setSignatureName(signature.getOriginalFilename());
-                user.setSignatureType(signature.getContentType());
-                System.out.println("Signature uploaded: " + signature.getOriginalFilename());
+                applyFile(user::setSignatureData, user::setSignatureName, user::setSignatureType,
+                        FileSecurity.validate(signature, FileSecurity.Kind.IMAGE));
             }
 
             User saved = repo.save(user);
@@ -228,9 +224,8 @@ public class UserController {
             return ResponseEntity.ok(saved);
 
         } catch (Exception e) {
-            e.printStackTrace();
             return ResponseEntity.badRequest()
-                    .body(Map.of("error", "Failed to create user: " + e.getMessage()));
+                    .body(Map.of("error", "Invalid account data or upload"));
         }
     }
 
@@ -329,19 +324,8 @@ public class UserController {
         User target = repo.findById(id).orElse(null);
         if (target == null) return ResponseEntity.notFound().build();
         if (!canAccessUserDocument(target, session)) return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
-        return repo.findById(id)
-                .filter(user -> user.getPhotoData() != null)
-                .map(user -> {
-                    HttpHeaders headers = new HttpHeaders();
-                    headers.setContentType(MediaType.parseMediaType(user.getPhotoType()));
-                    headers.setContentDisposition(
-                        ContentDisposition.inline()
-                            .filename(user.getPhotoName())
-                            .build()
-                    );
-                    return new ResponseEntity<>(user.getPhotoData(), headers, HttpStatus.OK);
-                })
-                .orElse(ResponseEntity.notFound().build());
+        return target.getPhotoData() == null ? ResponseEntity.notFound().build()
+                : fileResponse(target.getPhotoData(), target.getPhotoName(), true);
     }
 
     @GetMapping("/{id}/citizenship")
@@ -349,29 +333,8 @@ public class UserController {
         User target = repo.findById(id).orElse(null);
         if (target == null) return ResponseEntity.notFound().build();
         if (!canAccessUserDocument(target, session)) return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
-        return repo.findById(id)
-                .filter(user -> user.getCitizenshipData() != null)
-                .map(user -> {
-                    HttpHeaders headers = new HttpHeaders();
-                    
-                    // Set proper content type
-                    if (user.getCitizenshipType() != null) {
-                        headers.setContentType(MediaType.parseMediaType(user.getCitizenshipType()));
-                    }
-                    
-                    // For inline viewing (PDF in iframe)
-                    headers.setContentDisposition(
-                        ContentDisposition.inline()
-                            .filename(user.getCitizenshipName())
-                            .build()
-                    );
-                    
-                    // Allow embedding
-                    headers.add("X-Frame-Options", "SAMEORIGIN");
-                    
-                    return new ResponseEntity<>(user.getCitizenshipData(), headers, HttpStatus.OK);
-                })
-                .orElse(ResponseEntity.notFound().build());
+        return target.getCitizenshipData() == null ? ResponseEntity.notFound().build()
+                : fileResponse(target.getCitizenshipData(), target.getCitizenshipName(), false);
     }
 
     // ⭐ Get User Signature
@@ -380,19 +343,8 @@ public class UserController {
         User target = repo.findById(id).orElse(null);
         if (target == null) return ResponseEntity.notFound().build();
         if (!canAccessUserDocument(target, session)) return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
-        return repo.findById(id)
-                .filter(user -> user.getSignatureData() != null)
-                .map(user -> {
-                    HttpHeaders headers = new HttpHeaders();
-                    headers.setContentType(MediaType.parseMediaType(user.getSignatureType()));
-                    headers.setContentDisposition(
-                        ContentDisposition.inline()
-                            .filename(user.getSignatureName())
-                            .build()
-                    );
-                    return new ResponseEntity<>(user.getSignatureData(), headers, HttpStatus.OK);
-                })
-                .orElse(ResponseEntity.notFound().build());
+        return target.getSignatureData() == null ? ResponseEntity.notFound().build()
+                : fileResponse(target.getSignatureData(), target.getSignatureName(), true);
     }
 
     // ⭐ Get Photo as Base64
@@ -407,8 +359,9 @@ public class UserController {
                     String base64 = Base64.getEncoder().encodeToString(user.getPhotoData());
                     Map<String, String> response = new HashMap<>();
                     response.put("data", base64);
-                    response.put("filename", user.getPhotoName());
-                    response.put("type", user.getPhotoType());
+                    response.put("filename", FileSecurity.safeStoredFilename(
+                            user.getPhotoName(), user.getPhotoData()));
+                    response.put("type", FileSecurity.detectedContentType(user.getPhotoData()));
                     return ResponseEntity.ok(response);
                 })
                 .orElse(ResponseEntity.notFound().build());
@@ -426,8 +379,9 @@ public class UserController {
                     String base64 = Base64.getEncoder().encodeToString(user.getCitizenshipData());
                     Map<String, String> response = new HashMap<>();
                     response.put("data", base64);
-                    response.put("filename", user.getCitizenshipName());
-                    response.put("type", user.getCitizenshipType());
+                    response.put("filename", FileSecurity.safeStoredFilename(
+                            user.getCitizenshipName(), user.getCitizenshipData()));
+                    response.put("type", FileSecurity.detectedContentType(user.getCitizenshipData()));
                     return ResponseEntity.ok(response);
                 })
                 .orElse(ResponseEntity.notFound().build());
@@ -445,8 +399,9 @@ public class UserController {
                     String base64 = Base64.getEncoder().encodeToString(user.getSignatureData());
                     Map<String, String> response = new HashMap<>();
                     response.put("data", base64);
-                    response.put("filename", user.getSignatureName());
-                    response.put("type", user.getSignatureType());
+                    response.put("filename", FileSecurity.safeStoredFilename(
+                            user.getSignatureName(), user.getSignatureData()));
+                    response.put("type", FileSecurity.detectedContentType(user.getSignatureData()));
                     return ResponseEntity.ok(response);
                 })
                 .orElse(ResponseEntity.notFound().build());
@@ -818,8 +773,8 @@ public class UserController {
         String oldPassword = payload.get("oldPassword");
         String newPassword = payload.get("newPassword");
 
-        if (oldPassword == null || newPassword == null || newPassword.length() < 6) {
-            return ResponseEntity.badRequest().body(Map.of("error", "Invalid data. Password must be at least 6 chars."));
+        if (oldPassword == null || newPassword == null || newPassword.length() < 8) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Password must be at least 8 characters"));
         }
 
         User user = repo.findById(userId.intValue()).orElse(null);
@@ -832,6 +787,8 @@ public class UserController {
         }
 
         user.setPassword(passwordEncoder.encode(newPassword));
+        user.setTrustedDeviceToken(null);
+        user.setTrustedDeviceExpiry(null);
         repo.save(user);
 
         // Log Activity
@@ -911,6 +868,30 @@ public class UserController {
             }
         }
         return saved;
+    }
+
+    private interface BytesSetter { void accept(byte[] value); }
+    private interface TextSetter { void accept(String value); }
+
+    private void applyFile(BytesSetter data, TextSetter name, TextSetter type, StoredFile file) {
+        data.accept(file.data());
+        name.accept(file.filename());
+        type.accept(file.contentType());
+    }
+
+    private ResponseEntity<byte[]> fileResponse(byte[] data, String name, boolean inline) {
+        HttpHeaders headers = new HttpHeaders();
+        String detectedType = FileSecurity.detectedContentType(data);
+        if (inline && !detectedType.startsWith("image/")) {
+            return ResponseEntity.status(HttpStatus.UNSUPPORTED_MEDIA_TYPE).build();
+        }
+        headers.setContentType(MediaType.parseMediaType(detectedType));
+        var disposition = inline ? ContentDisposition.inline() : ContentDisposition.attachment();
+        headers.setContentDisposition(disposition
+                .filename(FileSecurity.safeStoredFilename(name, data), java.nio.charset.StandardCharsets.UTF_8)
+                .build());
+        headers.setCacheControl(org.springframework.http.CacheControl.noStore().cachePrivate());
+        return new ResponseEntity<>(data, headers, HttpStatus.OK);
     }
 
     public record AdminMemberUpdateRequest(String name, String email, String phone, String password) {}
