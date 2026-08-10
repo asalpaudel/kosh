@@ -161,28 +161,24 @@ public class SuperAdminAuthController {
             @RequestBody Map<String, String> payload,
             HttpServletRequest request,
             HttpSession session) {
-        String email = payload.get("email");
         String otp = payload.get("otp");
-        
-        if (email == null || otp == null) {
+
+        if (otp == null) {
             return ResponseEntity.badRequest().body(Map.of(
                 "success", false,
-                "message", "Email and OTP are required"
+                "message", "OTP is required"
             ));
         }
-        
-        email = email.trim().toLowerCase();
-        
-        
+
         Object pendingEmail = session.getAttribute("pendingSuperadminEmail");
         if (!(pendingEmail instanceof String challengeEmail)
-                || !challengeEmail.equalsIgnoreCase(email)
-                || !authorizedEmail.equalsIgnoreCase(email)) {
+                || !authorizedEmail.equalsIgnoreCase(challengeEmail)) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of(
                 "success", false,
                 "message", "Login challenge is missing or expired"
             ));
         }
+        String email = challengeEmail.trim().toLowerCase();
         
         
         String throttleKey = "superadmin-otp:" + email;
