@@ -1,11 +1,29 @@
 import { API_BASE } from "../lib/apiClient";
 import { NavLink, useNavigate } from "react-router-dom";
-import { useState } from "react";
+import { useState, type ChangeEvent, type FormEvent } from "react";
+import { booleanField, isRecord, stringField } from "../lib/validation";
+
+type Role = "member" | "admin" | "superadmin";
+interface AuthenticatedLogin {
+  role: Role;
+  userId: string;
+  name: string;
+  sahakari: string;
+}
+
+function authenticatedLogin(body: unknown): AuthenticatedLogin | null {
+  if (!isRecord(body) || booleanField(body, "success") !== true) return null;
+  const role = stringField(body, "role");
+  const userId = body.userId;
+  if ((role !== "member" && role !== "admin" && role !== "superadmin")
+      || (typeof userId !== "string" && typeof userId !== "number")) return null;
+  return { role, userId: String(userId), name: stringField(body, "name") ?? "", sahakari: stringField(body, "sahakari") ?? "" };
+}
 
 export default function Login() {
   const [formData, setFormData] = useState({ email: "", password: "" });
   const [otpData, setOtpData] = useState({ otp: "", trustDevice: false });
-  const [step, setStep] = useState("credentials"); // 'credentials' or '2fa'
+  const [step, setStep] = useState<"credentials" | "2fa">("credentials");
   const [errorMessage, setErrorMessage] = useState("");
   const [isPending, setIsPending] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -13,28 +31,28 @@ export default function Login() {
 
   const nav = useNavigate();
 
-  const handleInputChange = (e) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
+  const handleInputChange = (event: ChangeEvent<HTMLInputElement>): void => {
+    setFormData({ ...formData, [event.target.name]: event.target.value });
   };
 
-  const handleOtpChange = (e) => {
-    const val = e.target.type === "checkbox" ? e.target.checked : e.target.value;
-    setOtpData({ ...otpData, [e.target.name]: val });
+  const handleOtpChange = (event: ChangeEvent<HTMLInputElement>): void => {
+    const value = event.target.type === "checkbox" ? event.target.checked : event.target.value;
+    setOtpData({ ...otpData, [event.target.name]: value });
   };
 
-  const finishLogin = (data) => {
+  const finishLogin = (data: AuthenticatedLogin): void => {
     localStorage.setItem("userRole", data.role);
     localStorage.setItem("userId", data.userId);
     localStorage.setItem("userName", data.name);
     localStorage.setItem("userSahakari", data.sahakari);
 
-    if (data.role === "member") nav("/home");
-    else if (data.role === "admin") nav("/admin");
-    else if (data.role === "superadmin") nav("/superadmin");
+    if (data.role === "member") void nav("/home");
+    else if (data.role === "admin") void nav("/admin");
+    else void nav("/superadmin");
   };
 
-  const handleLogin = async (e) => {
-    e.preventDefault();
+  const handleLogin = async (event: FormEvent<HTMLFormElement>): Promise<void> => {
+    event.preventDefault();
     setErrorMessage("");
     setIsLoading(true);
 
@@ -52,23 +70,24 @@ export default function Login() {
         body: JSON.stringify(formData),
       });
 
-      const data = await response.json();
+      const data: unknown = await response.json();
 
-      if (data.status === "2FA_REQUIRED") {
+      if (stringField(data, "status") === "2FA_REQUIRED") {
         setStep("2fa");
         setErrorMessage(""); 
         setIsLoading(false);
         return;
       }
 
-      if (!data.success) {
-        if (data.status === "Pending") setIsPending(true);
-        setErrorMessage(data.message);
+      const login = authenticatedLogin(data);
+      if (!login) {
+        if (stringField(data, "status") === "Pending") setIsPending(true);
+        setErrorMessage(stringField(data, "message") ?? "Login failed");
         setIsLoading(false);
         return;
       }
 
-      finishLogin(data);
+      finishLogin(login);
       setIsLoading(false);
 
     } catch {
@@ -77,8 +96,8 @@ export default function Login() {
     }
   };
 
-  const handleVerify2FA = async (e) => {
-    e.preventDefault();
+  const handleVerify2FA = async (event: FormEvent<HTMLFormElement>): Promise<void> => {
+    event.preventDefault();
     setErrorMessage("");
     setIsVerifying(true);
 
@@ -93,15 +112,16 @@ export default function Login() {
         }),
       });
 
-      const data = await response.json();
+      const data: unknown = await response.json();
 
-      if (!data.success) {
-        setErrorMessage(data.message || "Invalid OTP");
+      const login = authenticatedLogin(data);
+      if (!login) {
+        setErrorMessage(stringField(data, "message") ?? "Invalid OTP");
         setIsVerifying(false);
         return;
       }
 
-      finishLogin(data);
+      finishLogin(login);
       setIsVerifying(false);
 
     } catch {
@@ -145,7 +165,7 @@ export default function Login() {
           </p>
 
           {step === "credentials" && (
-            <form onSubmit={handleLogin} className="space-y-5">
+            <form onSubmit={(event) => { void handleLogin(event); }} className="space-y-5">
               <div>
                 <label className="text-sm font-medium text-gray-700">Email address</label>
                 <input
@@ -208,13 +228,13 @@ export default function Login() {
 
           {/* 2FA */}
           {step === "2fa" && (
-            <form onSubmit={handleVerify2FA} className="space-y-5">
+            <form onSubmit={(event) => { void handleVerify2FA(event); }} className="space-y-5">
               <div>
                 <label className="text-sm font-medium text-gray-700">Verification Code</label>
                 <input
                   type="text"
                   name="otp"
-                  maxLength="6"
+                  maxLength={6}
                   placeholder="000000"
                   className="mt-2 w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-[#14c596] focus:outline-none text-center text-2xl tracking-widest font-bold"
                   value={otpData.otp}
@@ -264,7 +284,7 @@ export default function Login() {
 
               <button 
                 type="button" 
-                onClick={() => setStep("credentials")}
+                onClick={() => { setStep("credentials"); }}
                 disabled={isVerifying}
                 className="w-full text-sm text-gray-500 hover:text-gray-900 mt-2 disabled:opacity-50 disabled:cursor-not-allowed"
               >

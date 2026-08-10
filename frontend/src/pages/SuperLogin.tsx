@@ -1,20 +1,21 @@
 import { API_BASE } from "../lib/apiClient";
-import { useState } from "react";
+import { useState, type FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import { Logo } from "../component/icons";
+import { booleanField, stringField } from "../lib/validation";
 
 export default function SuperLogin() {
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
     const [otp, setOtp] = useState("");
-    const [step, setStep] = useState("email"); // 'email' or 'otp'
+    const [step, setStep] = useState<"email" | "otp">("email");
     const [isLoading, setIsLoading] = useState(false);
     const [errorMessage, setErrorMessage] = useState("");
 
     const nav = useNavigate();
 
-    const handleRequestOtp = async (e) => {
-        e.preventDefault();
+    const handleRequestOtp = async (event: FormEvent<HTMLFormElement>): Promise<void> => {
+        event.preventDefault();
         setErrorMessage("");
         setIsLoading(true);
 
@@ -32,17 +33,17 @@ export default function SuperLogin() {
                 body: JSON.stringify({ email: email.trim(), password }),
             });
 
-            const data = await response.json();
+            const data: unknown = await response.json();
 
-            if (!response.ok || !data.success) {
-                setErrorMessage(data.message || "Failed to send verification code");
+            if (!response.ok || booleanField(data, "success") !== true) {
+                setErrorMessage(stringField(data, "message") ?? "Failed to send verification code");
                 setIsLoading(false);
                 return;
             }
 
-            if (data.status === "LOGIN_SUCCESS") {
+            if (stringField(data, "status") === "LOGIN_SUCCESS") {
                 localStorage.setItem("superadminRole", "superadmin");
-                nav("/superadmin");
+                void nav("/superadmin");
                 return;
             }
 
@@ -54,8 +55,8 @@ export default function SuperLogin() {
         }
     };
 
-    const handleVerifyOtp = async (e) => {
-        e.preventDefault();
+    const handleVerifyOtp = async (event: FormEvent<HTMLFormElement>): Promise<void> => {
+        event.preventDefault();
         setErrorMessage("");
         setIsLoading(true);
 
@@ -70,20 +71,20 @@ export default function SuperLogin() {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 credentials: "include",
-                body: JSON.stringify({ email: email.trim(), otp: otp.trim() }),
+                body: JSON.stringify({ otp: otp.trim() }),
             });
 
-            const data = await response.json();
+            const data: unknown = await response.json();
 
-            if (!response.ok || !data.success) {
-                setErrorMessage(data.message || "Invalid verification code");
+            if (!response.ok || booleanField(data, "success") !== true) {
+                setErrorMessage(stringField(data, "message") ?? "Invalid verification code");
                 setIsLoading(false);
                 return;
             }
 
             // Success - Navigate to superadmin dashboard
             localStorage.setItem("superadminRole", "superadmin");
-            nav("/superadmin");
+            void nav("/superadmin");
         } catch {
             setErrorMessage("Verification failed.");
             setIsLoading(false);
@@ -112,7 +113,7 @@ export default function SuperLogin() {
                 {/* Form Card */}
                 <div className="bg-white/80 backdrop-blur-xl rounded-2xl border border-white/50 p-8 shadow-xl shadow-teal-900/5">
                     {step === "email" && (
-                        <form onSubmit={handleRequestOtp} className="space-y-6">
+                        <form onSubmit={(event) => { void handleRequestOtp(event); }} className="space-y-6">
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-2">
                                     Email Address
@@ -120,7 +121,7 @@ export default function SuperLogin() {
                                 <input
                                     type="email"
                                     value={email}
-                                    onChange={(e) => setEmail(e.target.value)}
+                                    onChange={(event) => { setEmail(event.target.value); }}
                                     placeholder="Enter authorized email"
                                     disabled={isLoading}
                                     className="w-full px-4 py-3 rounded-xl bg-gray-50 border border-gray-200 text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-teal-500 focus:border-transparent outline-none transition duration-200 disabled:opacity-50 disabled:bg-gray-100"
@@ -134,7 +135,7 @@ export default function SuperLogin() {
                                 <input
                                     type="password"
                                     value={password}
-                                    onChange={(e) => setPassword(e.target.value)}
+                                    onChange={(event) => { setPassword(event.target.value); }}
                                     placeholder="Enter password"
                                     autoComplete="current-password"
                                     disabled={isLoading}
@@ -172,7 +173,7 @@ export default function SuperLogin() {
                     )}
 
                     {step === "otp" && (
-                        <form onSubmit={handleVerifyOtp} className="space-y-6">
+                        <form onSubmit={(event) => { void handleVerifyOtp(event); }} className="space-y-6">
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-2">
                                     Verification Code
@@ -180,7 +181,7 @@ export default function SuperLogin() {
                                 <input
                                     type="text"
                                     value={otp}
-                                    onChange={(e) => setOtp(e.target.value)}
+                                    onChange={(event) => { setOtp(event.target.value); }}
                                     placeholder="000000"
                                     maxLength={6}
                                     disabled={isLoading}

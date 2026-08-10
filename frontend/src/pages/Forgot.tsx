@@ -1,27 +1,27 @@
 import { API_BASE } from "../lib/apiClient";
-import React, { useState, useEffect } from "react";
+import { useState, useEffect, type FormEvent } from "react";
 import { useNavigate, NavLink } from "react-router-dom";
+import { booleanField, stringField } from "../lib/validation";
 
 
 export default function Forgot() {
   const navigate = useNavigate();
-  const [step, setStep] = useState(1);
+  const [step, setStep] = useState<1 | 2>(1);
   const [email, setEmail] = useState("");
   const [otp, setOtp] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [loading, setLoading] = useState(false);
-  const [message, setMessage] = useState({ type: "", text: "" });
+  const [message, setMessage] = useState<{ type: "" | "error" | "success"; text: string }>({ type: "", text: "" });
   const [timer, setTimer] = useState(0);
 
   useEffect(() => {
-    let interval;
+    let interval: number | undefined;
     if (timer > 0)
-      interval = setInterval(() => setTimer((prev) => prev - 1), 1000);
-    return () => clearInterval(interval);
+      interval = setInterval(() => { setTimer((previous) => previous - 1); }, 1000);
+    return () => { if (interval !== undefined) window.clearInterval(interval); };
   }, [timer]);
 
-  const handleSendOtp = async (e) => {
-    if (e) e.preventDefault();
+  const sendOtp = async (): Promise<void> => {
     setLoading(true);
     setMessage({ type: "", text: "" });
     try {
@@ -30,15 +30,15 @@ export default function Forgot() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email }),
       });
-      const data = await res.json();
-      if (data.success) {
+      const data: unknown = await res.json();
+      if (booleanField(data, "success") === true) {
         setStep(2);
         setTimer(60);
         setMessage({ type: "success", text: "OTP sent to your email." });
       } else {
         setMessage({
           type: "error",
-          text: data.message || "Failed to send OTP",
+          text: stringField(data, "message") ?? "Failed to send OTP",
         });
       }
     } catch {
@@ -48,8 +48,13 @@ export default function Forgot() {
     }
   };
 
-  const handleResetPassword = async (e) => {
-    e.preventDefault();
+  const handleSendOtp = (event: FormEvent<HTMLFormElement>): void => {
+    event.preventDefault();
+    void sendOtp();
+  };
+
+  const handleResetPassword = async (event: FormEvent<HTMLFormElement>): Promise<void> => {
+    event.preventDefault();
     setLoading(true);
     setMessage({ type: "", text: "" });
     try {
@@ -58,12 +63,12 @@ export default function Forgot() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, otp, newPassword }),
       });
-      const data = await res.json();
-      if (data.success) {
+      const data: unknown = await res.json();
+      if (booleanField(data, "success") === true) {
         alert("Password reset successful!");
-        navigate("/");
+        void navigate("/");
       } else {
-        setMessage({ type: "error", text: data.message || "Reset failed" });
+        setMessage({ type: "error", text: stringField(data, "message") ?? "Reset failed" });
       }
     } catch {
       setMessage({ type: "error", text: "Server error. Try again later." });
@@ -125,7 +130,7 @@ export default function Forgot() {
                   required
                   className="mt-2 w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-[#00FFB2] focus:outline-none"
                   value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  onChange={(event) => { setEmail(event.target.value); }}
                 />
               </div>
 
@@ -138,7 +143,7 @@ export default function Forgot() {
               </button>
             </form>
           ) : (
-            <form onSubmit={handleResetPassword} className="space-y-5">
+            <form onSubmit={(event) => { void handleResetPassword(event); }} className="space-y-5">
               <div>
                 <label className="text-sm font-medium text-gray-700">OTP</label>
                 <input
@@ -147,7 +152,7 @@ export default function Forgot() {
                   required
                   className="mt-2 w-full px-4 py-3 text-center tracking-[0.3em] font-mono text-lg border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#00FFB2] focus:outline-none"
                   value={otp}
-                  onChange={(e) => setOtp(e.target.value)}
+                  onChange={(event) => { setOtp(event.target.value); }}
                   placeholder="000000"
                 />
               </div>
@@ -161,7 +166,7 @@ export default function Forgot() {
                   required
                   className="mt-2 w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-[#14c596] focus:outline-none"
                   value={newPassword}
-                  onChange={(e) => setNewPassword(e.target.value)}
+                  onChange={(event) => { setNewPassword(event.target.value); }}
                   placeholder="Enter new password"
                 />
               </div>
@@ -183,7 +188,7 @@ export default function Forgot() {
                 ) : (
                   <button
                     type="button"
-                    onClick={() => handleSendOtp(null)}
+                    onClick={() => { void sendOtp(); }}
                     className="text-[#14c596] font-medium hover:underline"
                   >
                     Resend OTP
