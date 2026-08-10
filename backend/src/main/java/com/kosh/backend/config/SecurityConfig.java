@@ -21,7 +21,6 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
 import org.springframework.security.web.csrf.CsrfFilter;
 import org.springframework.security.web.csrf.CsrfTokenRequestAttributeHandler;
-import org.springframework.security.web.util.matcher.AntPathRequestMatcher;
 import org.springframework.security.web.header.writers.ReferrerPolicyHeaderWriter.ReferrerPolicy;
 
 @Configuration
@@ -74,21 +73,9 @@ public class SecurityConfig {
             // user must carry a CSRF token. The token cookie is readable by JavaScript on
             // purpose: the SPA copies it into the X-XSRF-TOKEN header.
             //
-            // The pre-authentication endpoints are exempt. They run before a session
-            // exists, so there is no authenticated context for a forged request to ride,
-            // and requiring a token there would mean priming a cookie before the very
-            // first login can be attempted.
             .csrf(csrf -> csrf
                 .csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())
-                .csrfTokenRequestHandler(new CsrfTokenRequestAttributeHandler())
-                .ignoringRequestMatchers(
-                    new AntPathRequestMatcher("/api/auth/login", "POST"),
-                    new AntPathRequestMatcher("/api/auth/verify-2fa", "POST"),
-                    new AntPathRequestMatcher("/api/auth/forgot-password", "POST"),
-                    new AntPathRequestMatcher("/api/auth/reset-password", "POST"),
-                    new AntPathRequestMatcher("/api/superadmin-auth/login", "POST"),
-                    new AntPathRequestMatcher("/api/superadmin-auth/verify-otp", "POST"),
-                    new AntPathRequestMatcher("/api/users", "POST")))
+                .csrfTokenRequestHandler(new CsrfTokenRequestAttributeHandler()))
             .cors(cors -> {})
             .addFilterAfter(new CsrfCookieFilter(), CsrfFilter.class)
             .addFilterBefore(new SessionAuthenticationFilter(), AnonymousAuthenticationFilter.class)
@@ -96,6 +83,7 @@ public class SecurityConfig {
                 .authenticationEntryPoint(new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED)))
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers("/error").permitAll()
+                .requestMatchers(HttpMethod.GET, "/api/csrf").permitAll()
                 .requestMatchers(HttpMethod.POST,
                     "/api/auth/login",
                     "/api/auth/verify-2fa",

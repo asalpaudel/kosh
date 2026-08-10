@@ -53,8 +53,14 @@ class SecurityConfigAuthorizationTest {
     }
 
     @Test
-    void loginDoesNotRequireACsrfTokenBecauseNoSessionExistsYet() throws Exception {
+    void loginWithoutCsrfTokenIsRejected() throws Exception {
         mockMvc.perform(post("/api/auth/login"))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void loginWithCsrfTokenIsAllowed() throws Exception {
+        mockMvc.perform(post("/api/auth/login").with(csrf()))
                 .andExpect(status().isOk());
     }
 

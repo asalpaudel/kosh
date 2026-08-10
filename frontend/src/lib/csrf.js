@@ -14,15 +14,29 @@ export function csrfToken() {
  * places, and a single choke point cannot be forgotten the way a per-call header can.
  * Requests that already set the header keep theirs, and safe methods are left alone.
  */
-export function installCsrf() {
+export function installCsrf(apiBase) {
   if (typeof window === "undefined" || window.__koshCsrfInstalled) return;
   window.__koshCsrfInstalled = true;
 
   const originalFetch = window.fetch.bind(window);
+  const apiUrl = new URL(apiBase, window.location.href);
 
-  window.fetch = (input, init = {}) => {
+  window.fetch = async (input, init = {}) => {
     const method = (init.method ?? (input instanceof Request ? input.method : "GET")).toUpperCase();
     if (SAFE_METHODS.has(method)) return originalFetch(input, init);
+
+    const target = new URL(input instanceof Request ? input.url : input, window.location.href);
+    const apiPath = apiUrl.pathname.endsWith("/") ? apiUrl.pathname : `${apiUrl.pathname}/`;
+    const isApiRequest = target.origin === apiUrl.origin
+      && (target.pathname === apiUrl.pathname || target.pathname.startsWith(apiPath));
+    if (!isApiRequest) return originalFetch(input, init);
+
+    if (!csrfToken()) {
+      await originalFetch(`${apiUrl.toString().replace(/\/$/, "")}/csrf`, {
+        method: "GET",
+        credentials: "include",
+      });
+    }
 
     const token = csrfToken();
     if (!token) return originalFetch(input, init);
