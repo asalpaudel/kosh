@@ -43,6 +43,7 @@ import com.kosh.backend.repository.UserRepository;
 import com.kosh.backend.repository.RepaymentScheduleRepository;
 import com.kosh.backend.service.LoanService;
 import com.kosh.backend.ledger.LedgerPostings;
+import com.kosh.backend.ledger.LedgerReports;
 import com.kosh.backend.ledger.LedgerService;
 import com.kosh.backend.service.Money;
 import com.kosh.backend.service.NetworkAccessService;
@@ -96,6 +97,9 @@ public class ApplicationController {
 
     @Autowired
     private LedgerService ledger;
+
+    @Autowired
+    private LedgerReports reports;
 
     // Helper to generate voucher ID
     private String generateVoucherId() {
@@ -615,19 +619,10 @@ public class ApplicationController {
                 Long networkId = application.getNetwork().getId();
 
                 // ⭐ 2. Calculate Current Reserve using NEW FORMULA
-                BigDecimal totalUserBalance = Money.orZero(userRepo.getTotalUserBalanceByNetwork(networkId));
-                BigDecimal totalLoans = Money.orZero(transactionRepo.getOutstandingLoans(networkId));
-                BigDecimal totalNetwork = Money.orZero(transactionRepo.getNetworkBalance(networkId));
-
-                BigDecimal currentReserve = totalUserBalance.subtract(totalLoans).add(totalNetwork);
+                // Liquidity comes from the ledger, so two loans approved at the same moment
+                // cannot each pass the rule against the same stale figure.
+                BigDecimal currentReserve = reports.liquidity(networkId);
                 BigDecimal lendingCeiling = Money.round(currentReserve.multiply(LENDING_LIMIT));
-
-                System.out.println("--- Loan Approval Validation ---");
-                System.out.println("Total User Balance (Pool): " + totalUserBalance);
-                System.out.println("Total Loans (Outstanding): " + totalLoans);
-                System.out.println("Net Network Balance: " + totalNetwork);
-                System.out.println("Calculated Reserve: " + currentReserve);
-                System.out.println("Approved Loan Amount: " + approvedAmt);
 
                 // ⭐ 3. Validate Loan Amount (70% Rule) based on APPROVED Amount
                 if (approvedAmt.compareTo(lendingCeiling) > 0) {

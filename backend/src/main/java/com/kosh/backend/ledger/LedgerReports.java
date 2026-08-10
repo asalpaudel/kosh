@@ -31,6 +31,12 @@ public class LedgerReports {
     /** Stands in for "since the cooperative began" — earlier than any plausible entry date. */
     private static final LocalDate BEGINNING = LocalDate.of(1900, 1, 1);
 
+    /** Accounts whose balance grows on the credit side, so the sign has to be flipped. */
+    private static final java.util.Set<String> LIABILITY_AND_EQUITY_CODES = java.util.Set.of(
+            Accounts.MEMBER_SAVINGS, Accounts.FIXED_DEPOSITS, Accounts.SHARE_CAPITAL,
+            Accounts.RESERVE_FUND, Accounts.OPENING_BALANCE_EQUITY, Accounts.RETAINED_EARNINGS,
+            Accounts.INTEREST_INCOME, Accounts.FEE_INCOME);
+
     private final JournalLineRepository lineRepo;
     private final JournalEntryRepository entryRepo;
     private final UserRepository userRepo;
@@ -164,6 +170,26 @@ public class LedgerReports {
         // still ends where it ended today.
         intact.put("checkpointHash", expectedPrevious);
         return intact;
+    }
+
+    /** One account's balance on its normal side, read straight from the journal. */
+    public BigDecimal accountBalance(Long networkId, String accountCode) {
+        BigDecimal netDebit = Money.orZero(lineRepo.netMovement(networkId, accountCode));
+        return Money.round(LIABILITY_AND_EQUITY_CODES.contains(accountCode) ? netDebit.negate() : netDebit);
+    }
+
+    /**
+     * Liquid funds the cooperative actually holds: cash plus bank, straight from the ledger.
+     *
+     * <p>This replaces the old running total of {@code savings + deposits − loans + own funds}.
+     * The two are the same number — the accounting identity guarantees it — but that version
+     * was recomputed from four aggregates and stored per transaction, so two tellers posting
+     * at once each wrote a figure that ignored the other. Reading it from the ledger has no
+     * such window, and it cannot drift from the books because it *is* the books.
+     */
+    public BigDecimal liquidity(Long networkId) {
+        return Money.round(Money.orZero(lineRepo.netMovement(networkId, Accounts.CASH))
+                .add(Money.orZero(lineRepo.netMovement(networkId, Accounts.BANK))));
     }
 
     /** The member's savings balance as the journal implies it, ignoring the cached column. */

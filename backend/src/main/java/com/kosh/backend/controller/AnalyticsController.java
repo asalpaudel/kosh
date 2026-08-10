@@ -16,6 +16,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.kosh.backend.model.Transaction;
+import com.kosh.backend.ledger.Accounts;
+import com.kosh.backend.ledger.LedgerReports;
 import com.kosh.backend.service.Money;
 import com.kosh.backend.model.User;
 import com.kosh.backend.repository.NetworkRepository;
@@ -32,13 +34,16 @@ public class AnalyticsController {
     private final NetworkRepository networkRepository;
     private final TransactionRepository transactionRepository;
     private final UserRepository userRepository;
+    private final LedgerReports ledgerReports;
 
     public AnalyticsController(NetworkRepository networkRepository, 
                                TransactionRepository transactionRepository, 
-                               UserRepository userRepository) {
+                               UserRepository userRepository,
+                               LedgerReports ledgerReports) {
         this.networkRepository = networkRepository;
         this.transactionRepository = transactionRepository;
         this.userRepository = userRepository;
+        this.ledgerReports = ledgerReports;
     }
 
     // Monthly revenue per type
@@ -115,30 +120,19 @@ public class AnalyticsController {
 
         // --- 2. FINANCIALS (Balances) ---
 
-        // A. Savings (Liquid Funds from Users)
-        BigDecimal savings = Money.orZero(userRepository.getTotalUserBalanceByNetwork(networkId));
+        // Every figure below is read from the journal, so the dashboard and the statements
+        // can never tell different stories about the same money.
+        BigDecimal savings = ledgerReports.accountBalance(networkId, Accounts.MEMBER_SAVINGS);
+        BigDecimal fd = ledgerReports.accountBalance(networkId, Accounts.FIXED_DEPOSITS);
+        BigDecimal loans = ledgerReports.accountBalance(networkId, Accounts.LOANS_RECEIVABLE);
 
-        // B. Fixed Deposits (Locked Funds from Ledger)
-        BigDecimal fd = Money.orZero(transactionRepository.getBalanceByHead(networkId, "Fixed Deposit"));
-
-        // C. Loans (Assets/Receivables from Ledger)
-        BigDecimal loans = Money.orZero(transactionRepository.getOutstandingLoans(networkId));
-
-        // D. Network Equity (Cash/Earnings/Expense Difference)
-        BigDecimal networkBalance = Money.orZero(transactionRepository.getNetworkBalance(networkId));
-
-        // --- 3. AGGREGATES ---
-
-        // Total Deposits = Liquid Savings + Fixed Deposits
         BigDecimal totalDeposits = savings.add(fd);
 
-        // Reserve (Liquidity Available)
-        // Formula: (Money from Users) - (Money Lent Out) + (Own Cash)
-        BigDecimal reserve = totalDeposits.subtract(loans).add(networkBalance);
+        // Reserve is what the cooperative can actually lend: cash plus bank.
+        BigDecimal reserve = ledgerReports.liquidity(networkId);
 
-        // Total Pool (Total Assets Managed)
-        // Formula: Total Deposits + Own Equity
-        BigDecimal totalPool = totalDeposits.add(networkBalance);
+        // Total assets under management: liquid funds plus what is out on loan.
+        BigDecimal totalPool = reserve.add(loans);
 
         // --- 4. TODAY'S SUMMARY (For AdminDashboard.jsx) ---
         LocalDate today = LocalDate.now();

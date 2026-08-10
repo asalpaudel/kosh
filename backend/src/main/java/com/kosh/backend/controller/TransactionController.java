@@ -41,6 +41,7 @@ import com.kosh.backend.repository.TransactionRepository;
 import com.kosh.backend.repository.UserRepository;
 import com.kosh.backend.service.EmailService;
 import com.kosh.backend.ledger.LedgerPostings;
+import com.kosh.backend.ledger.LedgerReports;
 import com.kosh.backend.ledger.LedgerService;
 import com.kosh.backend.service.Money;
 import com.kosh.backend.service.NetworkAccessService;
@@ -70,6 +71,7 @@ public class TransactionController {
     private final SavingAccountRepository saPackageRepo;
     private final NetworkAccessService access;
     private final LedgerService ledger;
+    private final LedgerReports reports;
 
     public TransactionController(
             TransactionRepository transactionRepo, 
@@ -84,10 +86,12 @@ public class TransactionController {
             SavingAccountApplicationRepository saAppRepo,
             SavingAccountRepository saPackageRepo,
             NetworkAccessService access,
-            LedgerService ledger) {
+            LedgerService ledger,
+            LedgerReports reports) {
 
         this.access = access;
         this.ledger = ledger;
+        this.reports = reports;
 
         this.transactionRepo = transactionRepo;
         this.userRepo = userRepo;
@@ -324,35 +328,6 @@ public class TransactionController {
             // END APPLICATION LOGIC
             // ========================================================================
 
-            // --- NETWORK RESERVE CALCULATION ---
-            BigDecimal totalSavings = Money.orZero(transactionRepo.getBalanceByHead(networkId, "Savings"));
-            BigDecimal totalFD = Money.orZero(transactionRepo.getBalanceByHead(networkId, "Fixed Deposit"));
-            BigDecimal totalLoans = Money.orZero(transactionRepo.getOutstandingLoans(networkId));
-            BigDecimal totalNetwork = Money.orZero(transactionRepo.getNetworkBalance(networkId));
-
-            String head = tx.getAccountHead();
-            String dir = tx.getDirection();
-            BigDecimal amt = tx.getAmount();
-            String mode = tx.getMode();
-
-            BigDecimal creditSigned = "Credit".equals(dir) ? amt : amt.negate();
-
-            // Adjust current running totals based on this new transaction
-            if ("Savings".equals(head)) {
-                totalSavings = totalSavings.add(creditSigned);
-            } else if ("Fixed Deposit".equals(head)) {
-                totalFD = totalFD.add(creditSigned);
-            } else if ("Loan".equals(head)) {
-                // Loan: Debit increases Outstanding, Credit decreases it
-                totalLoans = totalLoans.add("Debit".equals(dir) ? amt : amt.negate());
-            }
-
-            if ("network".equals(mode)) {
-                totalNetwork = totalNetwork.add(creditSigned);
-            }
-
-            tx.setNetworkReserve(totalSavings.add(totalFD).subtract(totalLoans).add(totalNetwork));
-
             Transaction savedTx = transactionRepo.save(tx);
 
             // The journal is the accounting record; the transaction row above stays as the
@@ -363,6 +338,11 @@ public class TransactionController {
                     LedgerPostings.forTransaction(tx.getMode(), tx.getAccountHead(), tx.getDirection(),
                             tx.getPaymentMethod(), tx.getNetworkLedger(), tx.getAmount(), targetUser,
                             tx.getType()));
+
+            // Record the cooperative's liquid position as it stands once this entry is in.
+            // Derived from the ledger inside the same serialised posting, so concurrent
+            // tellers can no longer each stamp a figure that ignores the other.
+            savedTx.setNetworkReserve(reports.liquidity(networkId));
 
             // Log Activity
             try {
