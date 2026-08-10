@@ -6,6 +6,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.ContentDisposition;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
@@ -38,6 +40,8 @@ import jakarta.servlet.http.HttpSession;
 @RestController
 @RequestMapping("/api/users")
 public class UserController {
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(UserController.class);
 
     private final UserRepository repo;
     private final NetworkRepository networkRepo;
@@ -137,16 +141,12 @@ public class UserController {
                         .filter(u -> "Active".equals(u.getStatus()))
                         .count();
 
-                System.out.println("Current members: " + currentMembers + " / " + maxMembers);
-
                 if (currentMembers >= maxMembers) {
                     return ResponseEntity.badRequest()
                             .body(Map.of(
                                     "error", "Member limit reached. This network allows only " +
                                             maxMembers + " members."));
                 }
-            } else {
-                System.out.println("No member limit set for this network (unlimited)");
             }
         }
 
@@ -216,7 +216,7 @@ public class UserController {
                     );
                     logRepo.save(log);
                 } catch (Exception e) {
-                    System.out.println("Failed to log user creation: " + e.getMessage());
+                    LOGGER.warn("Unable to persist CREATE_USER audit event");
                 }
             }
             // --- ACTIVITY LOGGING END ---
@@ -562,7 +562,7 @@ public class UserController {
                 );
                 logRepo.save(log);
             } catch (Exception e) {
-                System.out.println("Failed to log user approval: " + e.getMessage());
+                LOGGER.warn("Unable to persist APPROVE_USER audit event");
             }
         }
 
@@ -591,7 +591,7 @@ public class UserController {
                 );
                 logRepo.save(log);
             } catch (Exception e) {
-                System.out.println("Failed to log user rejection: " + e.getMessage());
+                LOGGER.warn("Unable to persist REJECT_USER audit event");
             }
         }
 
@@ -623,7 +623,7 @@ public class UserController {
                 );
                 logRepo.save(log);
             } catch (Exception e) {
-                System.out.println("Failed to log user deletion: " + e.getMessage());
+                LOGGER.warn("Unable to persist DELETE_USER audit event");
             }
         }
 
@@ -636,15 +636,9 @@ public class UserController {
             @RequestParam(value = "search", required = false) String search,
             HttpSession session) {
 
-        System.out.println("=== User Search Request ===");
-        System.out.println("Search param: " + search);
-        System.out.println("Session ID: " + session.getId());
-
         String sahakari = (String) session.getAttribute("sahakari");
-        System.out.println("Session sahakari: " + sahakari);
 
         if (sahakari == null) {
-            System.out.println("ERROR: Sahakari not found in session");
             return ResponseEntity.status(401)
                     .body(Map.of("error", "Session expired or not authenticated. Please login again."));
         }
@@ -652,8 +646,6 @@ public class UserController {
         List<User> users;
 
         if (search != null && !search.trim().isEmpty()) {
-            System.out.println("Searching for: '" + search + "' in network: " + sahakari);
-
             users = repo.findAll().stream()
                     .filter(u -> sahakari.equals(u.getSahakari()))
                     .filter(u -> {
@@ -666,13 +658,11 @@ public class UserController {
                     })
                     .collect(Collectors.toList());
 
-            System.out.println("Found " + users.size() + " matching users");
         } else {
             users = repo.findAll().stream()
                     .filter(u -> sahakari.equals(u.getSahakari()))
                     .collect(Collectors.toList());
 
-            System.out.println("Returning all users: " + users.size());
         }
 
         return ResponseEntity.ok(users);
@@ -681,9 +671,6 @@ public class UserController {
     @GetMapping("/all")
     public ResponseEntity<?> getAllUsersForSuperAdmin(
             @RequestParam(value = "search", required = false) String search) {
-
-        System.out.println("=== Super Admin User Search ===");
-        System.out.println("Search param: " + search);
 
         List<User> users;
 
@@ -703,16 +690,12 @@ public class UserController {
             users = repo.findAll();
         }
 
-        System.out.println("Returning " + users.size() + " users");
         return ResponseEntity.ok(users);
     }
 
     @GetMapping("/me")
     public ResponseEntity<?> getCurrentUser(HttpSession session) {
         Long userId = (Long) session.getAttribute("userId");
-
-        System.out.println("=== Get Current User ===");
-        System.out.println("Session User ID: " + userId);
 
         if (userId == null) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
@@ -725,9 +708,6 @@ public class UserController {
             return ResponseEntity.status(HttpStatus.NOT_FOUND)
                     .body(Map.of("error", "User not found"));
         }
-
-        System.out.println("User: " + user.getName());
-        System.out.println("Balance: " + user.getBalance());
 
         Map<String, Object> response = new HashMap<>();
         
@@ -807,7 +787,7 @@ public class UserController {
                 );
                 logRepo.save(log);
             } catch (Exception e) {
-                System.out.println("Failed to log password change: " + e.getMessage());
+                LOGGER.warn("Unable to persist CHANGE_PASSWORD audit event");
             }
         }
 
@@ -864,7 +844,7 @@ public class UserController {
                         "UPDATE_USER",
                         "Updated user details: " + saved.getName()));
             } catch (Exception e) {
-                System.out.println("Failed to log user update: " + e.getMessage());
+                LOGGER.warn("Unable to persist UPDATE_USER audit event");
             }
         }
         return saved;

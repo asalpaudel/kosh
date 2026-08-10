@@ -6,6 +6,8 @@ import java.time.LocalDateTime;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.ByteArrayResource;
@@ -22,6 +24,8 @@ import jakarta.mail.internet.MimeMessage;
 
 @Service
 public class EmailService {
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(EmailService.class);
 
     @Autowired
     private JavaMailSender mailSender;
@@ -114,9 +118,7 @@ public class EmailService {
 
             mailSender.send(message);
         } catch (MessagingException e) {
-            // Log the error but don't crash the application flow
-            System.err.println("Failed to send email to " + to + ": " + e.getMessage());
-            e.printStackTrace();
+            LOGGER.warn("Unable to send authentication email");
         }
     }
 
@@ -333,11 +335,10 @@ public class EmailService {
             }
 
             mailSender.send(message);
-            System.out.println("✅ Transaction voucher email sent to " + toEmail);
+            LOGGER.info("Transaction voucher email sent");
 
         } catch (Exception e) {
-            System.err.println("⚠️ Failed to send transaction voucher email to " + toEmail + ": " + e.getMessage());
-            e.printStackTrace();
+            LOGGER.warn("Unable to send transaction voucher email");
         }
     }
 }

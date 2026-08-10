@@ -59,6 +59,14 @@ class PostgresqlMigrationTest {
                 "ON transactions (network_id, idempotency_key)");
     }
 
+    @Test
+    void activityHistoryRejectsUpdatesAndDeletes() throws IOException {
+        String migration = resource("/db/migration/V7__append_only_activity_log.sql");
+        assertThat(migration).contains(
+                "BEFORE UPDATE OR DELETE ON activity_logs",
+                "activity logs are append-only");
+    }
+
     private String resource(String path) throws IOException {
         try (var stream = getClass().getResourceAsStream(path)) {
             assertThat(stream).as("resource %s", path).isNotNull();

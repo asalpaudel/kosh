@@ -13,6 +13,8 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.Base64;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -63,6 +65,8 @@ import jakarta.servlet.http.HttpSession;
 @RestController
 @RequestMapping("/api/transactions")
 public class TransactionController {
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(TransactionController.class);
 
     private static final BigDecimal MAX_TRANSACTION_AMOUNT =
             new BigDecimal("9999999999999999.99");
@@ -299,7 +303,7 @@ public class TransactionController {
                         tx.setApplicationId(savedApp.getId());
                         tx.setApplicationType("loan");
                         
-                        System.out.println("✅ NEW Loan Created: #" + savedApp.getId());
+                        LOGGER.info("Loan application created from a transaction");
                     }
                 }
                 
@@ -332,7 +336,7 @@ public class TransactionController {
                         tx.setApplicationId(savedApp.getId());
                         tx.setApplicationType("fixed-deposit");
                         
-                        System.out.println("✅ NEW FD Created: #" + savedApp.getId());
+                        LOGGER.info("Fixed-deposit application created from a transaction");
                     }
                 }
                 
@@ -359,7 +363,7 @@ public class TransactionController {
                         tx.setApplicationId(savedApp.getId());
                         tx.setApplicationType("saving-account");
                         
-                        System.out.println("✅ NEW Savings Account Created: #" + savedApp.getId());
+                        LOGGER.info("Savings application created from a transaction");
                     }
                 }
             }
@@ -407,7 +411,9 @@ public class TransactionController {
                     "Added " + tx.getType() + " of Rs. " + tx.getAmount()
                 );
                 logRepo.save(log);
-            } catch (Exception e) {}
+            } catch (Exception e) {
+                LOGGER.warn("Unable to persist ADD_TRANSACTION audit event");
+            }
 
             // Send voucher email to the user
             try {
@@ -415,7 +421,7 @@ public class TransactionController {
                     emailService.sendTransactionVoucherEmail(targetUser.getEmail(), savedTx, network);
                 }
             } catch (Exception e) {
-                System.err.println("Email send failed (non-blocking): " + e.getMessage());
+                LOGGER.warn("Unable to send transaction voucher email");
             }
 
             return ResponseEntity.ok(mapTransactionToFrontend(savedTx));

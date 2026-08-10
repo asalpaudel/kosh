@@ -6,6 +6,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.ContentDisposition;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
@@ -36,6 +38,8 @@ import jakarta.servlet.http.HttpSession;
 @RestController
 @RequestMapping("/api/networks")
 public class NetworkController {
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(NetworkController.class);
 
     private final NetworkRepository networkRepository;
     private final ActivityLogRepository logRepo;
@@ -97,7 +101,7 @@ public class NetworkController {
                 );
                 logRepo.save(log);
             } catch (Exception e) {
-                System.out.println("Failed to log network creation: " + e.getMessage());
+                LOGGER.warn("Unable to persist CREATE_NETWORK audit event");
             }
 
             return ResponseEntity.ok(saved);
@@ -166,7 +170,7 @@ public class NetworkController {
                 );
                 logRepo.save(log);
             } catch (Exception e) {
-                System.out.println("Failed to log network creation: " + e.getMessage());
+                LOGGER.warn("Unable to persist CREATE_NETWORK audit event");
             }
 
             return ResponseEntity.ok(saved);
@@ -286,7 +290,7 @@ public class NetworkController {
                 );
                 logRepo.save(log);
             } catch (Exception e) {
-                System.out.println("Failed to log network update: " + e.getMessage());
+                LOGGER.warn("Unable to persist UPDATE_NETWORK audit event");
             }
 
             return ResponseEntity.ok(saved);
@@ -312,7 +316,7 @@ public class NetworkController {
             );
             logRepo.save(log);
         } catch (Exception e) {
-            System.out.println("Failed to log network deletion: " + e.getMessage());
+            LOGGER.warn("Unable to persist DELETE_NETWORK audit event");
         }
 
         networkRepository.deleteById(id);
