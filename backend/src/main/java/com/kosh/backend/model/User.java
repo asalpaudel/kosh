@@ -14,6 +14,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.Lob;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
+import jakarta.persistence.Version;
 
 @Entity
 @Table(name = "users")
@@ -37,6 +38,13 @@ public class User {
 
     @Column(nullable = false)
     private Double balance = 0.0;
+
+    // Guards the read-modify-write on balance: a concurrent posting fails rather than
+    // silently overwriting the other teller's movement.
+    @Version
+    @JsonIgnore
+    @Column(nullable = false)
+    private Long version;
 
     @Column(updatable = false)
     private LocalDateTime createdAt;
