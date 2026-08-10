@@ -5,6 +5,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -29,7 +30,14 @@ class SecurityConfigAuthorizationTest {
     @Test
     void publicCooperativeCatalogueRemainsAvailable() throws Exception {
         mockMvc.perform(get("/api/networks"))
-                .andExpect(status().isOk());
+                .andExpect(status().isOk())
+                .andExpect(header().string("X-Content-Type-Options", "nosniff"))
+                .andExpect(header().string("X-Frame-Options", "DENY"))
+                .andExpect(header().string("Referrer-Policy", "no-referrer"))
+                .andExpect(header().string("Permissions-Policy",
+                        "camera=(), microphone=(), geolocation=(), payment=(), usb=()"))
+                .andExpect(header().string("Content-Security-Policy",
+                        "default-src 'none'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'"));
     }
 
     @Test
