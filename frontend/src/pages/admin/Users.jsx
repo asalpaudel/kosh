@@ -14,6 +14,7 @@ import Modal from "../../component/superadmin/Modal.jsx";
 import AddUserForm from "../../component/admin/AddUserForm.jsx";
 import EditUserForm from "../../component/admin/EditUserForm.jsx";
 import ConfirmationModal from "../../component/ConfirmationModal.jsx";
+import { apiFetch } from "../../lib/apiClient";
 
 const API_BASE = "http://localhost:8080/api";
 
@@ -32,7 +33,7 @@ const UserDocumentsModal = ({ userId, onClose, API_BASE }) => {
   useEffect(() => {
     const loadDocuments = async () => {
       try {
-        const res = await fetch(`${API_BASE}/users/${userId}`, {
+        const res = await apiFetch(`${API_BASE}/users/${userId}`, {
           credentials: "include",
         });
 
@@ -138,7 +139,6 @@ const UserDocumentsModal = ({ userId, onClose, API_BASE }) => {
 const UserDetails = ({
   item,
   handleEdit,
-  handleDelete,
   handleViewDocuments,
 }) => (
   <div className="space-y-8">
@@ -243,7 +243,7 @@ function AdminUsers() {
   useEffect(() => {
     const fetchSession = async () => {
       try {
-        const res = await fetch(`${API_BASE}/session`, {
+        const res = await apiFetch(`${API_BASE}/session`, {
           method: "GET",
           credentials: "include",
         });
@@ -258,7 +258,7 @@ function AdminUsers() {
 
           let cleanId = String(data.sahakariId).replace(/[^0-9]/g, "");
 
-          const networkRes = await fetch(`${API_BASE}/networks/${cleanId}`, {
+          const networkRes = await apiFetch(`${API_BASE}/networks/${cleanId}`, {
             credentials: "include",
           });
 
@@ -284,7 +284,7 @@ function AdminUsers() {
 
     try {
       setLoading(true);
-      const res = await fetch(`${API_BASE}/users`, {
+      const res = await apiFetch(`${API_BASE}/users`, {
         credentials: "include",
       });
 
@@ -326,7 +326,7 @@ function AdminUsers() {
 
   const handleApprove = async (userId) => {
     try {
-      const res = await fetch(`${API_BASE}/users/${userId}/approve`, {
+      const res = await apiFetch(`${API_BASE}/users/${userId}/approve`, {
         method: "PATCH",
         credentials: "include",
       });
@@ -346,7 +346,7 @@ function AdminUsers() {
 
   const handleDeny = async (userId) => {
     try {
-      const res = await fetch(`${API_BASE}/users/${userId}/reject`, {
+      const res = await apiFetch(`${API_BASE}/users/${userId}/reject`, {
         method: "PATCH",
         credentials: "include",
       });
@@ -381,7 +381,7 @@ function AdminUsers() {
     setLoading(true);
 
     try {
-      await fetch(`${API_BASE}/users/${userToDelete}`, {
+      await apiFetch(`${API_BASE}/users/${userToDelete}`, {
         method: "DELETE",
         credentials: "include",
       });

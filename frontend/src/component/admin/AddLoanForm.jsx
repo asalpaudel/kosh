@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { BanknotesIcon } from "../icons";
+import { apiFetch } from "../../lib/apiClient";
 
 const apiBase = "http://localhost:8080/api";
 
@@ -52,7 +53,7 @@ function AddLoanForm({ onAdded, onClose, networkId }) {
         submitData.append("banner", formData.banner);
       }
 
-      const response = await fetch(
+      const response = await apiFetch(
         `${apiBase}/finance/loan-packages/${networkId}`,
         {
           method: "POST",

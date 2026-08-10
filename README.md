@@ -35,15 +35,15 @@ Important workflows include:
 flowchart LR
     Browser[React + Vite frontend] -->|JSON / multipart API<br/>session cookie| API[Spring Boot REST API]
     API --> JPA[Spring Data JPA]
-    JPA --> DB[(MySQL: koshDB)]
+    JPA --> DB[(PostgreSQL: kosh)]
     API --> SMTP[Gmail / SMTP]
 ```
 
 - The frontend runs on `http://localhost:5173` by default.
 - The backend runs on `http://localhost:8080`.
 - Authentication is session-based. Frontend requests that need authentication send the session cookie with `credentials: "include"`.
-- Uploaded network documents, logos, user identity files, signatures, and product banners are stored as BLOBs in MySQL.
-- Hibernate creates and updates the schema automatically through `spring.jpa.hibernate.ddl-auto=update`; there are currently no versioned database migrations.
+- Uploaded network documents, logos, user identity files, signatures, and product banners are stored as PostgreSQL `bytea` values.
+- Flyway owns the PostgreSQL schema. Hibernate runs with `spring.jpa.hibernate.ddl-auto=validate` and never creates or updates production tables.
 - Frontend API URLs are currently hardcoded to `http://localhost:8080/api` in many components. Vite also defines an `/api` development proxy, but most calls do not use it yet.
 
 ## Technology stack
@@ -67,7 +67,8 @@ flowchart LR
 - Spring Data JPA / Hibernate
 - Spring Security with BCrypt password hashing
 - Spring Mail
-- MySQL Connector/J
+- PostgreSQL JDBC driver
+- Flyway database migrations
 - Maven Wrapper 3.9.11
 
 ## Repository layout
@@ -120,7 +121,7 @@ Application states are `PENDING`, `APPROVED`, `REJECTED`, and `WITHDRAWN`. Appli
 - Node.js `20.19+` or `22.12+` (required by the locked Vite version)
 - npm
 - Java 17
-- MySQL 8 or a compatible MySQL server
+- PostgreSQL 17 or 18
 - Internet access on the first Maven/npm install
 - A working SMTP account if login OTP, password reset, or voucher email is required
 
@@ -135,16 +136,16 @@ git clone <repository-url>
 cd kosh
 ```
 
-### 2. Configure MySQL and email
+### 2. Configure PostgreSQL and email
 
-Start MySQL, then update `backend/src/main/resources/application.properties` for your machine. The default database URL uses `createDatabaseIfNotExist=true`, so a sufficiently privileged MySQL user can create `koshDB` automatically.
+Provision a PostgreSQL database named `kosh` and a non-superuser runtime account. Flyway creates the complete application schema on first startup; the application no longer contains a MySQL driver, dialect, URL, or MySQL-specific query.
 
 The backend reads sensitive values from environment variables. Set them in your shell, deployment platform, or an ignored local environment file:
 
 ```bash
-export DB_URL='jdbc:mysql://localhost:3306/koshDB?createDatabaseIfNotExist=true&useSSL=false&serverTimezone=UTC'
-export DB_USERNAME='<mysql-user>'
-export DB_PASSWORD='<mysql-password>'
+export DB_URL='jdbc:postgresql://localhost:5432/kosh'
+export DB_USERNAME='<postgres-runtime-user>'
+export DB_PASSWORD='<postgres-runtime-password>'
 export MAIL_HOST='smtp.gmail.com'
 export MAIL_PORT='587'
 export MAIL_USERNAME='<smtp-user>'
@@ -152,9 +153,20 @@ export MAIL_PASSWORD='<smtp-app-password>'
 export SUPERADMIN_EMAIL='<authorized-superadmin-email>'
 ```
 
-For Gmail, use an app password rather than an account password. Do not commit database or SMTP credentials. The current repository history contains a live-looking SMTP credential; rotate/revoke it before using this project and move secrets to environment variables or an untracked configuration file.
+For Gmail, use an app password rather than an account password. Do not commit database or SMTP credentials. The previously exposed SMTP credential was rotated and purged from repository history; keep automated secret scanning in CI so credentials cannot be reintroduced.
 
-`DB_URL`, `DB_USERNAME`, and `DB_PASSWORD` have local-development defaults; mail credentials and `SUPERADMIN_EMAIL` do not. Configure all values explicitly outside local development.
+`DB_URL` and `DB_USERNAME` have local-development defaults; configure all database, mail, and super-admin values explicitly outside local development.
+
+To load the deterministic demonstration dataset, enable the `dev` profile before the database is migrated. Seed identities are locked by default. Supply a BCrypt hash through `SEED_PASSWORD_HASH` only when interactive local login is required; never commit or print the corresponding plaintext password.
+
+```bash
+export SPRING_PROFILES_ACTIVE='dev'
+export SEED_PASSWORD_HASH='<bcrypt-hash-for-a-local-only-password>'
+```
+
+The development seed contains 2 cooperatives, 8 users, 9 products, 10 applications, 12 repayment installments, 8 transactions, and 5 activity-log entries. Production uses only `classpath:db/migration`; the seed is isolated in `classpath:db/devseed`.
+
+The `dev` profile disables email 2FA for seeded administrator/member accounts and allows the configured development super-admin email to establish a session without email delivery. This behavior is profile-scoped; the default configuration retains OTP-based authentication and must be used outside local development.
 
 ### 3. Start the backend
 
@@ -267,18 +279,18 @@ Run backend commands from `backend/`:
 ./mvnw package
 ```
 
-The only backend test currently included is a Spring context-load smoke test, which expects the configured database to be reachable.
+The backend includes isolated authorization, registration-policy, session-authentication, and sensitive-serialization tests. These tests do not connect to the configured development database.
 
 ## Current limitations and security notes
 
 Do not expose the current backend directly to the internet. The most important issues found in the present code are:
 
-- Spring Security permits every request and CSRF is disabled. Some controllers check the session manually, but authorization is not consistently enforced across CRUD endpoints.
-- An SMTP username and app-password-like secret existed in earlier Git history. Rotate the credential and purge it from published history before treating the repository as private again.
-- Several user endpoints serialize the JPA `User` entity directly. Sensitive fields such as password hashes and authentication tokens are not consistently excluded from JSON responses.
+- Spring Security now denies unmatched requests and applies member/admin/super-admin route authorization from server session state. User-management commands enforce cooperative ownership, and network registration documents have a service-level super-admin check. CSRF is still disabled, and ownership checks are not yet consistently enforced across every finance/application/transaction path.
+- The previously exposed SMTP credential was rotated and purged from Git history. Secret scanning must remain a required CI check.
+- Emergency serialization guards exclude passwords, OTPs, trusted-device tokens, and identity-document bytes from raw entities. Purpose-specific DTOs are still required to prevent unnecessary personal-data exposure.
 - CORS origins and frontend API URLs are hardcoded for local development.
 - OTPs are generated with `java.util.Random` and stored only in application memory. Password-reset OTPs have no expiry, and all OTP state disappears after a restart.
-- There are no migrations, seeded development data, integration tests, or end-to-end tests.
+- PostgreSQL schema and development seed migrations now exist and were verified against PostgreSQL 18. RLS, production database-role provisioning, backup restoration, and continuous database integration tests remain incomplete.
 - The frontend dependency audit currently reports 19 known vulnerabilities: 1 low, 2 moderate, 11 high, and 5 critical.
 - Money is represented by floating-point `Double` values.
 - Uploaded files are stored in the database without an evident size/type policy.
@@ -286,7 +298,7 @@ Do not expose the current backend directly to the internet. The most important i
 - The UI calls three routes that are not implemented by the backend: `GET /api/networks/recent`, `GET /api/analytics/network-snapshot`, and `PUT /api/transactions/{id}/status`.
 - Only the super-admin area has an explicit frontend protected-route wrapper; member and admin route protection relies mainly on individual API/session behavior.
 
-Before production use, centralize role-based authorization, externalize secrets and URLs, add DTOs that never expose credential fields, introduce database migrations and transactional service boundaries, validate uploads and money operations, and add automated tests.
+Before production use, complete service-level tenant authorization, PostgreSQL RLS, CSRF support, database-role separation, externalized URLs, purpose-specific DTOs, transactional service boundaries, upload/money validation, backup restoration, and automated coverage.
 
 ## Build verification status
 
@@ -295,8 +307,8 @@ The following checks were run while creating this README:
 | Check | Result |
 | --- | --- |
 | `mvn -DskipTests package` | Passes |
-| `mvn test` | Passes the single Spring context-load test against the configured MySQL instance |
+| `mvn test` | Passes 25 isolated tests; the Flyway and Hibernate startup path was also verified against an isolated PostgreSQL 18 database |
 | `npm run build` | Passes; Vite warns that the main minified JavaScript chunk is about 2.34 MB and should be code-split |
-| `npm run lint` | Fails with 31 errors and 10 warnings, mostly unused variables and React hook dependencies; `frontend/src/pages/user/Statement.jsx` also references undefined `todayStr` |
+| `npm run lint` | Fails with 27 errors and 10 warnings, mostly unused variables and React hook dependencies; `frontend/src/pages/user/Statement.jsx` also references undefined `todayStr` |
 
-The smoke test starts the full Spring context and may create/update the `koshDB` schema because Hibernate DDL mode is `update`. Use a dedicated test database before expanding the test suite.
+The PostgreSQL 18 verification applied both Flyway locations, loaded the complete development seed, validated every Hibernate mapping, started the API, and shut down cleanly. A repeatable Testcontainers-based CI test is still required.

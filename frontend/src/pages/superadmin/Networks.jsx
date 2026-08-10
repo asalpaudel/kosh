@@ -18,6 +18,7 @@ import EditNetworkForm from "../../component/superadmin/EditNetworkForm.jsx";
 import AddUserForm from "../../component/superadmin/AddUserForm.jsx";
 import EditUserForm from "../../component/superadmin/EditUserForm.jsx";
 import ConfirmationModal from "../../component/ConfirmationModal.jsx";
+import { apiFetch } from "../../lib/apiClient";
 
 // --- API BASE ---
 const API_BASE = "http://localhost:8080/api";
@@ -194,7 +195,7 @@ function Networks() {
   const loadNetworks = async () => {
     try {
       setLoading(true);
-      const res = await fetch(`${API_BASE}/networks`);
+      const res = await apiFetch(`${API_BASE}/networks`);
 
       if (!res.ok) {
         throw new Error(`Failed to fetch: ${res.status} ${res.statusText}`);
@@ -220,7 +221,7 @@ function Networks() {
   const loadUsers = async () => {
     try {
       setLoading(true);
-      const res = await fetch(`${API_BASE}/users/all`);
+      const res = await apiFetch(`${API_BASE}/users/all`);
 
       if (!res.ok) {
         throw new Error(`Failed to fetch: ${res.status} ${res.statusText}`);
@@ -317,10 +318,10 @@ function Networks() {
 
     try {
       if (type === "network") {
-        await fetch(`${API_BASE}/networks/${id}`, { method: "DELETE" });
+        await apiFetch(`${API_BASE}/networks/${id}`, { method: "DELETE" });
         setNetworks((prev) => prev.filter((n) => n.id !== id));
       } else {
-        await fetch(`${API_BASE}/users/${id}`, { method: "DELETE" });
+        await apiFetch(`${API_BASE}/users/${id}`, { method: "DELETE" });
         setUsers((prev) => prev.filter((u) => u.id !== id));
       }
     } catch (e) {

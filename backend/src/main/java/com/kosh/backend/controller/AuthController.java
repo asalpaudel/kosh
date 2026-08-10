@@ -5,6 +5,9 @@ import java.util.Map;
 import java.util.Random;
 import java.util.UUID;
 
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -34,6 +37,12 @@ public class AuthController {
     private final ActivityLogRepository logRepo;
     private final PasswordEncoder passwordEncoder;
     private final EmailService emailService;
+
+    @Value("${server.servlet.session.cookie.secure:false}")
+    private boolean secureCookies;
+
+    @Value("${app.auth.two-factor-enabled:true}")
+    private boolean twoFactorEnabled;
 
     public AuthController(UserRepository repo, NetworkRepository networkRepo, ActivityLogRepository logRepo, PasswordEncoder passwordEncoder, EmailService emailService) {
         this.repo = repo;
@@ -92,6 +101,10 @@ public class AuthController {
             return ResponseEntity.ok(new LoginResponse(false, message, null, -1, null, user.getStatus(), null, null));
         }
 
+        if (!twoFactorEnabled) {
+            return performLogin(user, request, session);
+        }
+
         // --- CHECK TRUSTED DEVICE COOKIE ---
         boolean isDeviceTrusted = false;
         Cookie[] cookies = request.getCookies();
@@ -108,7 +121,7 @@ public class AuthController {
 
         // Scenario 1: Device is trusted -> Log in directly
         if (isDeviceTrusted) {
-            return performLogin(user, session);
+            return performLogin(user, request, session);
         } 
         
         // Scenario 2: Unknown Device -> Trigger 2FA
@@ -139,6 +152,7 @@ public class AuthController {
     @PostMapping("/verify-2fa")
     public ResponseEntity<?> verify2FA(@RequestBody Map<String, Object> payload, 
                                        HttpServletResponse response,
+                                       HttpServletRequest request,
                                        HttpSession session) {
         
         Long userId = ((Number) payload.get("userId")).longValue();
@@ -169,26 +183,29 @@ public class AuthController {
             user.setTrustedDeviceExpiry(LocalDateTime.now().plusDays(30)); // 30 Days Validity
             
             // Set Cookie
-            Cookie cookie = new Cookie("trusted_device", token);
-            cookie.setMaxAge(30 * 24 * 60 * 60); // 30 Days in seconds
-            cookie.setPath("/");
-            cookie.setHttpOnly(true); // Secure against XSS
-            // cookie.setSecure(true); // Use this in Production with HTTPS
-            response.addCookie(cookie);
+            ResponseCookie cookie = ResponseCookie.from("trusted_device", token)
+                    .maxAge(30 * 24 * 60 * 60)
+                    .path("/")
+                    .httpOnly(true)
+                    .secure(secureCookies)
+                    .sameSite("Lax")
+                    .build();
+            response.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());
         }
 
         repo.save(user);
-        return performLogin(user, session);
+        return performLogin(user, request, session);
     }
 
     // Helper method to finalize the session
-    private ResponseEntity<?> performLogin(User user, HttpSession session) {
+    private ResponseEntity<?> performLogin(User user, HttpServletRequest request, HttpSession session) {
         Long networkId = null;
         if (!"superadmin".equals(user.getRole())) {
             Network net = networkRepo.findByName(user.getSahakari());
             if (net != null) networkId = net.getId();
         }
 
+        request.changeSessionId();
         session.setAttribute("userEmail", user.getEmail());
         session.setAttribute("userId", user.getId());
         session.setAttribute("sahakariId", networkId);

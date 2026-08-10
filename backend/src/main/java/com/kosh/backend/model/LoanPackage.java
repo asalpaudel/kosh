@@ -26,7 +26,7 @@ public class LoanPackage {
 
     @Lob
     @Basic(fetch = FetchType.LAZY)
-    @Column(name = "banner_data", columnDefinition = "LONGBLOB")
+    @Column(name = "banner_data", columnDefinition = "bytea")
     @JsonIgnore
     private byte[] bannerData;
     

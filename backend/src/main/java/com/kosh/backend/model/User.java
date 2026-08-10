@@ -2,6 +2,8 @@ package com.kosh.backend.model;
 
 import java.time.LocalDateTime;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+
 import jakarta.persistence.Basic;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -11,8 +13,10 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Lob;
 import jakarta.persistence.PrePersist;
+import jakarta.persistence.Table;
 
 @Entity
+@Table(name = "users")
 public class User {
 
     @Id
@@ -25,28 +29,32 @@ public class User {
     private String role;
     private String sahakari;
     private Long sahakariId; 
+    @JsonIgnore
     private String password;
     private String status = "Pending";
     private String dob; 
     private String address;
 
-    @Column(nullable = false, columnDefinition = "DOUBLE DEFAULT 0.0")
+    @Column(nullable = false)
     private Double balance = 0.0;
 
     @Column(updatable = false)
     private LocalDateTime createdAt;
 
     
+    @JsonIgnore
     private String twoFactorCode; // Stores the 6-digit OTP
     private LocalDateTime twoFactorExpiry; 
     
+    @JsonIgnore
     private String trustedDeviceToken; 
     private LocalDateTime trustedDeviceExpiry; 
 
     // ⭐ Photo as BLOB
     @Lob
     @Basic(fetch = FetchType.LAZY)
-    @Column(name = "photo_data", columnDefinition = "LONGBLOB")
+    @Column(name = "photo_data", columnDefinition = "bytea")
+    @JsonIgnore
     private byte[] photoData;
     
     private String photoName;
@@ -55,7 +63,8 @@ public class User {
     // ⭐ Citizenship as BLOB
     @Lob
     @Basic(fetch = FetchType.LAZY)
-    @Column(name = "citizenship_data", columnDefinition = "LONGBLOB")
+    @Column(name = "citizenship_data", columnDefinition = "bytea")
+    @JsonIgnore
     private byte[] citizenshipData;
     
     private String citizenshipName;
@@ -64,7 +73,8 @@ public class User {
     // ⭐ Signature as BLOB
     @Lob
     @Basic(fetch = FetchType.LAZY)
-    @Column(name = "signature_data", columnDefinition = "LONGBLOB")
+    @Column(name = "signature_data", columnDefinition = "bytea")
+    @JsonIgnore
     private byte[] signatureData;
     
     private String signatureName;

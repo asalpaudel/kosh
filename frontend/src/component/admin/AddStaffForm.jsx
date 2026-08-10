@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { UserPlusIcon } from "../icons";
+import { apiFetch } from "../../lib/apiClient";
 
 function AddStaffForm({
   onClose,
@@ -24,7 +25,7 @@ function AddStaffForm({
   useEffect(() => {
     const fetchAdminSahakari = async () => {
       try {
-        const res = await fetch(`${apiBase}/session`, {
+        const res = await apiFetch(`${apiBase}/session`, {
           method: "GET",
           credentials: "include",
         });
@@ -36,7 +37,7 @@ function AddStaffForm({
           let cleanId = String(data.sahakariId).replace(/[^0-9]/g, '');
           
           // Get network name
-          const networkRes = await fetch(`${apiBase}/networks/${cleanId}`, {
+          const networkRes = await apiFetch(`${apiBase}/networks/${cleanId}`, {
             credentials: "include",
           });
 
@@ -96,7 +97,7 @@ function AddStaffForm({
         form.append("document", formData.document);
       }
 
-      const res = await fetch(`${apiBase}/users`, {
+      const res = await apiFetch(`${apiBase}/users`, {
         method: "POST",
         body: form,
       });

@@ -56,7 +56,7 @@ public class UserController {
             @RequestParam("phone") String phone,
             @RequestParam(value = "dob", required = false) String dob, // Made optional to prevent errors if missing in some flows
             @RequestParam(value = "address", required = false) String address,  
-            @RequestParam("role") String role,
+            @RequestParam(value = "role", required = false) String role,
             @RequestParam("sahakari") String sahakari,
             @RequestParam("password") String password,
             @RequestParam(value = "status", required = false) String status,
@@ -65,27 +65,73 @@ public class UserController {
             @RequestParam(value = "signature", required = false) MultipartFile signature,
             HttpSession session) { // Added HttpSession for logging
 
-        System.out.println("POST /api/users hit!");
-        System.out.println("User: " + name + ", " + email);
-        System.out.println("Role: " + role + ", Sahakari: " + sahakari);
+        String actorRole = (String) session.getAttribute("userRole");
+        String requestedStatus = (status != null && !status.isBlank()) ? status : "Pending";
+        Network network;
 
-        Network network = networkRepo.findAll().stream()
-                .filter(n -> sahakari.equalsIgnoreCase(n.getName()))
-                .findFirst()
-                .orElse(null);
+        if (actorRole == null) {
+            role = "member";
+            requestedStatus = "Pending";
+            network = networkRepo.findByName(sahakari);
+        } else if ("admin".equalsIgnoreCase(actorRole)) {
+            if (!"member".equalsIgnoreCase(role)) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                        .body(Map.of("error", "Cooperative administrators may only create member accounts"));
+            }
+
+            Long actorNetworkId = (Long) session.getAttribute("sahakariId");
+            if (actorNetworkId == null) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                        .body(Map.of("error", "Authenticated cooperative context is required"));
+            }
+
+            network = networkRepo.findById(actorNetworkId).orElse(null);
+            role = "member";
+            if (network != null) {
+                sahakari = network.getName();
+            }
+        } else if ("superadmin".equalsIgnoreCase(actorRole)) {
+            if (!"admin".equalsIgnoreCase(role) && !"member".equalsIgnoreCase(role)) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                        .body(Map.of("error", "Unsupported account role"));
+            }
+            network = networkRepo.findByName(sahakari);
+        } else {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(Map.of("error", "This account cannot create users"));
+        }
+
+        if (actorRole != null
+                && !"Pending".equals(requestedStatus)
+                && !"Active".equals(requestedStatus)) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Unsupported account status"));
+        }
 
         if (network == null) {
             return ResponseEntity.badRequest()
                     .body(Map.of("error", "Network not found: " + sahakari));
         }
 
-        if ("member".equalsIgnoreCase(role)) {
+        final String targetRole = role;
+        final String targetSahakari = network.getName();
+
+        email = email == null ? null : email.trim().toLowerCase();
+        if (email == null || email.isBlank() || password == null || password.length() < 8) {
+            return ResponseEntity.badRequest()
+                    .body(Map.of("error", "A valid email and a password of at least 8 characters are required"));
+        }
+        if (repo.findByEmail(email) != null) {
+            return ResponseEntity.status(HttpStatus.CONFLICT)
+                    .body(Map.of("error", "An account with that email already exists"));
+        }
+
+        if ("member".equalsIgnoreCase(targetRole)) {
             Integer maxMembers = network.getUserLimit();
 
             if (maxMembers != null && maxMembers > 0) {
                 long currentMembers = repo.findAll().stream()
                         .filter(u -> "member".equalsIgnoreCase(u.getRole()))
-                        .filter(u -> sahakari.equalsIgnoreCase(u.getSahakari()))
+                        .filter(u -> targetSahakari.equalsIgnoreCase(u.getSahakari()))
                         .filter(u -> "Active".equals(u.getStatus()))
                         .count();
 
@@ -102,17 +148,17 @@ public class UserController {
             }
         }
 
-        if ("admin".equalsIgnoreCase(role)) {
+        if ("admin".equalsIgnoreCase(targetRole)) {
             long currentAdminCount = repo.findAll().stream()
                     .filter(u -> "admin".equalsIgnoreCase(u.getRole()))
-                    .filter(u -> sahakari.equals(u.getSahakari()))
+                    .filter(u -> targetSahakari.equals(u.getSahakari()))
                     .filter(u -> "Active".equals(u.getStatus()))
                     .count();
 
             if (network.getAdminLimit() != null && currentAdminCount >= network.getAdminLimit()) {
                 return ResponseEntity.badRequest()
                         .body(Map.of(
-                                "error", "Admin limit reached for " + sahakari +
+                                "error", "Admin limit reached for " + targetSahakari +
                                         ". Maximum allowed: " + network.getAdminLimit()));
             }
         }
@@ -124,12 +170,12 @@ public class UserController {
             user.setPhone(phone);
             user.setDob(dob);
             user.setAddress(address); 
-            user.setRole(role);
-            user.setSahakari(sahakari);
+            user.setRole(targetRole);
+            user.setSahakari(targetSahakari);
             // Link sahakari ID immediately if available
             user.setSahakariId(network.getId());
             user.setPassword(passwordEncoder.encode(password));
-            user.setStatus((status != null && !status.isBlank()) ? status : "Pending");
+            user.setStatus(requestedStatus);
 
             // ⭐ Handle photo upload
             if (photo != null && !photo.isEmpty()) {
@@ -189,7 +235,10 @@ public class UserController {
     }
 
     @GetMapping("/network/{networkId}")
-    public ResponseEntity<?> getUsersByNetworkId(@PathVariable Long networkId) {
+    public ResponseEntity<?> getUsersByNetworkId(@PathVariable Long networkId, HttpSession session) {
+        if (!isSuperAdmin(session) && !networkId.equals(session.getAttribute("sahakariId"))) {
+            return forbidden();
+        }
         Network network = networkRepo.findById(networkId).orElse(null);
 
         if (network == null) {
@@ -204,18 +253,24 @@ public class UserController {
     }
 
     @GetMapping("/pending")
-    public List<User> getPendingUsers(@RequestParam String sahakari) {
-        return repo.findAll().stream()
+    public ResponseEntity<?> getPendingUsers(@RequestParam String sahakari, HttpSession session) {
+        if (!isSuperAdmin(session) && !sahakari.equals(session.getAttribute("sahakari"))) {
+            return forbidden();
+        }
+        return ResponseEntity.ok(repo.findAll().stream()
                 .filter(u -> "Pending".equals(u.getStatus()) && sahakari.equals(u.getSahakari()))
-                .collect(Collectors.toList());
+                .collect(Collectors.toList()));
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<?> getUserById(@PathVariable int id) {
+    public ResponseEntity<?> getUserById(@PathVariable int id, HttpSession session) {
         User user = repo.findById(id).orElse(null);
         
         if (user == null) {
             return ResponseEntity.notFound().build();
+        }
+        if (!canManageUser(user, session)) {
+            return forbidden();
         }
 
         // Return user without binary data
@@ -241,9 +296,39 @@ public class UserController {
         return ResponseEntity.ok(userData);
     }
 
+    @GetMapping("/me/photo")
+    public ResponseEntity<byte[]> getCurrentUserPhoto(HttpSession session) {
+        Long userId = (Long) session.getAttribute("userId");
+        if (userId == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+        return getUserPhoto(userId.intValue(), session);
+    }
+
+    @GetMapping("/me/citizenship")
+    public ResponseEntity<byte[]> getCurrentUserCitizenship(HttpSession session) {
+        Long userId = (Long) session.getAttribute("userId");
+        if (userId == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+        return getUserCitizenship(userId.intValue(), session);
+    }
+
+    @GetMapping("/me/signature")
+    public ResponseEntity<byte[]> getCurrentUserSignature(HttpSession session) {
+        Long userId = (Long) session.getAttribute("userId");
+        if (userId == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+        return getUserSignature(userId.intValue(), session);
+    }
+
     // ⭐ Get User Photo
     @GetMapping("/{id}/photo")
-    public ResponseEntity<byte[]> getUserPhoto(@PathVariable int id) {
+    public ResponseEntity<byte[]> getUserPhoto(@PathVariable int id, HttpSession session) {
+        User target = repo.findById(id).orElse(null);
+        if (target == null) return ResponseEntity.notFound().build();
+        if (!canAccessUserDocument(target, session)) return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
         return repo.findById(id)
                 .filter(user -> user.getPhotoData() != null)
                 .map(user -> {
@@ -260,7 +345,10 @@ public class UserController {
     }
 
     @GetMapping("/{id}/citizenship")
-    public ResponseEntity<byte[]> getUserCitizenship(@PathVariable int id) {
+    public ResponseEntity<byte[]> getUserCitizenship(@PathVariable int id, HttpSession session) {
+        User target = repo.findById(id).orElse(null);
+        if (target == null) return ResponseEntity.notFound().build();
+        if (!canAccessUserDocument(target, session)) return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
         return repo.findById(id)
                 .filter(user -> user.getCitizenshipData() != null)
                 .map(user -> {
@@ -288,7 +376,10 @@ public class UserController {
 
     // ⭐ Get User Signature
     @GetMapping("/{id}/signature")
-    public ResponseEntity<byte[]> getUserSignature(@PathVariable int id) {
+    public ResponseEntity<byte[]> getUserSignature(@PathVariable int id, HttpSession session) {
+        User target = repo.findById(id).orElse(null);
+        if (target == null) return ResponseEntity.notFound().build();
+        if (!canAccessUserDocument(target, session)) return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
         return repo.findById(id)
                 .filter(user -> user.getSignatureData() != null)
                 .map(user -> {
@@ -306,7 +397,10 @@ public class UserController {
 
     // ⭐ Get Photo as Base64
     @GetMapping("/{id}/photo/base64")
-    public ResponseEntity<?> getUserPhotoBase64(@PathVariable int id) {
+    public ResponseEntity<?> getUserPhotoBase64(@PathVariable int id, HttpSession session) {
+        User target = repo.findById(id).orElse(null);
+        if (target == null) return ResponseEntity.notFound().build();
+        if (!canAccessUserDocument(target, session)) return forbidden();
         return repo.findById(id)
                 .filter(user -> user.getPhotoData() != null)
                 .map(user -> {
@@ -322,7 +416,10 @@ public class UserController {
 
     // ⭐ Get Citizenship as Base64
     @GetMapping("/{id}/citizenship/base64")
-    public ResponseEntity<?> getUserCitizenshipBase64(@PathVariable int id) {
+    public ResponseEntity<?> getUserCitizenshipBase64(@PathVariable int id, HttpSession session) {
+        User target = repo.findById(id).orElse(null);
+        if (target == null) return ResponseEntity.notFound().build();
+        if (!canAccessUserDocument(target, session)) return forbidden();
         return repo.findById(id)
                 .filter(user -> user.getCitizenshipData() != null)
                 .map(user -> {
@@ -338,7 +435,10 @@ public class UserController {
 
     // ⭐ Get Signature as Base64
     @GetMapping("/{id}/signature/base64")
-    public ResponseEntity<?> getUserSignatureBase64(@PathVariable int id) {
+    public ResponseEntity<?> getUserSignatureBase64(@PathVariable int id, HttpSession session) {
+        User target = repo.findById(id).orElse(null);
+        if (target == null) return ResponseEntity.notFound().build();
+        if (!canAccessUserDocument(target, session)) return forbidden();
         return repo.findById(id)
                 .filter(user -> user.getSignatureData() != null)
                 .map(user -> {
@@ -353,114 +453,94 @@ public class UserController {
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<?> updateUser(
-            @PathVariable int id, 
-            @RequestBody User updatedUser,
-            HttpSession session) { // Added HttpSession for logging
-
-        User existingUser = repo.findById(id)
-                .orElseThrow(() -> new RuntimeException("User not found with id: " + id));
-
-        boolean isBecomingAdmin = "admin".equalsIgnoreCase(updatedUser.getRole()) &&
-                !"admin".equalsIgnoreCase(existingUser.getRole());
-        boolean isAdminChangingSahakari = "admin".equalsIgnoreCase(updatedUser.getRole()) &&
-                !existingUser.getSahakari().equals(updatedUser.getSahakari());
-        boolean isBecomingMember = "member".equalsIgnoreCase(updatedUser.getRole()) &&
-                !"member".equalsIgnoreCase(existingUser.getRole());
-        boolean isMemberChangingSahakari = "member".equalsIgnoreCase(updatedUser.getRole()) &&
-                !existingUser.getSahakari().equals(updatedUser.getSahakari());
-
-        if (isBecomingAdmin || isAdminChangingSahakari) {
-            String targetSahakari = updatedUser.getSahakari();
-            Network network = networkRepo.findAll().stream()
-                    .filter(n -> targetSahakari.equals(n.getName()))
-                    .findFirst()
-                    .orElse(null);
-
-            if (network == null) {
-                return ResponseEntity.badRequest()
-                        .body(Map.of("error", "Network not found: " + targetSahakari));
-            }
-
-            long currentAdminCount = repo.findAll().stream()
-                    .filter(u -> u.getId() != id)
-                    .filter(u -> "admin".equalsIgnoreCase(u.getRole()))
-                    .filter(u -> targetSahakari.equals(u.getSahakari()))
-                    .filter(u -> "Active".equals(u.getStatus()))
-                    .count();
-
-            if (network.getAdminLimit() != null && currentAdminCount >= network.getAdminLimit()) {
-                return ResponseEntity.badRequest()
-                        .body(Map.of("error", "Admin limit reached"));
-            }
+    public ResponseEntity<?> updateMemberAsAdmin(
+            @PathVariable int id,
+            @RequestBody AdminMemberUpdateRequest request,
+            HttpSession session) {
+        User existingUser = repo.findById(id).orElse(null);
+        if (existingUser == null) return ResponseEntity.notFound().build();
+        if (!"admin".equalsIgnoreCase((String) session.getAttribute("userRole"))
+                || !canManageUser(existingUser, session)) {
+            return forbidden();
         }
 
-        if (isBecomingMember || isMemberChangingSahakari) {
-            String targetSahakari = updatedUser.getSahakari();
-            Network network = networkRepo.findAll().stream()
-                    .filter(n -> targetSahakari.equals(n.getName()))
-                    .findFirst()
-                    .orElse(null);
+        applyBasicUserChanges(existingUser, request.name(), request.email(), request.phone(), request.password());
+        return ResponseEntity.ok(saveAndLogUpdate(existingUser, session));
+    }
 
-            if (network == null) {
-                return ResponseEntity.badRequest()
-                        .body(Map.of("error", "Network not found: " + targetSahakari));
-            }
+    @PutMapping("/{id}/superadmin")
+    public ResponseEntity<?> updateUserAsSuperAdmin(
+            @PathVariable int id,
+            @RequestBody SuperAdminUserUpdateRequest request,
+            HttpSession session) {
+        if (!isSuperAdmin(session)) return forbidden();
 
-            Integer maxMembers = network.getUserLimit();
-
-            if (maxMembers != null && maxMembers > 0) {
-                long currentMembers = repo.findAll().stream()
-                        .filter(u -> u.getId() != id)
-                        .filter(u -> "member".equalsIgnoreCase(u.getRole()))
-                        .filter(u -> targetSahakari.equals(u.getSahakari()))
-                        .filter(u -> "Active".equals(u.getStatus()))
-                        .count();
-
-                if (currentMembers >= maxMembers) {
-                    return ResponseEntity.badRequest()
-                            .body(Map.of("error", "Member limit reached"));
-                }
-            }
+        User existingUser = repo.findById(id).orElse(null);
+        if (existingUser == null) return ResponseEntity.notFound().build();
+        if ("superadmin".equalsIgnoreCase(existingUser.getRole())) return forbidden();
+        if (!"admin".equalsIgnoreCase(request.role()) && !"member".equalsIgnoreCase(request.role())) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Only admin and member roles are supported"));
+        }
+        if (!"Active".equals(request.status()) && !"Pending".equals(request.status())
+                && !"Rejected".equals(request.status())) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Unsupported account status"));
         }
 
-        existingUser.setName(updatedUser.getName());
-        existingUser.setEmail(updatedUser.getEmail());
-        existingUser.setPhone(updatedUser.getPhone());
-        existingUser.setRole(updatedUser.getRole());
-        existingUser.setSahakari(updatedUser.getSahakari());
-        existingUser.setStatus(updatedUser.getStatus());
-
-        if (updatedUser.getPassword() != null && !updatedUser.getPassword().isEmpty()) {
-            existingUser.setPassword(passwordEncoder.encode(updatedUser.getPassword()));
+        Network network = networkRepo.findByName(request.sahakari());
+        if (network == null) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Network not found"));
         }
 
-        User saved = repo.save(existingUser);
+        applyBasicUserChanges(existingUser, request.name(), request.email(), request.phone(), request.password());
+        existingUser.setRole(request.role().toLowerCase());
+        existingUser.setStatus(request.status());
+        existingUser.setSahakari(network.getName());
+        existingUser.setSahakariId(network.getId());
+        return ResponseEntity.ok(saveAndLogUpdate(existingUser, session));
+    }
 
-        String adminName = (String) session.getAttribute("userName");
-        String userRole = (String) session.getAttribute("userRole");
-        if (adminName != null && ("admin".equals(userRole) || "superadmin".equals(userRole))) {
-            try {
-                Long sahakariId = (Long) session.getAttribute("sahakariId");
-                ActivityLog log = new ActivityLog(
-                    adminName, 
-                    userRole, 
-                    sahakariId, 
-                    "UPDATE_USER", 
-                    "Updated user details: " + saved.getName()
-                );
-                logRepo.save(log);
-            } catch (Exception e) {
-                System.out.println("Failed to log user update: " + e.getMessage());
-            }
+    @PutMapping("/me")
+    public ResponseEntity<?> updateCurrentUser(
+            @RequestBody Map<String, String> request,
+            HttpSession session) {
+        Long userId = (Long) session.getAttribute("userId");
+        if (userId == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(Map.of("error", "Not authenticated"));
         }
 
-        return ResponseEntity.ok(saved);
+        User user = repo.findById(userId.intValue()).orElse(null);
+        if (user == null) {
+            return ResponseEntity.notFound().build();
+        }
+
+        if (request.containsKey("name") && request.get("name") != null && !request.get("name").isBlank()) {
+            user.setName(request.get("name").trim());
+            session.setAttribute("userName", user.getName());
+        }
+        if (request.containsKey("phone")) user.setPhone(request.get("phone"));
+        if (request.containsKey("dob")) user.setDob(request.get("dob"));
+        if (request.containsKey("address")) user.setAddress(request.get("address"));
+
+        User saved = repo.save(user);
+        return ResponseEntity.ok(Map.of(
+                "id", saved.getId(),
+                "name", saved.getName(),
+                "email", saved.getEmail(),
+                "phone", saved.getPhone() == null ? "" : saved.getPhone(),
+                "dob", saved.getDob() == null ? "" : saved.getDob(),
+                "address", saved.getAddress() == null ? "" : saved.getAddress(),
+                "role", saved.getRole(),
+                "sahakari", saved.getSahakari(),
+                "sahakariId", saved.getSahakariId(),
+                "status", saved.getStatus()));
     }
 
     @PatchMapping("/{id}/approve")
     public ResponseEntity<?> approveUser(@PathVariable int id, HttpSession session) { // Added HttpSession for logging
-        User user = repo.findById(id).orElseThrow();
+        User user = repo.findById(id).orElse(null);
+        if (user == null) return ResponseEntity.notFound().build();
+        if (!canManageUser(user, session)) return forbidden();
 
         Network network = networkRepo.findAll().stream()
                 .filter(n -> user.getSahakari().equals(n.getName()))
@@ -535,8 +615,10 @@ public class UserController {
     }
 
     @PatchMapping("/{id}/reject")
-    public User rejectUser(@PathVariable int id, HttpSession session) { // Added HttpSession for logging
-        User user = repo.findById(id).orElseThrow();
+    public ResponseEntity<?> rejectUser(@PathVariable int id, HttpSession session) { // Added HttpSession for logging
+        User user = repo.findById(id).orElse(null);
+        if (user == null) return ResponseEntity.notFound().build();
+        if (!canManageUser(user, session)) return forbidden();
         user.setStatus("Rejected");
         User saved = repo.save(user);
 
@@ -558,7 +640,7 @@ public class UserController {
             }
         }
 
-        return saved;
+        return ResponseEntity.ok(saved);
     }
 
     @DeleteMapping("/{id}")
@@ -566,6 +648,9 @@ public class UserController {
         User user = repo.findById(id).orElse(null);
         if (user == null) {
             return ResponseEntity.notFound().build();
+        }
+        if (!canManageUser(user, session)) {
+            return forbidden();
         }
 
         // --- ACTIVITY LOGGING START ---
@@ -695,6 +780,8 @@ public class UserController {
         response.put("name", user.getName());
         response.put("email", user.getEmail());
         response.put("phone", user.getPhone());
+        response.put("dob", user.getDob());
+        response.put("address", user.getAddress());
         response.put("role", user.getRole());
         response.put("sahakari", user.getSahakari());
         response.put("balance", user.getBalance() != null ? user.getBalance() : 0.0);
@@ -769,4 +856,71 @@ public class UserController {
 
         return ResponseEntity.ok(Map.of("success", true, "message", "Password changed successfully"));
     }
+
+    private boolean canManageUser(User target, HttpSession session) {
+        String actorRole = (String) session.getAttribute("userRole");
+        if ("superadmin".equalsIgnoreCase(actorRole)) {
+            return !"superadmin".equalsIgnoreCase(target.getRole());
+        }
+        if (!"admin".equalsIgnoreCase(actorRole) || !"member".equalsIgnoreCase(target.getRole())) {
+            return false;
+        }
+        Long actorNetworkId = (Long) session.getAttribute("sahakariId");
+        return actorNetworkId != null && actorNetworkId.equals(target.getSahakariId());
+    }
+
+    private boolean canAccessUserDocument(User target, HttpSession session) {
+        Long actorUserId = (Long) session.getAttribute("userId");
+        return (actorUserId != null && actorUserId.equals(target.getId()))
+                || canManageUser(target, session);
+    }
+
+    private boolean isSuperAdmin(HttpSession session) {
+        return "superadmin".equalsIgnoreCase((String) session.getAttribute("userRole"));
+    }
+
+    private ResponseEntity<Map<String, String>> forbidden() {
+        return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                .body(Map.of("error", "You cannot manage users outside your role or cooperative"));
+    }
+
+    private void applyBasicUserChanges(User user, String name, String email, String phone, String password) {
+        if (name != null && !name.isBlank()) user.setName(name.trim());
+        if (email != null && !email.isBlank()) user.setEmail(email.trim().toLowerCase());
+        user.setPhone(phone);
+        if (password != null && !password.isBlank()) {
+            if (password.length() < 8) throw new IllegalArgumentException("Password must be at least 8 characters");
+            user.setPassword(passwordEncoder.encode(password));
+        }
+    }
+
+    private User saveAndLogUpdate(User user, HttpSession session) {
+        User saved = repo.save(user);
+        String actorName = (String) session.getAttribute("userName");
+        String actorRole = (String) session.getAttribute("userRole");
+        if (actorName != null) {
+            try {
+                logRepo.save(new ActivityLog(
+                        actorName,
+                        actorRole,
+                        (Long) session.getAttribute("sahakariId"),
+                        "UPDATE_USER",
+                        "Updated user details: " + saved.getName()));
+            } catch (Exception e) {
+                System.out.println("Failed to log user update: " + e.getMessage());
+            }
+        }
+        return saved;
+    }
+
+    public record AdminMemberUpdateRequest(String name, String email, String phone, String password) {}
+
+    public record SuperAdminUserUpdateRequest(
+            String name,
+            String email,
+            String phone,
+            String password,
+            String role,
+            String sahakari,
+            String status) {}
 }

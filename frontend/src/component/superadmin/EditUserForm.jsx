@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { apiFetch } from "../../lib/apiClient";
 
 export default function EditUserForm({
   initialData,
@@ -52,7 +53,7 @@ export default function EditUserForm({
       console.log("Updating user:", formData.id);
       console.log("Payload:", payload);
 
-      const res = await fetch(`${apiBase}/users/${formData.id}`, {
+      const res = await apiFetch(`${apiBase}/users/${formData.id}/superadmin`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",

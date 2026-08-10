@@ -21,16 +21,8 @@ function ProfileTab() {
 
   useEffect(() => {
     const fetchUser = async () => {
-      const userId = localStorage.getItem("userId");
-      
-      if (!userId) {
-        setError("User ID not found. Please log in.");
-        setLoading(false);
-        return;
-      }
-
       try {
-        const response = await fetch(`${API_BASE}/users/${userId}`, {
+        const response = await fetch(`${API_BASE}/users/me`, {
           credentials: "include", 
         });
 
@@ -53,11 +45,12 @@ function ProfileTab() {
 
   const handleUpdate = async (updatedData) => {
     try {
-      const response = await fetch(`${API_BASE}/users/${user.id}`, {
+      const response = await fetch(`${API_BASE}/users/me`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
         },
+        credentials: "include",
         body: JSON.stringify(updatedData),
       });
 
@@ -80,7 +73,7 @@ function ProfileTab() {
   // Get the photo URL for the user
   const getPhotoUrl = () => {
     if (!user || !user.hasPhoto) return null;
-    return `${API_BASE}/users/${user.id}/photo`;
+    return `${API_BASE}/users/me/photo`;
   };
 
   const photoUrl = getPhotoUrl();
@@ -161,7 +154,7 @@ function ProfileTab() {
                 <div className="p-4 bg-gray-50 rounded-lg border border-gray-200">
                   <p className="text-sm font-medium text-gray-600 mb-2">Profile Photo</p>
                   <a
-                    href={`${API_BASE}/users/${user.id}/photo`}
+                    href={`${API_BASE}/users/me/photo`}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="text-teal-600 hover:text-teal-800 text-sm font-semibold"
@@ -176,7 +169,7 @@ function ProfileTab() {
                 <div className="p-4 bg-gray-50 rounded-lg border border-gray-200">
                   <p className="text-sm font-medium text-gray-600 mb-2">Citizenship Document</p>
                   <a
-                    href={`${API_BASE}/users/${user.id}/citizenship`}
+                    href={`${API_BASE}/users/me/citizenship`}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="text-teal-600 hover:text-teal-800 text-sm font-semibold"
@@ -191,7 +184,7 @@ function ProfileTab() {
                 <div className="p-4 bg-gray-50 rounded-lg border border-gray-200">
                   <p className="text-sm font-medium text-gray-600 mb-2">Signature</p>
                   <a
-                    href={`${API_BASE}/users/${user.id}/signature`}
+                    href={`${API_BASE}/users/me/signature`}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="text-teal-600 hover:text-teal-800 text-sm font-semibold"

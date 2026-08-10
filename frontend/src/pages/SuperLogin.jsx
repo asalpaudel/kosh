@@ -38,6 +38,12 @@ export default function SuperLogin() {
                 return;
             }
 
+            if (data.status === "LOGIN_SUCCESS") {
+                localStorage.setItem("superadminRole", "superadmin");
+                nav("/superadmin");
+                return;
+            }
+
             setStep("otp");
             setIsLoading(false);
         } catch {
@@ -220,4 +226,3 @@ export default function SuperLogin() {
         </div>
     );
 }
-

@@ -18,6 +18,7 @@ import com.kosh.backend.model.ActivityLog;
 import com.kosh.backend.repository.ActivityLogRepository;
 import com.kosh.backend.service.EmailService;
 
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpSession;
 
 @RestController
@@ -26,12 +27,15 @@ public class SuperAdminAuthController {
 
     @Value("${app.superadmin.email:}")
     private String authorizedEmail;
+
+    @Value("${app.auth.two-factor-enabled:true}")
+    private boolean twoFactorEnabled;
     
     // OTP Storage: email -> SuperAdminOtp
     private static class SuperAdminOtp {
         String otp;
         LocalDateTime expiry;
-        
+
         SuperAdminOtp(String otp, LocalDateTime expiry) {
             this.otp = otp;
             this.expiry = expiry;
@@ -51,7 +55,10 @@ public class SuperAdminAuthController {
      * Step 1: Validate email and send OTP
      */
     @PostMapping("/login")
-    public ResponseEntity<?> login(@RequestBody Map<String, String> payload, HttpSession session) {
+    public ResponseEntity<?> login(
+            @RequestBody Map<String, String> payload,
+            HttpServletRequest request,
+            HttpSession session) {
         String email = payload.get("email");
         
         if (email == null || email.trim().isEmpty()) {
@@ -70,6 +77,15 @@ public class SuperAdminAuthController {
                 "success", false,
                 "message", "Unauthorized email address"
             ));
+        }
+
+        if (!twoFactorEnabled) {
+            establishSession(email, request, session);
+            return ResponseEntity.ok(Map.of(
+                    "success", true,
+                    "status", "LOGIN_SUCCESS",
+                    "message", "Development login successful",
+                    "role", "superadmin"));
         }
         
         
@@ -102,7 +118,10 @@ public class SuperAdminAuthController {
 
 
     @PostMapping("/verify-otp")
-    public ResponseEntity<?> verifyOtp(@RequestBody Map<String, String> payload, HttpSession session) {
+    public ResponseEntity<?> verifyOtp(
+            @RequestBody Map<String, String> payload,
+            HttpServletRequest request,
+            HttpSession session) {
         String email = payload.get("email");
         String otp = payload.get("otp");
         
@@ -152,26 +171,28 @@ public class SuperAdminAuthController {
         otpStorage.remove(email);
         
         
-        session.setAttribute("superadminEmail", email);
-        session.setAttribute("superadminRole", "superadmin");
-        session.setAttribute("superadminLoggedIn", true);
-        
-        // ⭐ UNIFY SESSION KEYS FOR OTHER CONTROLLERS
-        session.setAttribute("userRole", "superadmin");
-        session.setAttribute("userName", "Super Admin");
-        session.setAttribute("userEmail", email);
+        establishSession(email, request, session);
 
-        // Log Login
-        try {
-            ActivityLog log = new ActivityLog("Super Admin", "superadmin", null, "LOGIN", "SuperAdmin logged in via OTP.");
-            logRepo.save(log);
-        } catch (Exception e) {}
-        
         return ResponseEntity.ok(Map.of(
             "success", true,
             "message", "Login successful",
             "role", "superadmin"
         ));
+    }
+
+    private void establishSession(String email, HttpServletRequest request, HttpSession session) {
+        request.changeSessionId();
+        session.setAttribute("superadminEmail", email);
+        session.setAttribute("superadminRole", "superadmin");
+        session.setAttribute("superadminLoggedIn", true);
+        session.setAttribute("userRole", "superadmin");
+        session.setAttribute("userName", "Super Admin");
+        session.setAttribute("userEmail", email);
+
+        try {
+            logRepo.save(new ActivityLog(
+                    "Super Admin", "superadmin", null, "LOGIN", "SuperAdmin logged in successfully."));
+        } catch (Exception e) {}
     }
 
     /**

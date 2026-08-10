@@ -26,6 +26,9 @@ import com.kosh.backend.model.ActivityLog;
 import com.kosh.backend.model.Network;
 import com.kosh.backend.repository.ActivityLogRepository;
 import com.kosh.backend.repository.NetworkRepository;
+import com.kosh.backend.service.NetworkAccessService;
+
+import jakarta.servlet.http.HttpSession;
 
 @RestController
 @RequestMapping("/api/networks")
@@ -33,10 +36,13 @@ public class NetworkController {
 
     private final NetworkRepository networkRepository;
     private final ActivityLogRepository logRepo;
+    private final NetworkAccessService networkAccessService;
 
-    public NetworkController(NetworkRepository networkRepository, ActivityLogRepository logRepo) {
+    public NetworkController(NetworkRepository networkRepository, ActivityLogRepository logRepo,
+            NetworkAccessService networkAccessService) {
         this.networkRepository = networkRepository;
         this.logRepo = logRepo;
+        this.networkAccessService = networkAccessService;
     }
 
     // ⭐ Base64 Upload Endpoint
@@ -181,7 +187,10 @@ public class NetworkController {
 
     // ⭐ Get Network by ID (exclude binary data)
     @GetMapping("/{id}")
-    public ResponseEntity<Map<String, Object>> getNetworkById(@PathVariable Long id) {
+    public ResponseEntity<Map<String, Object>> getNetworkById(@PathVariable Long id, HttpSession session) {
+        if (!networkAccessService.canViewNetwork(id, session)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        }
         return networkRepository.findById(id)
                 .map(network -> ResponseEntity.ok(mapNetworkWithoutBinaryData(network)))
                 .orElse(ResponseEntity.notFound().build());
@@ -189,7 +198,10 @@ public class NetworkController {
 
     // ⭐ Download Document
     @GetMapping("/{id}/document")
-    public ResponseEntity<byte[]> downloadDocument(@PathVariable Long id) {
+    public ResponseEntity<byte[]> downloadDocument(@PathVariable Long id, HttpSession session) {
+        if (!networkAccessService.canViewRegistrationDocument(session)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        }
         return networkRepository.findById(id)
                 .filter(network -> network.getDocumentData() != null)
                 .map(network -> {
@@ -225,7 +237,10 @@ public class NetworkController {
 
     // ⭐ Get Document as Base64 (for frontend display)
     @GetMapping("/{id}/document/base64")
-    public ResponseEntity<?> getDocumentBase64(@PathVariable Long id) {
+    public ResponseEntity<?> getDocumentBase64(@PathVariable Long id, HttpSession session) {
+        if (!networkAccessService.canViewRegistrationDocument(session)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        }
         return networkRepository.findById(id)
                 .filter(network -> network.getDocumentData() != null)
                 .map(network -> {

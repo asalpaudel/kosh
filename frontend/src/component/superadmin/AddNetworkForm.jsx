@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { apiFetch } from "../../lib/apiClient";
 
 // Package definitions
 const PACKAGES = {
@@ -89,7 +90,6 @@ export default function AddNetworkForm({
     const { name, value } = e.target;
 
     if (name === "packageType") {
-      const pkg = PACKAGES[value];
       setFormData((prev) => ({
         ...prev,
         packageType: value,
@@ -133,7 +133,7 @@ export default function AddNetworkForm({
         setDocument(file);
         setDocumentBase64(base64);
         setError("");
-      } catch (err) {
+      } catch {
         setError("Failed to process document");
       }
     }
@@ -164,7 +164,7 @@ export default function AddNetworkForm({
           setLogoPreview(reader.result);
         };
         reader.readAsDataURL(file);
-      } catch (err) {
+      } catch {
         setError("Failed to process logo");
       }
     }
@@ -279,7 +279,7 @@ export default function AddNetworkForm({
 
       const url = `${apiBase}/networks/base64`;
 
-      const res = await fetch(url, {
+      const res = await apiFetch(url, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

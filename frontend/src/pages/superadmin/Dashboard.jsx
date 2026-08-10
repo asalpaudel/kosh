@@ -11,6 +11,7 @@ import {
   YAxis,
   CartesianGrid,
 } from "recharts";
+import { apiFetch } from "../../lib/apiClient";
 
 const API_BASE = "http://localhost:8080/api";
 const COLORS = ["#3B82F6", "#10B981", "#F59E0B"];
@@ -271,13 +272,13 @@ export default function SuperadminDashboard() {
 
   useEffect(() => {
     // Fetch network stats
-    fetch(`${API_BASE}/networks/stats`)
+    apiFetch(`${API_BASE}/networks/stats`)
       .then((res) => res.json())
       .then((data) => setNetworkStats(data))
       .catch(console.error);
 
     // Fetch recent networks
-    fetch(`${API_BASE}/networks/recent`)
+    apiFetch(`${API_BASE}/networks/recent`)
       .then((res) => res.json())
       .then((data) => {
         setRecentNetworks(
@@ -292,7 +293,7 @@ export default function SuperadminDashboard() {
       .catch(console.error);
 
     // Fetch active users
-    fetch(`${API_BASE}/users/all`)
+    apiFetch(`${API_BASE}/users/all`)
       .then((res) => res.json())
       .then((users) => {
         const map = {};

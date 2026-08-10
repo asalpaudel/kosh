@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { apiFetch } from "../../lib/apiClient";
 
 const apiBase = "http://localhost:8080/api";
 
@@ -62,7 +63,7 @@ export default function EditLoanPackageForm({ initialData, onClose, onUpdated })
         submitData.append("banner", banner);
       }
 
-      const res = await fetch(`${apiBase}/finance/loan-packages/${formData.id}`, {
+      const res = await apiFetch(`${apiBase}/finance/loan-packages/${formData.id}`, {
         method: "PUT",
         body: submitData,
       });

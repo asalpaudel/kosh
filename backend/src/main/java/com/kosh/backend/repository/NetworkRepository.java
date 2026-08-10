@@ -19,12 +19,12 @@ public interface NetworkRepository extends JpaRepository<Network, Long> {
 
     // 1️⃣ Monthly revenue per package type (Basic, Premium, Custom)
     @Query(
-        value = "SELECT DATE_FORMAT(created_at, '%Y-%m') AS month, " +
+        value = "SELECT SUBSTRING(created_at FROM 1 FOR 7) AS month, " +
                 "SUM(CASE WHEN package_type = 'Basic' THEN package_price ELSE 0 END) AS basic, " +
                 "SUM(CASE WHEN package_type = 'Premium' THEN package_price ELSE 0 END) AS premium, " +
                 "SUM(CASE WHEN package_type = 'Custom' THEN package_price ELSE 0 END) AS custom " +
                 "FROM networks " +
-                "GROUP BY DATE_FORMAT(created_at, '%Y-%m') " +
+                "GROUP BY SUBSTRING(created_at FROM 1 FOR 7) " +
                 "ORDER BY month ASC",
         nativeQuery = true
     )

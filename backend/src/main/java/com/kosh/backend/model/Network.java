@@ -1,5 +1,7 @@
 package com.kosh.backend.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+
 import jakarta.persistence.*;
 
 @Entity
@@ -25,7 +27,8 @@ public class Network {
     
     // ⭐ Store document as binary data
     @Lob
-    @Column(name = "document_data", columnDefinition = "LONGBLOB")
+    @Column(name = "document_data", columnDefinition = "bytea")
+    @JsonIgnore
     private byte[] documentData;
     
     private String documentName; // Original filename
@@ -33,7 +36,8 @@ public class Network {
     
     // ⭐ Store logo as binary data
     @Lob
-    @Column(name = "logo_data", columnDefinition = "LONGBLOB")
+    @Column(name = "logo_data", columnDefinition = "bytea")
+    @JsonIgnore
     private byte[] logoData;
     
     private String logoName; // Original filename

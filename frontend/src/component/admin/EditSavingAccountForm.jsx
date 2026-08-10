@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { apiFetch } from "../../lib/apiClient";
 
 const apiBase = "http://localhost:8080/api";
 
@@ -60,7 +61,7 @@ export default function EditSavingAccountForm({ initialData, onClose, onUpdated 
         submitData.append("banner", banner);
       }
 
-      const res = await fetch(`${apiBase}/finance/saving-accounts/${formData.id}`, {
+      const res = await apiFetch(`${apiBase}/finance/saving-accounts/${formData.id}`, {
         method: "PUT",
         body: submitData,
       });

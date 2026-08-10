@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import ConfirmationModal from "../ConfirmationModal.jsx";
+import { apiFetch } from "../../lib/apiClient";
 
 function EditUserForm({
   user,
@@ -48,11 +49,17 @@ function EditUserForm({
     setError(null);
 
     try {
-      const res = await fetch(`${apiBase}/users/${user.id}`, {
+      const payload = {
+        name: formData.name,
+        email: formData.email,
+        phone: formData.phone,
+        ...(formData.password ? { password: formData.password } : {}),
+      };
+
+      const res = await apiFetch(`${apiBase}/users/${user.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(formData),
-        credentials: "include",
+        body: JSON.stringify(payload),
       });
 
       if (!res.ok) throw new Error("Failed to update user");
@@ -78,9 +85,8 @@ function EditUserForm({
     setError(null);
 
     try {
-      const res = await fetch(`${apiBase}/users/${user.id}`, {
+      const res = await apiFetch(`${apiBase}/users/${user.id}`, {
         method: "DELETE",
-        credentials: "include",
       });
 
       if (!res.ok) throw new Error("Failed to delete user");

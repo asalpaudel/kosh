@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { apiFetch } from "../../lib/apiClient";
 
 const apiBase = "http://localhost:8080/api";
 
@@ -62,7 +63,7 @@ export default function EditFixedDepositForm({ initialData, onClose, onUpdated }
         submitData.append("banner", banner);
       }
 
-      const res = await fetch(`${apiBase}/finance/fixed-deposits/${formData.id}`, {
+      const res = await apiFetch(`${apiBase}/finance/fixed-deposits/${formData.id}`, {
         method: "PUT",
         body: submitData,
       });

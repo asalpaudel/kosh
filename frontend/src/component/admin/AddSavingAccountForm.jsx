@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { CurrencyDollarIcon } from "../icons";
+import { apiFetch } from "../../lib/apiClient";
 
 const apiBase = "http://localhost:8080/api";
 
@@ -50,7 +51,7 @@ function AddSavingAccountForm({ onAdded, onClose, networkId }) {
         submitData.append("banner", formData.banner);
       }
 
-      const response = await fetch(
+      const response = await apiFetch(
         `${apiBase}/finance/saving-accounts/${networkId}`,
         {
           method: "POST",

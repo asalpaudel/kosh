@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { apiFetch } from "../../lib/apiClient";
 
 export default function EditNetworkForm({ 
   initialData, 
@@ -58,7 +59,7 @@ export default function EditNetworkForm({
       console.log("Updating network:", formData.id);
       console.log("Payload:", payload);
 
-      const res = await fetch(`${apiBase}/networks/${formData.id}`, {
+      const res = await apiFetch(`${apiBase}/networks/${formData.id}`, {
         method: "PUT",
         headers: { 
           "Content-Type": "application/json",

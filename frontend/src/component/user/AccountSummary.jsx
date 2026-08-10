@@ -21,14 +21,8 @@ function AccountSummary() {
   useEffect(() => {
     const fetchAccountSummary = async () => {
       try {
-        const userId = localStorage.getItem("userId");
-        if (!userId) {
-          setLoading(false);
-          return;
-        }
-
         // 1. Fetch User Info (for Main Wallet Balance)
-        const userRes = await fetch(`${API_BASE}/users/${userId}`, { credentials: "include" });
+        const userRes = await fetch(`${API_BASE}/users/me`, { credentials: "include" });
         let userBalance = 0;
         if (userRes.ok) {
           const userData = await userRes.json();
