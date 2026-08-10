@@ -205,6 +205,7 @@ function AddTransactionForm({ onAdded, onClose, prefilledData }) {
   const [showUserResults, setShowUserResults] = useState(false);
   const searchTimeoutRef = useRef(null);
   const searchBoxRef = useRef(null);
+  const idempotencyKeyRef = useRef(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
@@ -465,7 +466,11 @@ function AddTransactionForm({ onAdded, onClose, prefilledData }) {
     setLoading(true);
     setError("");
     try {
+      if (!idempotencyKeyRef.current) {
+        idempotencyKeyRef.current = crypto.randomUUID();
+      }
       const payload = {
+        idempotencyKey: idempotencyKeyRef.current,
         voucherId: mode === "member" ? formData.voucherId : null,
         date: formData.date,
         status: "Success",
@@ -512,6 +517,7 @@ function AddTransactionForm({ onAdded, onClose, prefilledData }) {
       }
 
       onAdded();
+      idempotencyKeyRef.current = null;
     } catch (err) {
       setError(err.message);
     } finally {

@@ -260,8 +260,9 @@ class TenantIsolationTest {
         when(userRepo.findById(42)).thenReturn(Optional.of(foreignMember));
 
         var response = transactionController().addTransaction(
-                Map.of("userId", 42, "amountValue", 500,
-                        "details", Map.of("accountHead", "Savings", "direction", "Credit")),
+                Map.of("idempotencyKey", "11111111-1111-4111-8111-111111111111",
+                        "userId", 42, "amountValue", 500,
+                        "details", Map.of("mode", "member", "accountHead", "Savings", "direction", "Credit")),
                 adminSession());
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
@@ -281,8 +282,9 @@ class TenantIsolationTest {
         when(userRepo.findById(43)).thenReturn(Optional.of(poorMember));
 
         var response = transactionController().addTransaction(
-                Map.of("userId", 43, "amountValue", 5000, "packageId", 1,
-                        "details", Map.of("accountHead", "Savings", "direction", "Debit")),
+                Map.of("idempotencyKey", "22222222-2222-4222-8222-222222222222",
+                        "userId", 43, "amountValue", 5000, "packageId", 1,
+                        "details", Map.of("mode", "member", "accountHead", "Savings", "direction", "Debit")),
                 adminSession());
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
@@ -301,12 +303,59 @@ class TenantIsolationTest {
         when(loanAppRepo.findById(77L)).thenReturn(Optional.of(foreign));
 
         var response = transactionController().addTransaction(
-                Map.of("applicationId", 77, "applicationType", "loan", "amountValue", 500,
-                        "details", Map.of("accountHead", "Loan", "direction", "Credit")),
+                Map.of("idempotencyKey", "33333333-3333-4333-8333-333333333333",
+                        "applicationId", 77, "applicationType", "loan", "amountValue", 500,
+                        "details", Map.of("mode", "network", "accountHead", "Loan", "direction", "Credit")),
                 adminSession());
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
         verify(transactionRepo, never()).save(any());
+    }
+
+    @Test
+    void identicalTransactionReplayReturnsTheOriginalWithoutPostingAgain() {
+        TransactionController controller = transactionController();
+        Map<String, Object> payload = Map.of(
+                "idempotencyKey", "44444444-4444-4444-8444-444444444444",
+                "amountValue", 500,
+                "details", Map.of("mode", "network", "accountHead", "Cash", "direction", "Credit"));
+        com.kosh.backend.model.Transaction original = new com.kosh.backend.model.Transaction();
+        original.setId(71L);
+        original.setNetwork(network(OWN_NETWORK));
+        original.setRequestFingerprint(controller.requestFingerprint(OWN_NETWORK, payload));
+        when(transactionRepo.findByNetworkIdAndIdempotencyKey(
+                OWN_NETWORK, "44444444-4444-4444-8444-444444444444"))
+                .thenReturn(Optional.of(original));
+
+        var response = controller.addTransaction(payload, adminSession());
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        verify(transactionRepo, never()).save(any());
+        verify(ledger, never()).post(any(), any(), any(), any(), any(), any(), any(), any());
+    }
+
+    @Test
+    void reusedIdempotencyKeyWithDifferentMoneyIsRejected() {
+        TransactionController controller = transactionController();
+        Map<String, Object> originalPayload = Map.of(
+                "idempotencyKey", "55555555-5555-4555-8555-555555555555",
+                "amountValue", 500,
+                "details", Map.of("mode", "network", "accountHead", "Cash", "direction", "Credit"));
+        Map<String, Object> changedPayload = Map.of(
+                "idempotencyKey", "55555555-5555-4555-8555-555555555555",
+                "amountValue", 900,
+                "details", Map.of("mode", "network", "accountHead", "Cash", "direction", "Credit"));
+        com.kosh.backend.model.Transaction original = new com.kosh.backend.model.Transaction();
+        original.setRequestFingerprint(controller.requestFingerprint(OWN_NETWORK, originalPayload));
+        when(transactionRepo.findByNetworkIdAndIdempotencyKey(
+                OWN_NETWORK, "55555555-5555-4555-8555-555555555555"))
+                .thenReturn(Optional.of(original));
+
+        var response = controller.addTransaction(changedPayload, adminSession());
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
+        verify(transactionRepo, never()).save(any());
+        verify(ledger, never()).post(any(), any(), any(), any(), any(), any(), any(), any());
     }
 
     // -------------------------------------------------------------------- setup

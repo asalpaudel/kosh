@@ -8,6 +8,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.util.Base64;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -59,6 +63,9 @@ import jakarta.servlet.http.HttpSession;
 @RestController
 @RequestMapping("/api/transactions")
 public class TransactionController {
+
+    private static final BigDecimal MAX_TRANSACTION_AMOUNT =
+            new BigDecimal("9999999999999999.99");
 
     private final TransactionRepository transactionRepo;
     private final UserRepository userRepo;
@@ -128,10 +135,31 @@ public class TransactionController {
                     .body(Map.of("error", "Unauthorized access"));
             }
 
+            String idempotencyKey = payload.get("idempotencyKey") instanceof String key ? key.trim() : "";
+            try {
+                UUID.fromString(idempotencyKey);
+            } catch (IllegalArgumentException exception) {
+                return reject(HttpStatus.BAD_REQUEST, "A valid idempotency key is required");
+            }
+            String fingerprint = requestFingerprint(networkId, payload);
+
+            // Serialize submissions per cooperative. A concurrent retry waits here, then
+            // observes the first committed transaction instead of posting money twice.
+            networkRepo.lockForPosting(networkId);
+            var replay = transactionRepo.findByNetworkIdAndIdempotencyKey(networkId, idempotencyKey);
+            if (replay.isPresent()) {
+                if (!fingerprint.equals(replay.get().getRequestFingerprint())) {
+                    return reject(HttpStatus.CONFLICT, "Idempotency key was already used for another operation");
+                }
+                return ResponseEntity.ok(mapTransactionToFrontend(replay.get()));
+            }
+
             Network network = networkRepo.findById(networkId)
                 .orElseThrow(() -> new RuntimeException("Network not found"));
 
             Transaction tx = new Transaction();
+            tx.setIdempotencyKey(idempotencyKey);
+            tx.setRequestFingerprint(fingerprint);
             
             // Basic Mapping
             // The cooperative's own entries carry no member voucher book, but every row
@@ -140,12 +168,13 @@ public class TransactionController {
             tx.setVoucherId(voucherId != null && !voucherId.isBlank()
                     ? voucherId
                     : "NET-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase());
-            tx.setStatus((String) payload.getOrDefault("status", "Success"));
+            tx.setStatus("Success");
             tx.setType((String) payload.get("type"));
             tx.setAmount(Money.of(payload.get("amountValue")));
             // A negative amount flips the direction of the posting: a "Debit" of -5000 passes
             // the sufficient-funds check below and then credits the member instead.
-            if (tx.getAmount() == null || tx.getAmount().signum() <= 0) {
+            if (tx.getAmount() == null || tx.getAmount().signum() <= 0
+                    || tx.getAmount().compareTo(MAX_TRANSACTION_AMOUNT) > 0) {
                 return reject(HttpStatus.BAD_REQUEST, "Amount must be greater than zero");
             }
             tx.setNarration((String) payload.get("narration"));
@@ -166,6 +195,19 @@ public class TransactionController {
                 tx.setChequeNo(details.get("chequeNo"));
                 tx.setBankName(details.get("bankName"));
                 tx.setReceivedBy(details.get("receivedBy"));
+            }
+            if (!"Credit".equals(tx.getDirection()) && !"Debit".equals(tx.getDirection())) {
+                return reject(HttpStatus.BAD_REQUEST, "Direction must be Credit or Debit");
+            }
+            if (!"member".equals(tx.getMode()) && !"network".equals(tx.getMode())) {
+                return reject(HttpStatus.BAD_REQUEST, "Mode must be member or network");
+            }
+            if (tx.getAccountHead() == null || tx.getAccountHead().isBlank()
+                    || tx.getAccountHead().length() > 255) {
+                return reject(HttpStatus.BAD_REQUEST, "A valid account head is required");
+            }
+            if ("member".equals(tx.getMode()) && payload.get("userId") == null) {
+                return reject(HttpStatus.BAD_REQUEST, "Member transactions require a member");
             }
 
             // Handle User Mapping
@@ -379,8 +421,7 @@ public class TransactionController {
             return ResponseEntity.ok(mapTransactionToFrontend(savedTx));
 
         } catch (Exception e) {
-            e.printStackTrace();
-            return reject(HttpStatus.BAD_REQUEST, e.getMessage());
+            return reject(HttpStatus.BAD_REQUEST, "Transaction request is invalid");
         }
     }
 
@@ -431,6 +472,35 @@ public class TransactionController {
             default -> null;
         };
         return owner != null && networkId.equals(owner.getId());
+    }
+
+    String requestFingerprint(Long networkId, Map<String, Object> payload) {
+        Object rawDetails = payload.get("details");
+        Map<?, ?> details = rawDetails instanceof Map<?, ?> map ? map : Map.of();
+        String canonical = String.join("|",
+                safe(networkId),
+                safe(payload.get("userId")),
+                safe(payload.get("amountValue")),
+                safe(payload.get("date")),
+                safe(payload.get("packageId")),
+                safe(payload.get("applicationId")),
+                safe(payload.get("applicationType")),
+                safe(details.get("mode")),
+                safe(details.get("accountHead")),
+                safe(details.get("direction")),
+                safe(details.get("networkLedger")),
+                safe(details.get("paymentMethod")));
+        try {
+            byte[] digest = MessageDigest.getInstance("SHA-256")
+                    .digest(canonical.getBytes(StandardCharsets.UTF_8));
+            return Base64.getUrlEncoder().withoutPadding().encodeToString(digest);
+        } catch (NoSuchAlgorithmException impossible) {
+            throw new IllegalStateException("SHA-256 is unavailable", impossible);
+        }
+    }
+
+    private String safe(Object value) {
+        return value == null ? "" : value.toString().trim();
     }
 
     @GetMapping

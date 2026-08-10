@@ -49,6 +49,16 @@ class PostgresqlMigrationTest {
                         "${seedPasswordHash}");
     }
 
+    @Test
+    void transactionIdempotencyIsUniqueInsideEachCooperative() throws IOException {
+        String migration = resource("/db/migration/V6__transaction_idempotency.sql");
+        assertThat(migration).contains(
+                "idempotency_key",
+                "request_fingerprint",
+                "transactions_network_idempotency_uq",
+                "ON transactions (network_id, idempotency_key)");
+    }
+
     private String resource(String path) throws IOException {
         try (var stream = getClass().getResourceAsStream(path)) {
             assertThat(stream).as("resource %s", path).isNotNull();

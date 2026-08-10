@@ -22,6 +22,8 @@ public class Transaction {
     private Long id;
 
     private String voucherId;
+    private String idempotencyKey;
+    private String requestFingerprint;
     private LocalDate date;
     private String status; // "Success", "Frozen"
 
@@ -70,6 +72,12 @@ public class Transaction {
 
     public String getVoucherId() { return voucherId; }
     public void setVoucherId(String voucherId) { this.voucherId = voucherId; }
+
+    public String getIdempotencyKey() { return idempotencyKey; }
+    public void setIdempotencyKey(String idempotencyKey) { this.idempotencyKey = idempotencyKey; }
+
+    public String getRequestFingerprint() { return requestFingerprint; }
+    public void setRequestFingerprint(String requestFingerprint) { this.requestFingerprint = requestFingerprint; }
 
     public LocalDate getDate() { return date; }
     public void setDate(LocalDate date) { this.date = date; }

@@ -2,6 +2,7 @@ package com.kosh.backend.repository;
 
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.Optional;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -15,6 +16,7 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
     
     List<Transaction> findByNetworkIdOrderByDateDesc(Long networkId);
     List<Transaction> findByUserIdOrderByDateDesc(Long userId);
+    Optional<Transaction> findByNetworkIdAndIdempotencyKey(Long networkId, String idempotencyKey);
 
     // Sum Credits (Deposits) - Debits (Withdrawals) for a specific account head
     // Used for Savings and Fixed Deposits
