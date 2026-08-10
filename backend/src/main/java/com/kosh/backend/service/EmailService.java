@@ -1,8 +1,11 @@
 package com.kosh.backend.service;
 
-import java.util.HashMap;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.time.Duration;
+import java.time.LocalDateTime;
 import java.util.Map;
-import java.util.Random;
+import java.util.concurrent.ConcurrentHashMap;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -26,7 +29,11 @@ public class EmailService {
     @Value("${spring.mail.username:}")
     private String senderEmail;
 
-    private final Map<String, String> otpStorage = new HashMap<>();
+    private static final Duration OTP_TTL = Duration.ofMinutes(10);
+
+    // In-memory only: codes do not survive a restart and are not shared across instances.
+    // ponytail: fine for a single node, move to the database when Kosh runs more than one.
+    private final Map<String, PendingOtp> otpStorage = new ConcurrentHashMap<>();
 
     /**
      * Sends a specifically formatted OTP email for Password Resets.
@@ -111,18 +118,29 @@ public class EmailService {
     }
 
     public String generateOtp(String email) {
-        String otp = String.format("%06d", new Random().nextInt(999999));
-        otpStorage.put(email, otp);
+        String otp = OneTimeCode.generate();
+        otpStorage.put(email, new PendingOtp(otp, LocalDateTime.now().plus(OTP_TTL)));
         return otp;
     }
 
+    /**
+     * Constant-time comparison so a caller cannot narrow the code down by timing, and a
+     * single-use contract: any outcome consumes the stored code.
+     */
     public boolean validateOtp(String email, String otp) {
-        if (!otpStorage.containsKey(email)) return false;
-        return otpStorage.get(email).equals(otp);
+        PendingOtp pending = otpStorage.remove(email);
+        if (pending == null || otp == null) return false;
+        if (LocalDateTime.now().isAfter(pending.expiresAt())) return false;
+        return MessageDigest.isEqual(
+                pending.code().getBytes(StandardCharsets.UTF_8),
+                otp.getBytes(StandardCharsets.UTF_8));
     }
 
     public void clearOtp(String email) {
         otpStorage.remove(email);
+    }
+
+    private record PendingOtp(String code, LocalDateTime expiresAt) {
     }
 
     /**

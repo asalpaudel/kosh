@@ -1,8 +1,9 @@
 package com.kosh.backend.controller;
 
 import java.time.LocalDateTime;
+
+import com.kosh.backend.service.OneTimeCode;
 import java.util.Map;
-import java.util.Random;
 import java.util.concurrent.ConcurrentHashMap;
 
 import org.springframework.beans.factory.annotation.Value;
@@ -89,7 +90,7 @@ public class SuperAdminAuthController {
         }
         
         
-        String otp = String.format("%06d", new Random().nextInt(999999));
+        String otp = OneTimeCode.generate();
         LocalDateTime expiry = LocalDateTime.now().plusMinutes(5);
         
         // Store OTP

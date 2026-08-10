@@ -1,8 +1,9 @@
 package com.kosh.backend.controller;
 
 import java.time.LocalDateTime;
+
+import com.kosh.backend.service.OneTimeCode;
 import java.util.Map;
-import java.util.Random;
 import java.util.UUID;
 
 import org.springframework.beans.factory.annotation.Value;
@@ -126,7 +127,7 @@ public class AuthController {
         
         // Scenario 2: Unknown Device -> Trigger 2FA
         else {
-            String otp = String.format("%06d", new Random().nextInt(999999));
+            String otp = OneTimeCode.generate();
             user.setTwoFactorCode(otp);
             user.setTwoFactorExpiry(LocalDateTime.now().plusMinutes(10));
             repo.save(user);
