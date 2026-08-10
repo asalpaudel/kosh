@@ -83,13 +83,13 @@ public class AuthController {
         public boolean success;
         public String message;
         public String role;
-        public int userId;
+        public Long userId;
         public Long networkId;
         public String status;
         public String name;
         public String sahakari;
 
-        public LoginResponse(boolean success, String message, String role, int userId, Long networkId, String status, String name, String sahakari) {
+        public LoginResponse(boolean success, String message, String role, Long userId, Long networkId, String status, String name, String sahakari) {
             this.success = success;
             this.message = message;
             this.role = role;
@@ -117,13 +117,13 @@ public class AuthController {
             if (req.password != null) passwordEncoder.matches(req.password, DUMMY_PASSWORD_HASH);
             throttle.recordFailure(throttleKey);
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                    .body(new LoginResponse(false, INVALID_CREDENTIALS, null, -1, null, null, null, null));
+                    .body(new LoginResponse(false, INVALID_CREDENTIALS, null, -1L, null, null, null, null));
         }
 
         if (!passwordEncoder.matches(req.password, user.getPassword())) {
             throttle.recordFailure(throttleKey);
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                    .body(new LoginResponse(false, INVALID_CREDENTIALS, null, -1, null, null, null, null));
+                    .body(new LoginResponse(false, INVALID_CREDENTIALS, null, -1L, null, null, null, null));
         }
 
         throttle.clear(throttleKey);
@@ -134,7 +134,7 @@ public class AuthController {
             if ("Pending".equals(user.getStatus())) message = "Your account is pending approval.";
             else if ("Rejected".equals(user.getStatus())) message = "Your account has been rejected.";
             
-            return ResponseEntity.ok(new LoginResponse(false, message, null, -1, null, user.getStatus(), null, null));
+            return ResponseEntity.ok(new LoginResponse(false, message, null, -1L, null, user.getStatus(), null, null));
         }
 
         if (!twoFactorEnabled) {
@@ -206,7 +206,7 @@ public class AuthController {
             return tooManyAttempts();
         }
 
-        User user = repo.findById(userId.intValue()).orElse(null);
+        User user = repo.findById(userId).orElse(null);
 
         if (user == null) {
             throttle.recordFailure(twoFactorKey);
@@ -285,7 +285,7 @@ public class AuthController {
 
         return ResponseEntity.ok(new LoginResponse(
             true, "Login successful", user.getRole(), 
-            user.getId().intValue(), networkId, 
+            user.getId(), networkId,
             user.getStatus(), user.getName(), user.getSahakari()
         ));
     }
@@ -312,7 +312,7 @@ public class AuthController {
 
         Object userId = session.getAttribute("userId");
         if (userId instanceof Long id) {
-            repo.findById(id.intValue()).ifPresent(user -> {
+            repo.findById(id).ifPresent(user -> {
                 user.setTrustedDeviceToken(null);
                 user.setTrustedDeviceExpiry(null);
                 repo.save(user);

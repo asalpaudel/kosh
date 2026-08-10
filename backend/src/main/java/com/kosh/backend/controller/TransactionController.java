@@ -218,7 +218,7 @@ public class TransactionController {
             User targetUser = null;
             if (payload.get("userId") != null) {
                 Long targetUserId = Long.valueOf(payload.get("userId").toString());
-                targetUser = userRepo.findById(targetUserId.intValue())
+                targetUser = userRepo.findById(targetUserId)
                     .orElseThrow(() -> new RuntimeException("User not found"));
 
                 if (!networkId.equals(targetUser.getSahakariId())) {

@@ -177,7 +177,7 @@ class TenantIsolationTest {
     void adminCannotApproveAnotherCooperativeLoan() {
         LoanApplication foreign = new LoanApplication();
         foreign.setNetwork(network(OTHER_NETWORK));
-        when(userRepo.findById(1)).thenReturn(Optional.of(admin()));
+        when(userRepo.findById(1L)).thenReturn(Optional.of(admin()));
         when(loanAppRepo.findByIdForReview(99L)).thenReturn(Optional.of(foreign));
 
         var response = applicationController.reviewLoanApplication(
@@ -196,7 +196,7 @@ class TenantIsolationTest {
         SavingAccountApplication foreignSa = new SavingAccountApplication();
         foreignSa.setNetwork(network(OTHER_NETWORK));
 
-        when(userRepo.findById(1)).thenReturn(Optional.of(admin()));
+        when(userRepo.findById(1L)).thenReturn(Optional.of(admin()));
         when(fdAppRepo.findByIdForReview(5L)).thenReturn(Optional.of(foreignFd));
         when(saAppRepo.findByIdForReview(6L)).thenReturn(Optional.of(foreignSa));
 
@@ -218,7 +218,7 @@ class TenantIsolationTest {
         foreign.setNetwork(network(OTHER_NETWORK));
         foreign.setMaxAmount(money("100000.00"));
 
-        when(userRepo.findById(2)).thenReturn(Optional.of(member()));
+        when(userRepo.findById(2L)).thenReturn(Optional.of(member()));
         when(loanPackageRepo.findById(4L)).thenReturn(Optional.of(foreign));
         when(networkRepo.findById(OWN_NETWORK)).thenReturn(Optional.of(network(OWN_NETWORK)));
 
@@ -235,7 +235,7 @@ class TenantIsolationTest {
         LoanApplication reviewed = new LoanApplication();
         reviewed.setNetwork(network(OWN_NETWORK));
         reviewed.setStatus(ApplicationStatus.APPROVED);
-        when(userRepo.findById(1)).thenReturn(Optional.of(admin()));
+        when(userRepo.findById(1L)).thenReturn(Optional.of(admin()));
         when(loanAppRepo.findByIdForReview(88L)).thenReturn(Optional.of(reviewed));
 
         var response = applicationController.reviewLoanApplication(
@@ -257,7 +257,7 @@ class TenantIsolationTest {
         foreignMember.setSahakariId(OTHER_NETWORK);
 
         when(networkRepo.findById(OWN_NETWORK)).thenReturn(Optional.of(network(OWN_NETWORK)));
-        when(userRepo.findById(42)).thenReturn(Optional.of(foreignMember));
+        when(userRepo.findById(42L)).thenReturn(Optional.of(foreignMember));
 
         var response = transactionController().addTransaction(
                 Map.of("idempotencyKey", "11111111-1111-4111-8111-111111111111",
@@ -279,7 +279,7 @@ class TenantIsolationTest {
         poorMember.setBalance(money("100.00"));
 
         when(networkRepo.findById(OWN_NETWORK)).thenReturn(Optional.of(network(OWN_NETWORK)));
-        when(userRepo.findById(43)).thenReturn(Optional.of(poorMember));
+        when(userRepo.findById(43L)).thenReturn(Optional.of(poorMember));
 
         var response = transactionController().addTransaction(
                 Map.of("idempotencyKey", "22222222-2222-4222-8222-222222222222",

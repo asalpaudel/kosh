@@ -258,7 +258,7 @@ public class UserController {
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<?> getUserById(@PathVariable int id, HttpSession session) {
+    public ResponseEntity<?> getUserById(@PathVariable Long id, HttpSession session) {
         User user = repo.findById(id).orElse(null);
         
         if (user == null) {
@@ -297,7 +297,7 @@ public class UserController {
         if (userId == null) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
-        return getUserPhoto(userId.intValue(), session);
+        return getUserPhoto(userId, session);
     }
 
     @GetMapping("/me/citizenship")
@@ -306,7 +306,7 @@ public class UserController {
         if (userId == null) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
-        return getUserCitizenship(userId.intValue(), session);
+        return getUserCitizenship(userId, session);
     }
 
     @GetMapping("/me/signature")
@@ -315,12 +315,12 @@ public class UserController {
         if (userId == null) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
-        return getUserSignature(userId.intValue(), session);
+        return getUserSignature(userId, session);
     }
 
     // ⭐ Get User Photo
     @GetMapping("/{id}/photo")
-    public ResponseEntity<byte[]> getUserPhoto(@PathVariable int id, HttpSession session) {
+    public ResponseEntity<byte[]> getUserPhoto(@PathVariable Long id, HttpSession session) {
         User target = repo.findById(id).orElse(null);
         if (target == null) return ResponseEntity.notFound().build();
         if (!canAccessUserDocument(target, session)) return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
@@ -329,7 +329,7 @@ public class UserController {
     }
 
     @GetMapping("/{id}/citizenship")
-    public ResponseEntity<byte[]> getUserCitizenship(@PathVariable int id, HttpSession session) {
+    public ResponseEntity<byte[]> getUserCitizenship(@PathVariable Long id, HttpSession session) {
         User target = repo.findById(id).orElse(null);
         if (target == null) return ResponseEntity.notFound().build();
         if (!canAccessUserDocument(target, session)) return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
@@ -339,7 +339,7 @@ public class UserController {
 
     // ⭐ Get User Signature
     @GetMapping("/{id}/signature")
-    public ResponseEntity<byte[]> getUserSignature(@PathVariable int id, HttpSession session) {
+    public ResponseEntity<byte[]> getUserSignature(@PathVariable Long id, HttpSession session) {
         User target = repo.findById(id).orElse(null);
         if (target == null) return ResponseEntity.notFound().build();
         if (!canAccessUserDocument(target, session)) return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
@@ -349,7 +349,7 @@ public class UserController {
 
     // ⭐ Get Photo as Base64
     @GetMapping("/{id}/photo/base64")
-    public ResponseEntity<?> getUserPhotoBase64(@PathVariable int id, HttpSession session) {
+    public ResponseEntity<?> getUserPhotoBase64(@PathVariable Long id, HttpSession session) {
         User target = repo.findById(id).orElse(null);
         if (target == null) return ResponseEntity.notFound().build();
         if (!canAccessUserDocument(target, session)) return forbidden();
@@ -369,7 +369,7 @@ public class UserController {
 
     // ⭐ Get Citizenship as Base64
     @GetMapping("/{id}/citizenship/base64")
-    public ResponseEntity<?> getUserCitizenshipBase64(@PathVariable int id, HttpSession session) {
+    public ResponseEntity<?> getUserCitizenshipBase64(@PathVariable Long id, HttpSession session) {
         User target = repo.findById(id).orElse(null);
         if (target == null) return ResponseEntity.notFound().build();
         if (!canAccessUserDocument(target, session)) return forbidden();
@@ -389,7 +389,7 @@ public class UserController {
 
     // ⭐ Get Signature as Base64
     @GetMapping("/{id}/signature/base64")
-    public ResponseEntity<?> getUserSignatureBase64(@PathVariable int id, HttpSession session) {
+    public ResponseEntity<?> getUserSignatureBase64(@PathVariable Long id, HttpSession session) {
         User target = repo.findById(id).orElse(null);
         if (target == null) return ResponseEntity.notFound().build();
         if (!canAccessUserDocument(target, session)) return forbidden();
@@ -409,7 +409,7 @@ public class UserController {
 
     @PutMapping("/{id}")
     public ResponseEntity<?> updateMemberAsAdmin(
-            @PathVariable int id,
+            @PathVariable Long id,
             @RequestBody AdminMemberUpdateRequest request,
             HttpSession session) {
         User existingUser = repo.findById(id).orElse(null);
@@ -425,7 +425,7 @@ public class UserController {
 
     @PutMapping("/{id}/superadmin")
     public ResponseEntity<?> updateUserAsSuperAdmin(
-            @PathVariable int id,
+            @PathVariable Long id,
             @RequestBody SuperAdminUserUpdateRequest request,
             HttpSession session) {
         if (!isSuperAdmin(session)) return forbidden();
@@ -464,7 +464,7 @@ public class UserController {
                     .body(Map.of("error", "Not authenticated"));
         }
 
-        User user = repo.findById(userId.intValue()).orElse(null);
+        User user = repo.findById(userId).orElse(null);
         if (user == null) {
             return ResponseEntity.notFound().build();
         }
@@ -492,7 +492,7 @@ public class UserController {
     }
 
     @PatchMapping("/{id}/approve")
-    public ResponseEntity<?> approveUser(@PathVariable int id, HttpSession session) { // Added HttpSession for logging
+    public ResponseEntity<?> approveUser(@PathVariable Long id, HttpSession session) { // Added HttpSession for logging
         User user = repo.findById(id).orElse(null);
         if (user == null) return ResponseEntity.notFound().build();
         if (!canManageUser(user, session)) return forbidden();
@@ -570,7 +570,7 @@ public class UserController {
     }
 
     @PatchMapping("/{id}/reject")
-    public ResponseEntity<?> rejectUser(@PathVariable int id, HttpSession session) { // Added HttpSession for logging
+    public ResponseEntity<?> rejectUser(@PathVariable Long id, HttpSession session) { // Added HttpSession for logging
         User user = repo.findById(id).orElse(null);
         if (user == null) return ResponseEntity.notFound().build();
         if (!canManageUser(user, session)) return forbidden();
@@ -599,7 +599,7 @@ public class UserController {
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<?> deleteUser(@PathVariable int id, HttpSession session) { // Added HttpSession for logging
+    public ResponseEntity<?> deleteUser(@PathVariable Long id, HttpSession session) { // Added HttpSession for logging
         User user = repo.findById(id).orElse(null);
         if (user == null) {
             return ResponseEntity.notFound().build();
@@ -702,7 +702,7 @@ public class UserController {
                     .body(Map.of("error", "Not authenticated"));
         }
 
-        User user = repo.findById(userId.intValue()).orElse(null);
+        User user = repo.findById(userId).orElse(null);
 
         if (user == null) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND)
@@ -757,7 +757,7 @@ public class UserController {
             return ResponseEntity.badRequest().body(Map.of("error", "Password must be at least 8 characters"));
         }
 
-        User user = repo.findById(userId.intValue()).orElse(null);
+        User user = repo.findById(userId).orElse(null);
         if (user == null) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", "User not found"));
         }

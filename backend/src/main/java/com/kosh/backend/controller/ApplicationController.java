@@ -151,7 +151,7 @@ public class ApplicationController {
             BigDecimal depositAmount = Money.of(request.get("depositAmount"));
             Integer depositTerm = Integer.valueOf(request.get("depositTerm").toString());
 
-            User user = userRepo.findById(userId.intValue())
+            User user = userRepo.findById(userId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
             
             FixedDeposit fixedDeposit = fixedDepositRepo.findById(packageId)
@@ -233,7 +233,7 @@ public class ApplicationController {
                 return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Not authenticated");
             }
 
-            User admin = userRepo.findById(adminId.intValue())
+            User admin = userRepo.findById(adminId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Admin not found"));
 
             FixedDepositApplication app = fdAppRepo.findByIdForReview(id)
@@ -377,7 +377,7 @@ public class ApplicationController {
             Long packageId = Long.valueOf(request.get("packageId").toString());
             BigDecimal initialDeposit = Money.of(request.get("initialDeposit"));
 
-            User user = userRepo.findById(userId.intValue())
+            User user = userRepo.findById(userId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
             
             SavingAccount savingAccount = savingAccountRepo.findById(packageId)
@@ -457,7 +457,7 @@ public class ApplicationController {
                 return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Not authenticated");
             }
 
-            User admin = userRepo.findById(adminId.intValue())
+            User admin = userRepo.findById(adminId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Admin not found"));
 
             SavingAccountApplication app = saAppRepo.findByIdForReview(id)
@@ -552,7 +552,7 @@ public class ApplicationController {
             BigDecimal requestedAmount = Money.of(request.get("requestedAmount"));
             String purpose = request.get("purpose").toString();
 
-            User user = userRepo.findById(userId.intValue())
+            User user = userRepo.findById(userId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
             
             LoanPackage loanPackage = loanPackageRepo.findById(packageId)
@@ -615,7 +615,7 @@ public class ApplicationController {
                 return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Not authenticated");
             }
 
-            User admin = userRepo.findById(adminId.intValue())
+            User admin = userRepo.findById(adminId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Admin not found"));
 
             LoanApplication application = loanAppRepo.findByIdForReview(id)

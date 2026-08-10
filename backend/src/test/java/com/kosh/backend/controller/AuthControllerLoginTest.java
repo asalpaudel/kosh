@@ -68,7 +68,7 @@ class AuthControllerLoginTest {
         User user = activeMember();
         user.setTwoFactorCode("otp-hash");
         user.setTwoFactorExpiry(LocalDateTime.now().plusMinutes(10));
-        when(userRepository.findById(7)).thenReturn(Optional.of(user));
+        when(userRepository.findById(7L)).thenReturn(Optional.of(user));
         when(passwordEncoder.matches("000000", "otp-hash")).thenReturn(false);
 
         assertThat(success(submitOtp(user.getId(), "000000"))).isFalse();

@@ -75,19 +75,19 @@ public class AnalyticsController {
 
     // Total revenue by type (for percentages)
     @GetMapping("/total-revenue")
-    public Map<String, Double> getTotalRevenue() {
+    public Map<String, BigDecimal> getTotalRevenue() {
         List<Object[]> result = networkRepository.getTotalRevenueByType();
-        Map<String, Double> totals = new HashMap<>();
+        Map<String, BigDecimal> totals = new HashMap<>();
         // Initialize all keys to 0
-        totals.put("basic", 0.0);
-        totals.put("premium", 0.0);
-        totals.put("custom", 0.0);
+        totals.put("basic", Money.ZERO);
+        totals.put("premium", Money.ZERO);
+        totals.put("custom", Money.ZERO);
 
         for (Object[] row : result) {
             String key = ((String) row[0]).toLowerCase();
             Number value = (Number) row[1];
             if (value != null) {
-                totals.put(key, value.doubleValue());
+                totals.put(key, Money.of(value));
             }
         }
         return totals;

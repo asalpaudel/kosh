@@ -41,10 +41,10 @@ class UserControllerAuthorizationTest {
     @Test
     void adminCannotUpdateMemberFromAnotherCooperative() {
         User target = member(17, 200L);
-        when(userRepository.findById(17)).thenReturn(Optional.of(target));
+        when(userRepository.findById(17L)).thenReturn(Optional.of(target));
 
         var response = controller.updateMemberAsAdmin(
-                17,
+                17L,
                 new AdminMemberUpdateRequest("Attacker controlled", "new@example.test", null, null),
                 adminSession(100L));
 
@@ -56,10 +56,10 @@ class UserControllerAuthorizationTest {
     void adminCannotManageCooperativeAdministrator() {
         User target = member(18, 100L);
         target.setRole("admin");
-        when(userRepository.findById(18)).thenReturn(Optional.of(target));
+        when(userRepository.findById(18L)).thenReturn(Optional.of(target));
 
         var response = controller.updateMemberAsAdmin(
-                18,
+                18L,
                 new AdminMemberUpdateRequest("Changed", "new@example.test", null, null),
                 adminSession(100L));
 
@@ -72,11 +72,11 @@ class UserControllerAuthorizationTest {
         User target = member(19, 100L);
         target.setSahakari("Cooperative A");
         target.setStatus("Pending");
-        when(userRepository.findById(19)).thenReturn(Optional.of(target));
+        when(userRepository.findById(19L)).thenReturn(Optional.of(target));
         when(userRepository.save(target)).thenReturn(target);
 
         var response = controller.updateMemberAsAdmin(
-                19,
+                19L,
                 new AdminMemberUpdateRequest("Updated Name", "UPDATED@EXAMPLE.TEST", "9800", null),
                 adminSession(100L));
 
@@ -91,9 +91,9 @@ class UserControllerAuthorizationTest {
     @Test
     void adminCannotApproveMemberFromAnotherCooperative() {
         User target = member(20, 200L);
-        when(userRepository.findById(20)).thenReturn(Optional.of(target));
+        when(userRepository.findById(20L)).thenReturn(Optional.of(target));
 
-        var response = controller.approveUser(20, adminSession(100L));
+        var response = controller.approveUser(20L, adminSession(100L));
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
         verify(userRepository, never()).save(any());
