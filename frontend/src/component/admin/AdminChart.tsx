@@ -1,9 +1,17 @@
-import React, { useEffect, useRef, useState } from "react";
+import type { ApexOptions } from "apexcharts";
+import ReactApexChart from "react-apexcharts";
 
-function AdminChart({ data }) {
-  const chartRef = useRef(null);
-  const chartInstanceRef = useRef(null);
-  const [isScriptLoaded, setIsScriptLoaded] = useState(false);
+interface AdminChartData {
+  savings?: number;
+  fd?: number;
+  credit?: number;
+}
+
+interface AdminChartProps {
+  data?: AdminChartData;
+}
+
+function AdminChart({ data }: AdminChartProps) {
 
   const savingsVal = data?.savings || 0;
   const fdVal = data?.fd || 0;
@@ -13,7 +21,7 @@ function AdminChart({ data }) {
   const labels = ["Savings (Liquid)", "Fixed Deposit (Locked)", "Loans Granted (Credit)"];
   const colors = ["#3B82F6", "#6366F1", "#8B5CF6"];
 
-  const formatMoney = (val) => {
+  const formatMoney = (val: number | string): string => {
     const n = Number(val || 0);
     if (n >= 10000000) return (n / 10000000).toFixed(2) + "Cr";
     if (n >= 100000) return (n / 100000).toFixed(1) + "L";
@@ -22,8 +30,7 @@ function AdminChart({ data }) {
 
   const netTotalPool = Math.max(0, savingsVal + fdVal - creditVal);
 
-  const options = {
-    series,
+  const options: ApexOptions = {
     chart: {
       type: "donut",
       height: 340,
@@ -52,7 +59,7 @@ function AdminChart({ data }) {
               fontWeight: "700",
               color: "#111827",
               offsetY: 8,
-              formatter: (val) => formatMoney(val),
+              formatter: (val: string) => formatMoney(val),
             },
             total: {
               show: true,
@@ -73,44 +80,19 @@ function AdminChart({ data }) {
     tooltip: {
       enabled: true,
       y: {
-        formatter: (val, opts) => {
+        formatter: (val: number, opts?: { seriesIndex?: number }) => {
           const isLoans = opts?.seriesIndex === 2;
-          return (isLoans ? "- Rs. " : "Rs. ") + Number(val || 0).toLocaleString("en-IN");
+          return (isLoans ? "- Rs. " : "Rs. ") + val.toLocaleString("en-IN");
         },
       },
     },
   };
 
-  useEffect(() => {
-    if (window.ApexCharts) {
-      setIsScriptLoaded(true);
-      return;
-    }
-    const script = document.createElement("script");
-    script.src = "https://cdn.jsdelivr.net/npm/apexcharts";
-    script.async = true;
-    script.onload = () => setIsScriptLoaded(true);
-    document.head.appendChild(script);
-    return () => {
-      if (document.head.contains(script)) document.head.removeChild(script);
-    };
-  }, []);
-
-  useEffect(() => {
-    if (!isScriptLoaded || !chartRef.current || !window.ApexCharts) return;
-
-    if (chartInstanceRef.current) chartInstanceRef.current.destroy();
-
-    const chart = new window.ApexCharts(chartRef.current, options);
-    chart.render();
-    chartInstanceRef.current = chart;
-
-    return () => {
-      if (chartInstanceRef.current) chartInstanceRef.current.destroy();
-    };
-  }, [isScriptLoaded, savingsVal, fdVal, creditVal]);
-
-  return <div ref={chartRef} className="w-full flex justify-center" />;
+  return (
+    <div className="flex w-full justify-center">
+      <ReactApexChart options={options} series={series} type="donut" height={340} width="100%" />
+    </div>
+  );
 }
 
 export default AdminChart;

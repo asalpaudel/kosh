@@ -1,8 +1,7 @@
 import { API_BASE } from "../../lib/apiClient";
 import React, { useEffect, useState } from "react";
-import AnalyticsChart, {
-  generateSummary,
-} from "../../component/superadmin/AnalyticsChart";
+import AnalyticsChart from "../../component/superadmin/AnalyticsChart";
+import { generateSummary } from "../../component/superadmin/analyticsRevenue";
 
 
 /* ----------------------------- UI Primitives ----------------------------- */
