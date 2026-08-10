@@ -5,6 +5,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
+import java.math.BigDecimal;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -23,7 +24,10 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.transaction.annotation.Transactional;
 
+import com.kosh.backend.dto.NetworkRequests.Create;
+import com.kosh.backend.dto.NetworkRequests.Update;
 import com.kosh.backend.model.ActivityLog;
 import com.kosh.backend.model.Network;
 import com.kosh.backend.repository.ActivityLogRepository;
@@ -40,6 +44,7 @@ import jakarta.servlet.http.HttpSession;
 public class NetworkController {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(NetworkController.class);
+    private static final BigDecimal MAX_PACKAGE_PRICE = new BigDecimal("9999999999999999.99");
 
     private final NetworkRepository networkRepository;
     private final ActivityLogRepository logRepo;
@@ -54,38 +59,33 @@ public class NetworkController {
 
     // ⭐ Base64 Upload Endpoint
     @PostMapping("/base64")
-    public ResponseEntity<?> createNetworkBase64(@RequestBody Map<String, Object> payload) {
+    @Transactional
+    public ResponseEntity<?> createNetworkBase64(@RequestBody Create request, HttpSession session) {
         try {
+            String validationError = validateNetworkFields(request.registeredId(), request.name(),
+                    request.packageType(), request.packagePrice(), request.staffCount(),
+                    request.userCount(), request.adminLimit(), request.userLimit());
+            if (validationError != null) return invalid(validationError);
+
             Network network = new Network();
 
-            network.setRegisteredId((String) payload.get("registeredId"));
-            network.setName((String) payload.get("name"));
-            network.setAddress((String) payload.get("address"));
-            network.setCreatedAt((String) payload.get("createdAt"));
-            network.setPhone((String) payload.get("phone"));
-            network.setPanNumber((String) payload.get("panNumber"));
-            network.setPackageType((String) payload.get("packageType"));
-
-            network.setPackagePrice(Money.of(payload.get("packagePrice")));
-            network.setStaffCount(((Number) payload.get("staffCount")).intValue());
-            network.setUserCount(((Number) payload.get("userCount")).intValue());
-            network.setAdminLimit(((Number) payload.get("adminLimit")).intValue());
-            network.setUserLimit(((Number) payload.get("userLimit")).intValue());
+            applyNetworkFields(network, request.registeredId(), request.name(), request.address(),
+                    request.createdAt(), request.phone(), request.panNumber(), request.packageType(),
+                    request.packagePrice(), request.staffCount(), request.userCount(),
+                    request.adminLimit(), request.userLimit());
 
             // Handle Base64 document
-            Map<String, String> documentData = (Map<String, String>) payload.get("document");
-            if (documentData != null && documentData.get("data") != null) {
-                StoredFile document = FileSecurity.validateBase64(documentData.get("data"),
-                        documentData.get("filename"), FileSecurity.Kind.DOCUMENT);
+            if (request.document() != null && request.document().data() != null) {
+                StoredFile document = FileSecurity.validateBase64(request.document().data(),
+                        request.document().filename(), FileSecurity.Kind.DOCUMENT);
                 applyFile(network::setDocumentData, network::setDocumentName,
                         network::setDocumentType, document);
             }
 
             // Handle Base64 logo
-            Map<String, String> logoData = (Map<String, String>) payload.get("logo");
-            if (logoData != null && logoData.get("data") != null) {
-                StoredFile logo = FileSecurity.validateBase64(logoData.get("data"),
-                        logoData.get("filename"), FileSecurity.Kind.IMAGE);
+            if (request.logo() != null && request.logo().data() != null) {
+                StoredFile logo = FileSecurity.validateBase64(request.logo().data(),
+                        request.logo().filename(), FileSecurity.Kind.IMAGE);
                 applyFile(network::setLogoData, network::setLogoName, network::setLogoType, logo);
             }
 
@@ -93,8 +93,8 @@ public class NetworkController {
 
             try {
                 ActivityLog log = new ActivityLog(
-                    "Super Admin", 
-                    "superadmin", 
+                    auditActor(session),
+                    "superadmin",
                     saved.getId(), 
                     "CREATE_NETWORK", 
                     "Created new network: " + saved.getName() + " (" + saved.getPackageType() + ")"
@@ -113,6 +113,7 @@ public class NetworkController {
 
     // ⭐ Multipart Upload
     @PostMapping
+    @Transactional
     public ResponseEntity<?> createNetwork(
             @RequestParam("registeredId") String registeredId,
             @RequestParam("name") String name,
@@ -127,24 +128,24 @@ public class NetworkController {
             @RequestParam("adminLimit") String adminLimit,
             @RequestParam("userLimit") String userLimit,
             @RequestParam(value = "document", required = false) MultipartFile document,
-            @RequestParam(value = "logo", required = false) MultipartFile logo) {
+            @RequestParam(value = "logo", required = false) MultipartFile logo,
+            HttpSession session) {
 
         try {
+            BigDecimal parsedPackagePrice = Money.of(packagePrice);
+            Integer parsedStaffCount = Integer.valueOf(staffCount);
+            Integer parsedUserCount = Integer.valueOf(userCount);
+            Integer parsedAdminLimit = Integer.valueOf(adminLimit);
+            Integer parsedUserLimit = Integer.valueOf(userLimit);
+            String validationError = validateNetworkFields(registeredId, name, packageType,
+                    parsedPackagePrice, parsedStaffCount, parsedUserCount,
+                    parsedAdminLimit, parsedUserLimit);
+            if (validationError != null) return invalid(validationError);
+
             Network network = new Network();
-
-            network.setRegisteredId(registeredId);
-            network.setName(name);
-            network.setAddress(address);
-            network.setCreatedAt(createdAt);
-            network.setPhone(phone);
-            network.setPanNumber(panNumber);
-            network.setPackageType(packageType);
-
-            network.setPackagePrice(Money.of(packagePrice));
-            network.setStaffCount(Integer.parseInt(staffCount));
-            network.setUserCount(Integer.parseInt(userCount));
-            network.setAdminLimit(Integer.parseInt(adminLimit));
-            network.setUserLimit(Integer.parseInt(userLimit));
+            applyNetworkFields(network, registeredId, name, address, createdAt, phone, panNumber,
+                    packageType, parsedPackagePrice, parsedStaffCount, parsedUserCount,
+                    parsedAdminLimit, parsedUserLimit);
 
             // Store document as binary
             if (document != null && !document.isEmpty()) {
@@ -162,8 +163,8 @@ public class NetworkController {
 
             try {
                 ActivityLog log = new ActivityLog(
-                    "Super Admin", 
-                    "superadmin", 
+                    auditActor(session),
+                    "superadmin",
                     saved.getId(), 
                     "CREATE_NETWORK", 
                     "Created new network: " + saved.getName() + " (" + saved.getPackageType() + ")"
@@ -260,30 +261,29 @@ public class NetworkController {
 
     // ⭐ Update Network
     @PutMapping("/{id}")
+    @Transactional
     public ResponseEntity<?> updateNetwork(
             @PathVariable Long id,
-            @RequestBody Network updatedNetwork) {
+            @RequestBody Update request,
+            HttpSession session) {
+
+        String validationError = validateNetworkFields(request.registeredId(), request.name(),
+                request.packageType(), request.packagePrice(), request.staffCount(),
+                request.userCount(), request.adminLimit(), request.userLimit());
+        if (validationError != null) return invalid(validationError);
 
         return networkRepository.findById(id).map(existing -> {
-            existing.setRegisteredId(updatedNetwork.getRegisteredId());
-            existing.setName(updatedNetwork.getName());
-            existing.setAddress(updatedNetwork.getAddress());
-            existing.setCreatedAt(updatedNetwork.getCreatedAt());
-            existing.setPhone(updatedNetwork.getPhone());
-            existing.setPanNumber(updatedNetwork.getPanNumber());
-            existing.setPackageType(updatedNetwork.getPackageType());
-            existing.setPackagePrice(updatedNetwork.getPackagePrice());
-            existing.setStaffCount(updatedNetwork.getStaffCount());
-            existing.setUserCount(updatedNetwork.getUserCount());
-            existing.setAdminLimit(updatedNetwork.getAdminLimit());
-            existing.setUserLimit(updatedNetwork.getUserLimit());
+            applyNetworkFields(existing, request.registeredId(), request.name(), request.address(),
+                    request.createdAt(), request.phone(), request.panNumber(), request.packageType(),
+                    request.packagePrice(), request.staffCount(), request.userCount(),
+                    request.adminLimit(), request.userLimit());
 
             Network saved = networkRepository.save(existing);
 
             try {
                 ActivityLog log = new ActivityLog(
-                    "Super Admin", 
-                    "superadmin", 
+                    auditActor(session),
+                    "superadmin",
                     saved.getId(), 
                     "UPDATE_NETWORK", 
                     "Updated network: " + saved.getName()
@@ -299,7 +299,8 @@ public class NetworkController {
 
     // ⭐ Delete Network
     @DeleteMapping("/{id}")
-    public ResponseEntity<?> deleteNetwork(@PathVariable Long id) {
+    @Transactional
+    public ResponseEntity<?> deleteNetwork(@PathVariable Long id, HttpSession session) {
         if (!networkRepository.existsById(id)) {
             return ResponseEntity.notFound().build();
         }
@@ -308,8 +309,8 @@ public class NetworkController {
             String networkName = networkRepository.findById(id).map(Network::getName).orElse("Unknown Network");
             
             ActivityLog log = new ActivityLog(
-                "Super Admin", 
-                "superadmin", 
+                auditActor(session),
+                "superadmin",
                 id, 
                 "DELETE_NETWORK", 
                 "Deleted network: " + networkName + " (ID: " + id + ")"
@@ -321,6 +322,73 @@ public class NetworkController {
 
         networkRepository.deleteById(id);
         return ResponseEntity.ok().build();
+    }
+
+    private String validateNetworkFields(String registeredId, String name, String packageType,
+            BigDecimal packagePrice, Integer staffCount, Integer userCount,
+            Integer adminLimit, Integer userLimit) {
+        if (isBlankOrTooLong(registeredId) || isBlankOrTooLong(name)) {
+            return "Registered ID and name are required and must be at most 255 characters";
+        }
+        if (packageType == null || !List.of("basic", "premium", "custom")
+                .contains(packageType.trim().toLowerCase())) {
+            return "Package type must be basic, premium, or custom";
+        }
+        BigDecimal price = Money.round(packagePrice);
+        if (price == null || price.signum() < 0 || price.compareTo(MAX_PACKAGE_PRICE) > 0) {
+            return "Package price is outside the supported range";
+        }
+        if (negative(staffCount) || negative(userCount) || negative(adminLimit) || negative(userLimit)) {
+            return "Network counts and limits cannot be negative";
+        }
+        return null;
+    }
+
+    private void applyNetworkFields(Network network, String registeredId, String name,
+            String address, String createdAt, String phone, String panNumber, String packageType,
+            BigDecimal packagePrice, Integer staffCount, Integer userCount,
+            Integer adminLimit, Integer userLimit) {
+        network.setRegisteredId(registeredId.trim());
+        network.setName(name.trim());
+        network.setAddress(boundedOptional(address));
+        network.setCreatedAt(boundedOptional(createdAt));
+        network.setPhone(boundedOptional(phone));
+        network.setPanNumber(boundedOptional(panNumber));
+        network.setPackageType(packageType.trim().toLowerCase());
+        network.setPackagePrice(Money.round(packagePrice));
+        network.setStaffCount(staffCount == null ? 0 : staffCount);
+        network.setUserCount(userCount == null ? 0 : userCount);
+        network.setAdminLimit(adminLimit);
+        network.setUserLimit(userLimit);
+    }
+
+    private String boundedOptional(String value) {
+        if (value == null || value.isBlank()) return null;
+        String trimmed = value.trim();
+        if (trimmed.length() > 255 || trimmed.chars().anyMatch(Character::isISOControl)) {
+            throw new IllegalArgumentException("Field is invalid");
+        }
+        return trimmed;
+    }
+
+    private boolean isBlankOrTooLong(String value) {
+        return value == null || value.isBlank() || value.trim().length() > 255
+                || value.chars().anyMatch(Character::isISOControl);
+    }
+
+    private boolean negative(Integer value) {
+        return value != null && value < 0;
+    }
+
+    private ResponseEntity<Map<String, String>> invalid(String message) {
+        return ResponseEntity.badRequest().body(Map.of("error", message));
+    }
+
+    private String auditActor(HttpSession session) {
+        Object actor = session.getAttribute("userName");
+        return actor instanceof String name && !name.isBlank()
+                ? name.replaceAll("[\\p{Cntrl}]", " ").trim()
+                : "Authenticated superadmin";
     }
 
     // ⭐ Network Stats
