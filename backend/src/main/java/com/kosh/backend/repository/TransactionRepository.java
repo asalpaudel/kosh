@@ -1,5 +1,6 @@
 package com.kosh.backend.repository;
 
+import java.math.BigDecimal;
 import java.util.List;
 
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -19,17 +20,17 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
     // Used for Savings and Fixed Deposits
     @Query("SELECT COALESCE(SUM(CASE WHEN t.direction = 'Credit' THEN t.amount ELSE -t.amount END), 0) " +
            "FROM Transaction t WHERE t.network.id = :networkId AND t.accountHead = :head")
-    Double getBalanceByHead(@Param("networkId") Long networkId, @Param("head") String head);
+    BigDecimal getBalanceByHead(@Param("networkId") Long networkId, @Param("head") String head);
 
     // Sum Loans: For Loans, 'Debit' means Disbursement (money out → loan increases)
     // 'Credit' means Repayment (money in → loan decreases)
     // We sum Debits (Disbursed) - Credits (Repaid) to get Outstanding Loan Amount
     @Query("SELECT COALESCE(SUM(CASE WHEN t.direction = 'Debit' THEN t.amount ELSE -t.amount END), 0) " +
            "FROM Transaction t WHERE t.network.id = :networkId AND t.accountHead = 'Loan'")
-    Double getOutstandingLoans(@Param("networkId") Long networkId);
+    BigDecimal getOutstandingLoans(@Param("networkId") Long networkId);
 
     // ⭐ NEW: Sum Network Income/Expense (Credits - Debits) where mode is 'network'
     @Query("SELECT COALESCE(SUM(CASE WHEN t.direction = 'Credit' THEN t.amount ELSE -t.amount END), 0) " +
            "FROM Transaction t WHERE t.network.id = :networkId AND t.mode = 'network'")
-    Double getNetworkBalance(@Param("networkId") Long networkId);
+    BigDecimal getNetworkBalance(@Param("networkId") Long networkId);
 }

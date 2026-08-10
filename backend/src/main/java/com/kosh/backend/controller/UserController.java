@@ -784,7 +784,7 @@ public class UserController {
         response.put("address", user.getAddress());
         response.put("role", user.getRole());
         response.put("sahakari", user.getSahakari());
-        response.put("balance", user.getBalance() != null ? user.getBalance() : 0.0);
+        response.put("balance", user.getBalance());
         response.put("status", user.getStatus());
         response.put("hasPhoto", user.getPhotoData() != null);
         response.put("hasCitizenship", user.getCitizenshipData() != null);

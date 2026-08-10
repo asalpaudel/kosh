@@ -1,5 +1,7 @@
 package com.kosh.backend.model;
 
+import java.math.BigDecimal;
+
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
@@ -34,12 +36,15 @@ public class FixedDepositApplication {
     @JoinColumn(name = "network_id", nullable = false)
     private Network network;
 
-    private Double depositAmount;
+    @Column(precision = 18, scale = 2)
+    private BigDecimal depositAmount;
     private Integer depositTerm; // in months
 
-    private Double interestRate; // Snapshot
+    @Column(precision = 5, scale = 2)
+    private BigDecimal interestRate; // Snapshot
     private LocalDate maturityDate;
-    private Double maturityAmount;
+    @Column(precision = 18, scale = 2)
+    private BigDecimal maturityAmount;
     private String nomineeName;
 
     @Enumerated(EnumType.STRING)
@@ -68,17 +73,17 @@ public class FixedDepositApplication {
     public void setFixedDeposit(FixedDeposit fixedDeposit) { this.fixedDeposit = fixedDeposit; }
     public Network getNetwork() { return network; }
     public void setNetwork(Network network) { this.network = network; }
-    public Double getDepositAmount() { return depositAmount; }
-    public void setDepositAmount(Double depositAmount) { this.depositAmount = depositAmount; }
+    public BigDecimal getDepositAmount() { return depositAmount; }
+    public void setDepositAmount(BigDecimal depositAmount) { this.depositAmount = depositAmount; }
     public Integer getDepositTerm() { return depositTerm; }
     public void setDepositTerm(Integer depositTerm) { this.depositTerm = depositTerm; }
     
-    public Double getInterestRate() { return interestRate; }
-    public void setInterestRate(Double interestRate) { this.interestRate = interestRate; }
+    public BigDecimal getInterestRate() { return interestRate; }
+    public void setInterestRate(BigDecimal interestRate) { this.interestRate = interestRate; }
     public LocalDate getMaturityDate() { return maturityDate; }
     public void setMaturityDate(LocalDate maturityDate) { this.maturityDate = maturityDate; }
-    public Double getMaturityAmount() { return maturityAmount; }
-    public void setMaturityAmount(Double maturityAmount) { this.maturityAmount = maturityAmount; }
+    public BigDecimal getMaturityAmount() { return maturityAmount; }
+    public void setMaturityAmount(BigDecimal maturityAmount) { this.maturityAmount = maturityAmount; }
     public String getNomineeName() { return nomineeName; }
     public void setNomineeName(String nomineeName) { this.nomineeName = nomineeName; }
 

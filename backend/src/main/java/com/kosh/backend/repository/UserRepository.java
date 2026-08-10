@@ -1,5 +1,6 @@
 package com.kosh.backend.repository;
 
+import java.math.BigDecimal;
 import java.util.List;
 
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -22,5 +23,5 @@ public interface UserRepository extends JpaRepository<User, Integer> {
 
     // ⭐ NEW: Sum of balance for all users in a specific network
     @Query("SELECT COALESCE(SUM(u.balance), 0) FROM User u WHERE u.sahakariId = :networkId")
-    Double getTotalUserBalanceByNetwork(@Param("networkId") Long networkId);
+    BigDecimal getTotalUserBalanceByNetwork(@Param("networkId") Long networkId);
 }

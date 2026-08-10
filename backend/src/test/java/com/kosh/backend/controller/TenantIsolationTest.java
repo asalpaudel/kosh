@@ -6,6 +6,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.math.BigDecimal;
 import java.util.Map;
 import java.util.Optional;
 
@@ -105,11 +106,11 @@ class TenantIsolationTest {
         FinanceController controller = financeController();
         MockHttpSession session = adminSession();
 
-        assertThat(controller.addFixedDeposit(OTHER_NETWORK, "FD", 8.0, 6, 1000.0, null, null, session)
+        assertThat(controller.addFixedDeposit(OTHER_NETWORK, "FD", money("8.00"), 6, money("1000.00"), null, null, session)
                 .getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
-        assertThat(controller.addSavingAccount(OTHER_NETWORK, "SA", 5.0, 500.0, null, null, session)
+        assertThat(controller.addSavingAccount(OTHER_NETWORK, "SA", money("5.00"), money("500.00"), null, null, session)
                 .getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
-        assertThat(controller.addLoanPackage(OTHER_NETWORK, "LP", 12.0, 50000.0, 24, null, null, session)
+        assertThat(controller.addLoanPackage(OTHER_NETWORK, "LP", money("12.00"), money("50000.00"), 24, null, null, session)
                 .getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
 
         verify(fixedDepositRepo, never()).save(any());
@@ -126,7 +127,7 @@ class TenantIsolationTest {
         FinanceController controller = financeController();
         MockHttpSession session = adminSession();
 
-        assertThat(controller.updateFixedDeposit(7L, "renamed", 9.0, 6, 1000.0, null, false, null, session)
+        assertThat(controller.updateFixedDeposit(7L, "renamed", money("9.00"), 6, money("1000.00"), null, false, null, session)
                 .getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
         assertThat(controller.deleteFixedDeposit(7L, session).getStatusCode())
                 .isEqualTo(HttpStatus.FORBIDDEN);
@@ -209,7 +210,7 @@ class TenantIsolationTest {
     void memberCannotApplyToAnotherCooperativePackage() {
         LoanPackage foreign = new LoanPackage();
         foreign.setNetwork(network(OTHER_NETWORK));
-        foreign.setMaxAmount(100000.0);
+        foreign.setMaxAmount(money("100000.00"));
 
         when(userRepo.findById(2)).thenReturn(Optional.of(member()));
         when(loanPackageRepo.findById(4L)).thenReturn(Optional.of(foreign));
@@ -251,7 +252,7 @@ class TenantIsolationTest {
         poorMember.setId(43L);
         poorMember.setName("Broke Member");
         poorMember.setSahakariId(OWN_NETWORK);
-        poorMember.setBalance(100.0);
+        poorMember.setBalance(money("100.00"));
 
         when(networkRepo.findById(OWN_NETWORK)).thenReturn(Optional.of(network(OWN_NETWORK)));
         when(userRepo.findById(43)).thenReturn(Optional.of(poorMember));
@@ -265,7 +266,7 @@ class TenantIsolationTest {
         verify(saAppRepo, never()).save(any());
         verify(userRepo, never()).save(any());
         verify(transactionRepo, never()).save(any());
-        assertThat(poorMember.getBalance()).isEqualTo(100.0);
+        assertThat(poorMember.getBalance()).isEqualByComparingTo(money("100.00"));
     }
 
     @Test
@@ -287,6 +288,10 @@ class TenantIsolationTest {
 
     // -------------------------------------------------------------------- setup
 
+    private static BigDecimal money(String value) {
+        return new BigDecimal(value);
+    }
+
     private Network network(long id) {
         Network network = new Network();
         network.setId(id);
@@ -306,7 +311,7 @@ class TenantIsolationTest {
         member.setId(2L);
         member.setName("Coop A Member");
         member.setSahakariId(OWN_NETWORK);
-        member.setBalance(10000.0);
+        member.setBalance(money("10000.00"));
         return member;
     }
 

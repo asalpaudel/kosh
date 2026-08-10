@@ -1,5 +1,6 @@
 package com.kosh.backend.controller;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.HashMap;
@@ -38,6 +39,7 @@ import com.kosh.backend.repository.SavingAccountRepository;
 import com.kosh.backend.repository.TransactionRepository;
 import com.kosh.backend.repository.UserRepository;
 import com.kosh.backend.service.EmailService;
+import com.kosh.backend.service.Money;
 import com.kosh.backend.service.NetworkAccessService;
 
 import org.springframework.transaction.annotation.Transactional;
@@ -118,7 +120,7 @@ public class TransactionController {
             tx.setVoucherId((String) payload.get("voucherId"));
             tx.setStatus((String) payload.getOrDefault("status", "Success"));
             tx.setType((String) payload.get("type"));
-            tx.setAmount(Double.valueOf(payload.get("amountValue").toString()));
+            tx.setAmount(Money.of(payload.get("amountValue")));
             tx.setNarration((String) payload.get("narration"));
             
             String dateStr = (String) payload.get("date");
@@ -162,16 +164,16 @@ public class TransactionController {
             // Runs before any application row is written so a rejected withdrawal cannot
             // leave an APPROVED application behind with no matching ledger entry.
             if (targetUser != null && !"Loan".equals(tx.getAccountHead())) {
-                double currentBalance = targetUser.getBalance();
-                double amount = tx.getAmount();
+                BigDecimal currentBalance = targetUser.getBalance();
+                BigDecimal amount = tx.getAmount();
 
                 if ("Credit".equalsIgnoreCase(tx.getDirection())) {
-                    targetUser.setBalance(currentBalance + amount);
+                    targetUser.setBalance(currentBalance.add(amount));
                 } else if ("Debit".equalsIgnoreCase(tx.getDirection())) {
-                    if (currentBalance < amount) {
+                    if (currentBalance.compareTo(amount) < 0) {
                         return reject(HttpStatus.BAD_REQUEST, "Insufficient user balance.");
                     }
-                    targetUser.setBalance(currentBalance - amount);
+                    targetUser.setBalance(currentBalance.subtract(amount));
                 }
                 userRepo.save(targetUser);
             }
@@ -312,37 +314,33 @@ public class TransactionController {
             // ========================================================================
 
             // --- NETWORK RESERVE CALCULATION ---
-            Double totalSavings = transactionRepo.getBalanceByHead(networkId, "Savings");
-            Double totalFD = transactionRepo.getBalanceByHead(networkId, "Fixed Deposit");
-            Double totalLoans = transactionRepo.getOutstandingLoans(networkId);
-            Double totalNetwork = transactionRepo.getNetworkBalance(networkId);
-            
+            BigDecimal totalSavings = Money.orZero(transactionRepo.getBalanceByHead(networkId, "Savings"));
+            BigDecimal totalFD = Money.orZero(transactionRepo.getBalanceByHead(networkId, "Fixed Deposit"));
+            BigDecimal totalLoans = Money.orZero(transactionRepo.getOutstandingLoans(networkId));
+            BigDecimal totalNetwork = Money.orZero(transactionRepo.getNetworkBalance(networkId));
+
             String head = tx.getAccountHead();
             String dir = tx.getDirection();
-            Double amt = tx.getAmount();
+            BigDecimal amt = tx.getAmount();
             String mode = tx.getMode();
 
-            if (totalSavings == null) totalSavings = 0.0;
-            if (totalFD == null) totalFD = 0.0;
-            if (totalLoans == null) totalLoans = 0.0;
-            if (totalNetwork == null) totalNetwork = 0.0;
+            BigDecimal creditSigned = "Credit".equals(dir) ? amt : amt.negate();
 
             // Adjust current running totals based on this new transaction
             if ("Savings".equals(head)) {
-                totalSavings += ("Credit".equals(dir) ? amt : -amt);
+                totalSavings = totalSavings.add(creditSigned);
             } else if ("Fixed Deposit".equals(head)) {
-                totalFD += ("Credit".equals(dir) ? amt : -amt);
+                totalFD = totalFD.add(creditSigned);
             } else if ("Loan".equals(head)) {
                 // Loan: Debit increases Outstanding, Credit decreases it
-                totalLoans += ("Debit".equals(dir) ? amt : -amt);
+                totalLoans = totalLoans.add("Debit".equals(dir) ? amt : amt.negate());
             }
 
             if ("network".equals(mode)) {
-                totalNetwork += ("Credit".equals(dir) ? amt : -amt);
+                totalNetwork = totalNetwork.add(creditSigned);
             }
 
-            Double reserve = (totalSavings + totalFD) - totalLoans + totalNetwork;
-            tx.setNetworkReserve(reserve);
+            tx.setNetworkReserve(totalSavings.add(totalFD).subtract(totalLoans).add(totalNetwork));
 
             Transaction savedTx = transactionRepo.save(tx);
 

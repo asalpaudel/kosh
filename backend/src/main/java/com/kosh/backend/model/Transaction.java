@@ -1,5 +1,7 @@
 package com.kosh.backend.model;
 
+import java.math.BigDecimal;
+
 import java.time.LocalDate;
 
 import jakarta.persistence.Column;
@@ -34,7 +36,8 @@ public class Transaction {
     private Network network;
 
     private String type; // e.g. "Savings (Credit)"
-    private Double amount;
+    @Column(precision = 18, scale = 2)
+    private BigDecimal amount;
     
     @Column(length = 1000)
     private String narration;
@@ -43,7 +46,8 @@ public class Transaction {
     private String applicationType;
 
     // --- NEW: Ledger Snapshot Fields ---
-    private Double networkReserve; // Snapshot of (Savings + FD - Loan) at this moment
+    @Column(precision = 18, scale = 2)
+    private BigDecimal networkReserve; // Snapshot of (Savings + FD - Loan) at this moment
 
     // --- Flattened Details Fields ---
     private String mode; // "member" or "network"
@@ -85,8 +89,8 @@ public class Transaction {
     public String getType() { return type; }
     public void setType(String type) { this.type = type; }
 
-    public Double getAmount() { return amount; }
-    public void setAmount(Double amount) { this.amount = amount; }
+    public BigDecimal getAmount() { return amount; }
+    public void setAmount(BigDecimal amount) { this.amount = amount; }
 
     public String getNarration() { return narration; }
     public void setNarration(String narration) { this.narration = narration; }
@@ -97,8 +101,8 @@ public class Transaction {
     public String getApplicationType() { return applicationType; }
     public void setApplicationType(String applicationType) { this.applicationType = applicationType; }
 
-    public Double getNetworkReserve() { return networkReserve; }
-    public void setNetworkReserve(Double networkReserve) { this.networkReserve = networkReserve; }
+    public BigDecimal getNetworkReserve() { return networkReserve; }
+    public void setNetworkReserve(BigDecimal networkReserve) { this.networkReserve = networkReserve; }
 
     public String getMode() { return mode; }
     public void setMode(String mode) { this.mode = mode; }

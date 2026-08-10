@@ -1,5 +1,7 @@
 package com.kosh.backend.model;
 
+import java.math.BigDecimal;
+
 import com.fasterxml.jackson.annotation.JsonIgnore;
 
 import jakarta.persistence.*;
@@ -23,7 +25,8 @@ public class Network {
     private Integer userCount;
 
     private String packageType;
-    private Double packagePrice;
+    @Column(precision = 18, scale = 2)
+    private BigDecimal packagePrice;
     
     // ⭐ Store document as binary data
     @Lob
@@ -77,8 +80,8 @@ public class Network {
     public String getPackageType() { return packageType; }
     public void setPackageType(String packageType) { this.packageType = packageType; }
 
-    public Double getPackagePrice() { return packagePrice; }
-    public void setPackagePrice(Double packagePrice) { this.packagePrice = packagePrice; }
+    public BigDecimal getPackagePrice() { return packagePrice; }
+    public void setPackagePrice(BigDecimal packagePrice) { this.packagePrice = packagePrice; }
 
     public byte[] getDocumentData() { return documentData; }
     public void setDocumentData(byte[] documentData) { this.documentData = documentData; }

@@ -1,5 +1,7 @@
 package com.kosh.backend.model;
 
+import java.math.BigDecimal;
+
 import com.fasterxml.jackson.annotation.JsonIgnore;
 
 import jakarta.persistence.*;
@@ -13,9 +15,11 @@ public class FixedDeposit {
     private Long id;
 
     private String name;
-    private Double interestRate;
+    @Column(precision = 5, scale = 2)
+    private BigDecimal interestRate;
     private Integer minDuration;
-    private Double minAmount;
+    @Column(precision = 18, scale = 2)
+    private BigDecimal minAmount;
     
     @Column(length = 1000)
     private String description;
@@ -40,14 +44,14 @@ public class FixedDeposit {
     public String getName() { return name; }
     public void setName(String name) { this.name = name; }
 
-    public Double getInterestRate() { return interestRate; }
-    public void setInterestRate(Double interestRate) { this.interestRate = interestRate; }
+    public BigDecimal getInterestRate() { return interestRate; }
+    public void setInterestRate(BigDecimal interestRate) { this.interestRate = interestRate; }
 
     public Integer getMinDuration() { return minDuration; }
     public void setMinDuration(Integer minDuration) { this.minDuration = minDuration; }
 
-    public Double getMinAmount() { return minAmount; }
-    public void setMinAmount(Double minAmount) { this.minAmount = minAmount; }
+    public BigDecimal getMinAmount() { return minAmount; }
+    public void setMinAmount(BigDecimal minAmount) { this.minAmount = minAmount; }
 
     public String getDescription() { return description; }
     public void setDescription(String description) { this.description = description; }

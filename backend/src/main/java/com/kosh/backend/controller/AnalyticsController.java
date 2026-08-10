@@ -1,5 +1,6 @@
 package com.kosh.backend.controller;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -15,6 +16,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.kosh.backend.model.Transaction;
+import com.kosh.backend.service.Money;
 import com.kosh.backend.model.User;
 import com.kosh.backend.repository.NetworkRepository;
 import com.kosh.backend.repository.TransactionRepository;
@@ -114,33 +116,29 @@ public class AnalyticsController {
         // --- 2. FINANCIALS (Balances) ---
 
         // A. Savings (Liquid Funds from Users)
-        Double savings = userRepository.getTotalUserBalanceByNetwork(networkId);
-        if (savings == null) savings = 0.0;
+        BigDecimal savings = Money.orZero(userRepository.getTotalUserBalanceByNetwork(networkId));
 
         // B. Fixed Deposits (Locked Funds from Ledger)
-        Double fd = transactionRepository.getBalanceByHead(networkId, "Fixed Deposit");
-        if (fd == null) fd = 0.0;
+        BigDecimal fd = Money.orZero(transactionRepository.getBalanceByHead(networkId, "Fixed Deposit"));
 
         // C. Loans (Assets/Receivables from Ledger)
-        Double loans = transactionRepository.getOutstandingLoans(networkId);
-        if (loans == null) loans = 0.0;
+        BigDecimal loans = Money.orZero(transactionRepository.getOutstandingLoans(networkId));
 
         // D. Network Equity (Cash/Earnings/Expense Difference)
-        Double networkBalance = transactionRepository.getNetworkBalance(networkId);
-        if (networkBalance == null) networkBalance = 0.0;
+        BigDecimal networkBalance = Money.orZero(transactionRepository.getNetworkBalance(networkId));
 
         // --- 3. AGGREGATES ---
 
         // Total Deposits = Liquid Savings + Fixed Deposits
-        Double totalDeposits = savings + fd;
+        BigDecimal totalDeposits = savings.add(fd);
 
         // Reserve (Liquidity Available)
         // Formula: (Money from Users) - (Money Lent Out) + (Own Cash)
-        Double reserve = totalDeposits - loans + networkBalance;
+        BigDecimal reserve = totalDeposits.subtract(loans).add(networkBalance);
 
         // Total Pool (Total Assets Managed)
         // Formula: Total Deposits + Own Equity
-        Double totalPool = totalDeposits + networkBalance;
+        BigDecimal totalPool = totalDeposits.add(networkBalance);
 
         // --- 4. TODAY'S SUMMARY (For AdminDashboard.jsx) ---
         LocalDate today = LocalDate.now();
@@ -153,9 +151,9 @@ public class AnalyticsController {
         long todayTxCount = todayTxns.size();
         
         // Sum absolute amount of today's transactions
-        double todayTotalAmount = todayTxns.stream()
-            .mapToDouble(t -> t.getAmount() != null ? t.getAmount() : 0.0)
-            .sum();
+        BigDecimal todayTotalAmount = todayTxns.stream()
+            .map(t -> Money.orZero(t.getAmount()))
+            .reduce(Money.ZERO, BigDecimal::add);
 
         // Count New Users for Today
         // Checks if user.createdAt matches today

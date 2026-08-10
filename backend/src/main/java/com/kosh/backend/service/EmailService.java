@@ -1,5 +1,6 @@
 package com.kosh.backend.service;
 
+import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.time.Duration;
@@ -166,7 +167,7 @@ public class EmailService {
             }
 
             // Amount formatting
-            double amount = tx.getAmount() != null ? tx.getAmount() : 0.0;
+            BigDecimal amount = Money.orZero(tx.getAmount());
             String formattedAmount = String.format("Rs. %,.2f", amount);
             boolean isCredit = "Credit".equalsIgnoreCase(tx.getDirection());
             String amountColor = isCredit ? "#16a34a" : "#dc2626";

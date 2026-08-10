@@ -1,5 +1,7 @@
 package com.kosh.backend.model;
 
+import java.math.BigDecimal;
+
 import jakarta.persistence.*;
 import java.time.LocalDate;
 
@@ -18,9 +20,12 @@ public class RepaymentSchedule {
     private Integer installmentNumber;
     private LocalDate dueDate;
 
-    private Double principalAmount; // The part of EMI that pays off the loan
-    private Double interestAmount;  // The part of EMI that is profit for network
-    private Double totalDue;        // principal + interest
+    @Column(precision = 18, scale = 2)
+    private BigDecimal principalAmount; // The part of EMI that pays off the loan
+    @Column(precision = 18, scale = 2)
+    private BigDecimal interestAmount;  // The part of EMI that is profit for network
+    @Column(precision = 18, scale = 2)
+    private BigDecimal totalDue;        // principal + interest
 
     private String status = "PENDING"; // PENDING, PAID, PARTIAL, OVERDUE
     private LocalDate paidDate;
@@ -38,14 +43,14 @@ public class RepaymentSchedule {
     public LocalDate getDueDate() { return dueDate; }
     public void setDueDate(LocalDate dueDate) { this.dueDate = dueDate; }
 
-    public Double getPrincipalAmount() { return principalAmount; }
-    public void setPrincipalAmount(Double principalAmount) { this.principalAmount = principalAmount; }
+    public BigDecimal getPrincipalAmount() { return principalAmount; }
+    public void setPrincipalAmount(BigDecimal principalAmount) { this.principalAmount = principalAmount; }
 
-    public Double getInterestAmount() { return interestAmount; }
-    public void setInterestAmount(Double interestAmount) { this.interestAmount = interestAmount; }
+    public BigDecimal getInterestAmount() { return interestAmount; }
+    public void setInterestAmount(BigDecimal interestAmount) { this.interestAmount = interestAmount; }
 
-    public Double getTotalDue() { return totalDue; }
-    public void setTotalDue(Double totalDue) { this.totalDue = totalDue; }
+    public BigDecimal getTotalDue() { return totalDue; }
+    public void setTotalDue(BigDecimal totalDue) { this.totalDue = totalDue; }
 
     public String getStatus() { return status; }
     public void setStatus(String status) { this.status = status; }

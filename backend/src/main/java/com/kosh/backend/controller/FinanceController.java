@@ -12,6 +12,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import jakarta.servlet.http.HttpSession;
 
+import java.math.BigDecimal;
 import java.util.List;
 
 @RestController
@@ -58,9 +59,9 @@ public class FinanceController {
     public ResponseEntity<Object> addFixedDeposit(
             @PathVariable Long networkId,
             @RequestParam("name") String name,
-            @RequestParam("interestRate") Double interestRate,
+            @RequestParam("interestRate") BigDecimal interestRate,
             @RequestParam("minDuration") Integer minDuration,
-            @RequestParam("minAmount") Double minAmount,
+            @RequestParam("minAmount") BigDecimal minAmount,
             @RequestParam(value = "description", required = false) String description,
             @RequestParam(value = "banner", required = false) MultipartFile banner,
             HttpSession session) {
@@ -97,9 +98,9 @@ public class FinanceController {
     public ResponseEntity<Object> updateFixedDeposit(
             @PathVariable Long id,
             @RequestParam("name") String name,
-            @RequestParam("interestRate") Double interestRate,
+            @RequestParam("interestRate") BigDecimal interestRate,
             @RequestParam("minDuration") Integer minDuration,
-            @RequestParam("minAmount") Double minAmount,
+            @RequestParam("minAmount") BigDecimal minAmount,
             @RequestParam(value = "description", required = false) String description,
             @RequestParam(value = "removeBanner", required = false, defaultValue = "false") Boolean removeBanner,
             @RequestParam(value = "banner", required = false) MultipartFile banner,
@@ -152,8 +153,8 @@ public class FinanceController {
     public ResponseEntity<Object> addSavingAccount(
             @PathVariable Long networkId,
             @RequestParam("name") String name,
-            @RequestParam("interestRate") Double interestRate,
-            @RequestParam("minBalance") Double minBalance,
+            @RequestParam("interestRate") BigDecimal interestRate,
+            @RequestParam("minBalance") BigDecimal minBalance,
             @RequestParam(value = "description", required = false) String description,
             @RequestParam(value = "banner", required = false) MultipartFile banner,
             HttpSession session) {
@@ -189,8 +190,8 @@ public class FinanceController {
     public ResponseEntity<Object> updateSavingAccount(
             @PathVariable Long id,
             @RequestParam("name") String name,
-            @RequestParam("interestRate") Double interestRate,
-            @RequestParam("minBalance") Double minBalance,
+            @RequestParam("interestRate") BigDecimal interestRate,
+            @RequestParam("minBalance") BigDecimal minBalance,
             @RequestParam(value = "description", required = false) String description,
             @RequestParam(value = "removeBanner", required = false, defaultValue = "false") Boolean removeBanner,
             @RequestParam(value = "banner", required = false) MultipartFile banner,
@@ -242,8 +243,8 @@ public class FinanceController {
     public ResponseEntity<Object> addLoanPackage(
             @PathVariable Long networkId,
             @RequestParam("name") String name,
-            @RequestParam("interestRate") Double interestRate,
-            @RequestParam("maxAmount") Double maxAmount,
+            @RequestParam("interestRate") BigDecimal interestRate,
+            @RequestParam("maxAmount") BigDecimal maxAmount,
             @RequestParam("maxDuration") Integer maxDuration,
             @RequestParam(value = "description", required = false) String description,
             @RequestParam(value = "banner", required = false) MultipartFile banner,
@@ -281,8 +282,8 @@ public class FinanceController {
     public ResponseEntity<Object> updateLoanPackage(
             @PathVariable Long id,
             @RequestParam("name") String name,
-            @RequestParam("interestRate") Double interestRate,
-            @RequestParam("maxAmount") Double maxAmount,
+            @RequestParam("interestRate") BigDecimal interestRate,
+            @RequestParam("maxAmount") BigDecimal maxAmount,
             @RequestParam("maxDuration") Integer maxDuration,
             @RequestParam(value = "description", required = false) String description,
             @RequestParam(value = "removeBanner", required = false, defaultValue = "false") Boolean removeBanner,

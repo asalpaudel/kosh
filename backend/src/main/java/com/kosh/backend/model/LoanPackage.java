@@ -1,5 +1,7 @@
 package com.kosh.backend.model;
 
+import java.math.BigDecimal;
+
 import com.fasterxml.jackson.annotation.JsonIgnore;
 
 import jakarta.persistence.*;
@@ -13,8 +15,10 @@ public class LoanPackage {
     private Long id;
 
     private String name;
-    private Double interestRate;
-    private Double maxAmount;
+    @Column(precision = 5, scale = 2)
+    private BigDecimal interestRate;
+    @Column(precision = 18, scale = 2)
+    private BigDecimal maxAmount;
     private Integer maxDuration;
 
     @Column(length = 1000)
@@ -40,11 +44,11 @@ public class LoanPackage {
     public String getName() { return name; }
     public void setName(String name) { this.name = name; }
 
-    public Double getInterestRate() { return interestRate; }
-    public void setInterestRate(Double interestRate) { this.interestRate = interestRate; }
+    public BigDecimal getInterestRate() { return interestRate; }
+    public void setInterestRate(BigDecimal interestRate) { this.interestRate = interestRate; }
 
-    public Double getMaxAmount() { return maxAmount; }
-    public void setMaxAmount(Double maxAmount) { this.maxAmount = maxAmount; }
+    public BigDecimal getMaxAmount() { return maxAmount; }
+    public void setMaxAmount(BigDecimal maxAmount) { this.maxAmount = maxAmount; }
 
     public Integer getMaxDuration() { return maxDuration; }
     public void setMaxDuration(Integer maxDuration) { this.maxDuration = maxDuration; }

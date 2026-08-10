@@ -1,5 +1,6 @@
 package com.kosh.backend.model;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
@@ -36,8 +37,8 @@ public class User {
     private String dob; 
     private String address;
 
-    @Column(nullable = false)
-    private Double balance = 0.0;
+    @Column(nullable = false, precision = 18, scale = 2)
+    private BigDecimal balance = BigDecimal.ZERO;
 
     // Guards the read-modify-write on balance: a concurrent posting fails rather than
     // silently overwriting the other teller's movement.
@@ -127,8 +128,8 @@ public class User {
     public String getStatus() { return status; }
     public void setStatus(String status) { this.status = status; }
 
-    public Double getBalance() { return balance != null ? balance : 0.0; }
-    public void setBalance(Double balance) { this.balance = balance != null ? balance : 0.0; }
+    public BigDecimal getBalance() { return balance != null ? balance : BigDecimal.ZERO; }
+    public void setBalance(BigDecimal balance) { this.balance = balance != null ? balance : BigDecimal.ZERO; }
 
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }

@@ -1,5 +1,6 @@
 package com.kosh.backend.controller;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.HashMap;
@@ -41,6 +42,7 @@ import com.kosh.backend.repository.TransactionRepository;
 import com.kosh.backend.repository.UserRepository;
 import com.kosh.backend.repository.RepaymentScheduleRepository;
 import com.kosh.backend.service.LoanService;
+import com.kosh.backend.service.Money;
 import com.kosh.backend.service.NetworkAccessService;
 
 import org.springframework.transaction.annotation.Transactional;
@@ -95,6 +97,9 @@ public class ApplicationController {
         return "AUTO-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase();
     }
 
+    /** A cooperative may lend out at most 70% of its reserve. */
+    private static final BigDecimal LENDING_LIMIT = new BigDecimal("0.70");
+
     private ResponseEntity<?> forbidden() {
         return ResponseEntity.status(HttpStatus.FORBIDDEN)
             .body(Map.of("error", "Not permitted for this cooperative"));
@@ -130,7 +135,7 @@ public class ApplicationController {
             }
 
             Long packageId = Long.valueOf(request.get("packageId").toString());
-            Double depositAmount = Double.valueOf(request.get("depositAmount").toString());
+            BigDecimal depositAmount = Money.of(request.get("depositAmount"));
             Integer depositTerm = Integer.valueOf(request.get("depositTerm").toString());
 
             User user = userRepo.findById(userId.intValue())
@@ -145,7 +150,7 @@ public class ApplicationController {
             if (access.isForeign(fixedDeposit.getNetwork(), session)) return forbidden();
 
             // Validate amounts
-            if (depositAmount < fixedDeposit.getMinAmount()) {
+            if (depositAmount.compareTo(fixedDeposit.getMinAmount()) < 0) {
                 return ResponseEntity.badRequest()
                     .body(Map.of("error", "Deposit amount below minimum required"));
             }
@@ -155,17 +160,14 @@ public class ApplicationController {
             }
 
             // ===== CHECK USER BALANCE =====
-            Double userBalance = user.getBalance();
-            if (userBalance == null) {
-                userBalance = 0.0;
-            }
+            BigDecimal userBalance = user.getBalance();
 
-            if (userBalance < depositAmount) {
+            if (userBalance.compareTo(depositAmount) < 0) {
                 Map<String, Object> errorResponse = new HashMap<>();
                 errorResponse.put("error", "Insufficient balance");
                 errorResponse.put("currentBalance", userBalance);
                 errorResponse.put("requiredAmount", depositAmount);
-                errorResponse.put("shortfall", depositAmount - userBalance);
+                errorResponse.put("shortfall", depositAmount.subtract(userBalance));
                 
                 return ResponseEntity.badRequest().body(errorResponse);
             }
@@ -233,8 +235,7 @@ public class ApplicationController {
             if (status == ApplicationStatus.APPROVED) {
                 // ⭐ UPDATED: Handle Admin Overrides
                 if (request.containsKey("approvedAmount")) {
-                    Double newAmount = Double.valueOf(request.get("approvedAmount").toString());
-                    app.setDepositAmount(newAmount);
+                    app.setDepositAmount(Money.of(request.get("approvedAmount")));
                 }
                 if (request.containsKey("duration")) {
                     Integer newDuration = Integer.valueOf(request.get("duration").toString());
@@ -243,25 +244,27 @@ public class ApplicationController {
 
                 // ⭐ UPDATED: Re-validate User Balance (since amount might have increased)
                 User user = app.getUser();
-                if (user.getBalance() < app.getDepositAmount()) {
+                if (user.getBalance().compareTo(app.getDepositAmount()) < 0) {
                     return rejected(HttpStatus.BAD_REQUEST, "Insufficient user balance for the approved amount.");
                 }
 
                 // ⭐ 1. Calculate Maturity Details
-                double principal = app.getDepositAmount();
-                double rate = app.getFixedDeposit().getInterestRate();
+                BigDecimal principal = app.getDepositAmount();
+                BigDecimal rate = app.getFixedDeposit().getInterestRate();
                 int months = app.getDepositTerm();
-                
-                // Simple Interest Formula: A = P(1 + rt)
-                double timeInYears = months / 12.0;
-                double maturityAmount = principal * (1 + (rate / 100.0 * timeInYears));
-                
+
+                // Simple Interest: A = P(1 + rt), with t in years and r as a percentage.
+                BigDecimal interest = principal
+                    .multiply(rate)
+                    .multiply(BigDecimal.valueOf(months))
+                    .divide(BigDecimal.valueOf(1200), Money.SCALE, Money.ROUNDING);
+
                 app.setInterestRate(rate);
                 app.setMaturityDate(LocalDate.now().plusMonths(months));
-                app.setMaturityAmount(Math.round(maturityAmount * 100.0) / 100.0);
+                app.setMaturityAmount(principal.add(interest));
 
                 // ⭐ 2. Perform Transactions
-                Double amount = app.getDepositAmount();
+                BigDecimal amount = app.getDepositAmount();
 
                 // DEBIT: Remove money from User's Savings
                 Transaction debitTx = new Transaction();
@@ -285,7 +288,7 @@ public class ApplicationController {
                 debitTx.setPaymentMethod("Transfer");
                 
                 // Update Balance (Deduct)
-                user.setBalance(user.getBalance() - amount);
+                user.setBalance(user.getBalance().subtract(amount));
                 transactionRepo.save(debitTx);
 
                 // CREDIT: Add money to Fixed Deposit Account
@@ -343,7 +346,7 @@ public class ApplicationController {
             }
 
             Long packageId = Long.valueOf(request.get("packageId").toString());
-            Double initialDeposit = Double.valueOf(request.get("initialDeposit").toString());
+            BigDecimal initialDeposit = Money.of(request.get("initialDeposit"));
 
             User user = userRepo.findById(userId.intValue())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
@@ -374,7 +377,7 @@ public class ApplicationController {
                     .body(Map.of("error", "You already have a pending savings account application."));
             }
 
-            if (initialDeposit < savingAccount.getMinBalance()) {
+            if (initialDeposit.compareTo(savingAccount.getMinBalance()) < 0) {
                 return ResponseEntity.badRequest()
                     .body(Map.of("error", "Initial deposit below minimum balance"));
             }
@@ -440,12 +443,11 @@ public class ApplicationController {
             if (status == ApplicationStatus.APPROVED) {
                 // ⭐ UPDATED: Handle Admin Override
                 if (request.containsKey("approvedAmount")) {
-                    Double newAmount = Double.valueOf(request.get("approvedAmount").toString());
-                    app.setInitialDeposit(newAmount);
+                    app.setInitialDeposit(Money.of(request.get("approvedAmount")));
                 }
 
                 User user = app.getUser();
-                Double amount = app.getInitialDeposit();
+                BigDecimal amount = app.getInitialDeposit();
 
                 // CREDIT: Initial Deposit added to user account 
                 Transaction tx = new Transaction();
@@ -469,7 +471,7 @@ public class ApplicationController {
                 tx.setPaymentMethod("Cash");
 
                 // Update Balance (Add)
-                user.setBalance(user.getBalance() + amount);
+                user.setBalance(user.getBalance().add(amount));
                 
                 transactionRepo.save(tx);
                 userRepo.save(user);
@@ -505,7 +507,7 @@ public class ApplicationController {
             }
 
             Long packageId = Long.valueOf(request.get("packageId").toString());
-            Double requestedAmount = Double.valueOf(request.get("requestedAmount").toString());
+            BigDecimal requestedAmount = Money.of(request.get("requestedAmount"));
             String purpose = request.get("purpose").toString();
 
             User user = userRepo.findById(userId.intValue())
@@ -519,7 +521,7 @@ public class ApplicationController {
 
             if (access.isForeign(loanPackage.getNetwork(), session)) return forbidden();
 
-            if (requestedAmount > loanPackage.getMaxAmount()) {
+            if (requestedAmount.compareTo(loanPackage.getMaxAmount()) > 0) {
                 return ResponseEntity.badRequest()
                     .body(Map.of("error", "Requested amount exceeds maximum"));
             }
@@ -586,8 +588,8 @@ public class ApplicationController {
             if (status == ApplicationStatus.APPROVED) {
                 // ⭐ 1. Determine Final Approved Amount
                 // If admin sent "approvedAmount" in body, use it. Otherwise use user's requested amount.
-                Double approvedAmt = request.containsKey("approvedAmount") 
-                    ? Double.valueOf(request.get("approvedAmount").toString()) 
+                BigDecimal approvedAmt = request.containsKey("approvedAmount")
+                    ? Money.of(request.get("approvedAmount"))
                     : application.getRequestedAmount();
                 
                 application.setApprovedAmount(approvedAmt);
@@ -596,11 +598,12 @@ public class ApplicationController {
                 Long networkId = application.getNetwork().getId();
 
                 // ⭐ 2. Calculate Current Reserve using NEW FORMULA
-                Double totalUserBalance = userRepo.getTotalUserBalanceByNetwork(networkId);
-                Double totalLoans = transactionRepo.getOutstandingLoans(networkId);
-                Double totalNetwork = transactionRepo.getNetworkBalance(networkId);
-                
-                Double currentReserve = totalUserBalance - totalLoans + totalNetwork;
+                BigDecimal totalUserBalance = Money.orZero(userRepo.getTotalUserBalanceByNetwork(networkId));
+                BigDecimal totalLoans = Money.orZero(transactionRepo.getOutstandingLoans(networkId));
+                BigDecimal totalNetwork = Money.orZero(transactionRepo.getNetworkBalance(networkId));
+
+                BigDecimal currentReserve = totalUserBalance.subtract(totalLoans).add(totalNetwork);
+                BigDecimal lendingCeiling = Money.round(currentReserve.multiply(LENDING_LIMIT));
 
                 System.out.println("--- Loan Approval Validation ---");
                 System.out.println("Total User Balance (Pool): " + totalUserBalance);
@@ -610,11 +613,11 @@ public class ApplicationController {
                 System.out.println("Approved Loan Amount: " + approvedAmt);
 
                 // ⭐ 3. Validate Loan Amount (70% Rule) based on APPROVED Amount
-                if (approvedAmt > (currentReserve * 0.7)) {
+                if (approvedAmt.compareTo(lendingCeiling) > 0) {
                     return rejected(HttpStatus.BAD_REQUEST,
                         "Loan rejected: Insufficient liquidity. " +
                         "Loan amount (" + approvedAmt + ") exceeds 70% of network reserve (" +
-                        String.format("%.2f", currentReserve * 0.7) + "). " +
+                        lendingCeiling + "). " +
                         "Current Reserve: " + currentReserve);
                 }
 
@@ -657,10 +660,10 @@ public class ApplicationController {
                 loanTx.setPaymentMethod("Transfer");
 
                 // Update Reserve Snapshot (Reduced by new loan)
-                loanTx.setNetworkReserve(currentReserve - approvedAmt);
+                loanTx.setNetworkReserve(currentReserve.subtract(approvedAmt));
 
                 // Update User Balance
-                user.setBalance(user.getBalance() + approvedAmt);
+                user.setBalance(user.getBalance().add(approvedAmt));
                 
                 transactionRepo.save(loanTx);
                 userRepo.save(user);
@@ -687,7 +690,7 @@ public class ApplicationController {
                 expenseTx.setPaymentMethod("Cash");
 
                 // Snapshot effect: Reserve decreases again due to cash outflow
-                expenseTx.setNetworkReserve((currentReserve - approvedAmt) - approvedAmt);
+                expenseTx.setNetworkReserve(currentReserve.subtract(approvedAmt).subtract(approvedAmt));
 
                 transactionRepo.save(expenseTx);
             }

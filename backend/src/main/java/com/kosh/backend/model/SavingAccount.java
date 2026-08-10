@@ -1,5 +1,7 @@
     package com.kosh.backend.model;
 
+import java.math.BigDecimal;
+
     import com.fasterxml.jackson.annotation.JsonIgnore;
     
     import jakarta.persistence.*;
@@ -13,8 +15,10 @@
         private Long id;
 
         private String name;
-        private Double interestRate;
-        private Double minBalance;
+        @Column(precision = 5, scale = 2)
+        private BigDecimal interestRate;
+        @Column(precision = 18, scale = 2)
+        private BigDecimal minBalance;
         
         @Column(length = 1000)
         private String description;
@@ -39,11 +43,11 @@
         public String getName() { return name; }
         public void setName(String name) { this.name = name; }
 
-        public Double getInterestRate() { return interestRate; }
-        public void setInterestRate(Double interestRate) { this.interestRate = interestRate; }
+        public BigDecimal getInterestRate() { return interestRate; }
+        public void setInterestRate(BigDecimal interestRate) { this.interestRate = interestRate; }
 
-        public Double getMinBalance() { return minBalance; }
-        public void setMinBalance(Double minBalance) { this.minBalance = minBalance; }
+        public BigDecimal getMinBalance() { return minBalance; }
+        public void setMinBalance(BigDecimal minBalance) { this.minBalance = minBalance; }
 
         public String getDescription() { return description; }
         public void setDescription(String description) { this.description = description; }

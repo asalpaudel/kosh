@@ -1,5 +1,7 @@
 package com.kosh.backend.model;
 
+import java.math.BigDecimal;
+
 import jakarta.persistence.*;
 import java.time.LocalDateTime;
 
@@ -23,7 +25,8 @@ public class SavingAccountApplication {
     @JoinColumn(name = "network_id", nullable = false)
     private Network network;
 
-    private Double initialDeposit;
+    @Column(precision = 18, scale = 2)
+    private BigDecimal initialDeposit;
 
     @Enumerated(EnumType.STRING)
     private ApplicationStatus status = ApplicationStatus.PENDING;
@@ -55,8 +58,8 @@ public class SavingAccountApplication {
     public Network getNetwork() { return network; }
     public void setNetwork(Network network) { this.network = network; }
 
-    public Double getInitialDeposit() { return initialDeposit; }
-    public void setInitialDeposit(Double initialDeposit) { this.initialDeposit = initialDeposit; }
+    public BigDecimal getInitialDeposit() { return initialDeposit; }
+    public void setInitialDeposit(BigDecimal initialDeposit) { this.initialDeposit = initialDeposit; }
 
     public ApplicationStatus getStatus() { return status; }
     public void setStatus(ApplicationStatus status) { this.status = status; }

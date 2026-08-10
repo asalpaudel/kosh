@@ -26,6 +26,7 @@ import com.kosh.backend.model.ActivityLog;
 import com.kosh.backend.model.Network;
 import com.kosh.backend.repository.ActivityLogRepository;
 import com.kosh.backend.repository.NetworkRepository;
+import com.kosh.backend.service.Money;
 import com.kosh.backend.service.NetworkAccessService;
 
 import jakarta.servlet.http.HttpSession;
@@ -59,7 +60,7 @@ public class NetworkController {
             network.setPanNumber((String) payload.get("panNumber"));
             network.setPackageType((String) payload.get("packageType"));
 
-            network.setPackagePrice(((Number) payload.get("packagePrice")).doubleValue());
+            network.setPackagePrice(Money.of(payload.get("packagePrice")));
             network.setStaffCount(((Number) payload.get("staffCount")).intValue());
             network.setUserCount(((Number) payload.get("userCount")).intValue());
             network.setAdminLimit(((Number) payload.get("adminLimit")).intValue());
@@ -134,7 +135,7 @@ public class NetworkController {
             network.setPanNumber(panNumber);
             network.setPackageType(packageType);
 
-            network.setPackagePrice(Double.parseDouble(packagePrice));
+            network.setPackagePrice(Money.of(packagePrice));
             network.setStaffCount(Integer.parseInt(staffCount));
             network.setUserCount(Integer.parseInt(userCount));
             network.setAdminLimit(Integer.parseInt(adminLimit));

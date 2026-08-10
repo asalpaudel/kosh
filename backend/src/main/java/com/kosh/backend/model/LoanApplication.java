@@ -1,5 +1,7 @@
 package com.kosh.backend.model;
 
+import java.math.BigDecimal;
+
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
@@ -34,10 +36,13 @@ public class LoanApplication {
     @JoinColumn(name = "network_id", nullable = false)
     private Network network;
 
-    private Double requestedAmount;
+    @Column(precision = 18, scale = 2)
+    private BigDecimal requestedAmount;
     
-    private Double approvedAmount;   // Admin might approve less
-    private Double interestRate;     // Snapshot of rate at time of approval
+    @Column(precision = 18, scale = 2)
+    private BigDecimal approvedAmount;   // Admin might approve less
+    @Column(precision = 5, scale = 2)
+    private BigDecimal interestRate;     // Snapshot of rate at time of approval
     private Integer durationInMonths; // Snapshot of duration
     private LocalDate startDate;
     private LocalDate nextPaymentDate; 
@@ -75,14 +80,14 @@ public class LoanApplication {
     public Network getNetwork() { return network; }
     public void setNetwork(Network network) { this.network = network; }
 
-    public Double getRequestedAmount() { return requestedAmount; }
-    public void setRequestedAmount(Double requestedAmount) { this.requestedAmount = requestedAmount; }
+    public BigDecimal getRequestedAmount() { return requestedAmount; }
+    public void setRequestedAmount(BigDecimal requestedAmount) { this.requestedAmount = requestedAmount; }
 
-    public Double getApprovedAmount() { return approvedAmount; }
-    public void setApprovedAmount(Double approvedAmount) { this.approvedAmount = approvedAmount; }
+    public BigDecimal getApprovedAmount() { return approvedAmount; }
+    public void setApprovedAmount(BigDecimal approvedAmount) { this.approvedAmount = approvedAmount; }
 
-    public Double getInterestRate() { return interestRate; }
-    public void setInterestRate(Double interestRate) { this.interestRate = interestRate; }
+    public BigDecimal getInterestRate() { return interestRate; }
+    public void setInterestRate(BigDecimal interestRate) { this.interestRate = interestRate; }
 
     public Integer getDurationInMonths() { return durationInMonths; }
     public void setDurationInMonths(Integer durationInMonths) { this.durationInMonths = durationInMonths; }
