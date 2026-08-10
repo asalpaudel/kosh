@@ -13,6 +13,15 @@ public interface NetworkRepository extends JpaRepository<Network, Long> {
     // 🔍 Find network by name
     Network findByName(String name);
 
+    /**
+     * Takes a row lock on the cooperative so journal postings for it are serialised —
+     * the sequence number and previous hash are read before they are written.
+     * ponytail: one lock per cooperative; split it if a single cooperative ever posts
+     * fast enough for tellers to queue behind each other.
+     */
+    @Query(value = "SELECT id FROM networks WHERE id = :networkId FOR UPDATE", nativeQuery = true)
+    Long lockForPosting(@org.springframework.data.repository.query.Param("networkId") Long networkId);
+
     // ❌ Removed countByStatus — Network has no status
     // ✅ Instead, you can count by packageType if needed
     long countByPackageType(String packageType);
