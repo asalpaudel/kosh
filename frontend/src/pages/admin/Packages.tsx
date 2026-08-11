@@ -1,6 +1,8 @@
-import { API_BASE as apiBase } from "../../lib/apiClient";
-import React, { useState, useEffect } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useLocation } from "react-router-dom"; // Added useLocation
+import { API_BASE as apiBase, apiFetch } from "../../lib/apiClient";
+import { parseFinancePackages, type FinancePackage, type PackageType } from "../../lib/packages";
+import { isRecord } from "../../lib/validation";
 import {
   PlusCircleIcon,
   DocumentTextIcon,
@@ -9,38 +11,38 @@ import {
   EyeIcon,
   PencilIcon,
   TrashIcon,
-} from "../../component/icons.jsx";
-import Modal from "../../component/superadmin/Modal.jsx";
+} from "../../component/icons";
+import Modal from "../../component/superadmin/Modal";
 
-import AddFixedDepositForm from "../../component/admin/AddFixedDepositForm.jsx";
-import AddSavingAccountForm from "../../component/admin/AddSavingAccountForm.jsx";
-import AddLoanForm from "../../component/admin/AddLoanForm.jsx";
+import AddFixedDepositForm from "../../component/admin/AddFixedDepositForm";
+import AddSavingAccountForm from "../../component/admin/AddSavingAccountForm";
+import AddLoanForm from "../../component/admin/AddLoanForm";
 
-import EditFixedDepositForm from "../../component/admin/EditFixedDepositForm.jsx";
-import EditSavingAccountForm from "../../component/admin/EditSavingAccountForm.jsx";
-import EditLoanPackageForm from "../../component/admin/EditLoanPackageForm.jsx";
-import ConfirmationModal from "../../component/ConfirmationModal.jsx";
+import EditFixedDepositForm from "../../component/admin/EditFixedDepositForm";
+import EditSavingAccountForm from "../../component/admin/EditSavingAccountForm";
+import EditLoanPackageForm from "../../component/admin/EditLoanPackageForm";
+import ConfirmationModal from "../../component/ConfirmationModal";
 
 
 // ... (Keep PackageActions and ViewPackageModal components as they are) ...
-const PackageActions = ({ pkg, onView, onEdit, onDelete }) => (
+const PackageActions = ({ onView, onEdit, onDelete }: { onView: () => void; onEdit: () => void; onDelete: () => void }) => (
   <div className="flex items-center justify-end space-x-2">
     <button
-      onClick={() => onView(pkg)}
+      onClick={onView}
       className="text-blue-500 hover:text-blue-700 p-1 rounded-full hover:bg-blue-100 transition-colors"
       title="View Package"
     >
       <EyeIcon className="w-5 h-5" />
     </button>
     <button
-      onClick={() => onEdit(pkg)}
+      onClick={onEdit}
       className="text-yellow-500 hover:text-yellow-700 p-1 rounded-full hover:bg-yellow-100 transition-colors"
       title="Edit Package"
     >
       <PencilIcon className="w-5 h-5" />
     </button>
     <button
-      onClick={() => onDelete(pkg.id)}
+      onClick={onDelete}
       className="text-red-500 hover:text-red-700 p-1 rounded-full hover:bg-red-100 transition-colors"
       title="Delete Package"
     >
@@ -49,7 +51,7 @@ const PackageActions = ({ pkg, onView, onEdit, onDelete }) => (
   </div>
 );
 
-const ViewPackageModal = ({ isOpen, onClose, packageData, packageType }) => {
+const ViewPackageModal = ({ isOpen, onClose, packageData, packageType }: { isOpen: boolean; onClose: () => void; packageData: FinancePackage | null; packageType: PackageType | null }) => {
   if (!packageData) return null;
 
   const renderContent = () => {
@@ -216,10 +218,10 @@ const ViewPackageModal = ({ isOpen, onClose, packageData, packageType }) => {
 
 function AdminPackages() {
   const location = useLocation(); // Hook for navigation state
-  const [selectedNetworkId, setSelectedNetworkId] = useState(null);
-  const [fixedDeposits, setFixedDeposits] = useState([]);
-  const [savingAccounts, setSavingAccounts] = useState([]);
-  const [loans, setLoans] = useState([]);
+  const [selectedNetworkId, setSelectedNetworkId] = useState<string | null>(null);
+  const [fixedDeposits, setFixedDeposits] = useState<FinancePackage[]>([]);
+  const [savingAccounts, setSavingAccounts] = useState<FinancePackage[]>([]);
+  const [loans, setLoans] = useState<FinancePackage[]>([]);
   const [loading, setLoading] = useState(false);
   const [sessionLoading, setSessionLoading] = useState(true);
 
@@ -237,17 +239,18 @@ function AdminPackages() {
     useState(false);
   const [isEditLoanModalOpen, setIsEditLoanModalOpen] = useState(false);
   const [viewPackageModalOpen, setViewPackageModalOpen] = useState(false);
-  const [currentPackageToView, setCurrentPackageToView] = useState(null);
-  const [currentPackageType, setCurrentPackageType] = useState(null);
-  const [currentEditPackage, setCurrentEditPackage] = useState(null);
+  const [currentPackageToView, setCurrentPackageToView] = useState<FinancePackage | null>(null);
+  const [currentPackageType, setCurrentPackageType] = useState<PackageType | null>(null);
+  const [currentEditPackage, setCurrentEditPackage] = useState<FinancePackage | null>(null);
 
   // Deletion confirmation
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
-  const [packageToDelete, setPackageToDelete] = useState(null);
+  const [packageToDelete, setPackageToDelete] = useState<{ id: string; type: "fixed-deposits" | "saving-accounts" | "loan-packages" } | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   // --- NEW: Effect to handle Global Search actions ---
   useEffect(() => {
-    if (location.state && location.state.action) {
+    if (isRecord(location.state) && typeof location.state.action === "string") {
       const action = location.state.action;
 
       // Small timeout to ensure component is ready
@@ -268,62 +271,48 @@ function AdminPackages() {
   useEffect(() => {
     const fetchSession = async () => {
       try {
-        const response = await fetch(`${apiBase}/session`, {
-          method: "GET",
-          credentials: "include",
-        });
-
-        if (response.ok) {
-          const data = await response.json();
-          setSelectedNetworkId(data.sahakariId);
-        } else {
-          console.error("Failed to fetch session data");
-        }
-      } catch (error) {
-        console.error("Error fetching session:", error);
+        const response = await apiFetch(`${apiBase}/session`);
+        const data: unknown = await response.json();
+        if (!isRecord(data) || (typeof data.sahakariId !== "string" && typeof data.sahakariId !== "number")) throw new Error("Invalid session response");
+        setSelectedNetworkId(String(data.sahakariId));
+      } catch (caught) {
+        setError(caught instanceof Error ? caught.message : "Session failed to load");
       } finally {
         setSessionLoading(false);
       }
     };
 
-    fetchSession();
+    void fetchSession();
   }, []);
 
   // Fetch all finance data
-  const fetchData = async () => {
-    if (!selectedNetworkId) return;
+  const fetchData = useCallback(async (networkId: string) => {
     setLoading(true);
     try {
       const [fdRes, saRes, lpRes] = await Promise.all([
-        fetch(`${apiBase}/finance/fixed-deposits/${selectedNetworkId}`, {
-          credentials: "include",
-        }),
-        fetch(`${apiBase}/finance/saving-accounts/${selectedNetworkId}`, {
-          credentials: "include",
-        }),
-        fetch(`${apiBase}/finance/loan-packages/${selectedNetworkId}`, {
-          credentials: "include",
-        }),
+        apiFetch(`${apiBase}/finance/fixed-deposits/${encodeURIComponent(networkId)}`),
+        apiFetch(`${apiBase}/finance/saving-accounts/${encodeURIComponent(networkId)}`),
+        apiFetch(`${apiBase}/finance/loan-packages/${encodeURIComponent(networkId)}`),
       ]);
 
-      setFixedDeposits(await fdRes.json());
-      setSavingAccounts(await saRes.json());
-      setLoans(await lpRes.json());
-    } catch (error) {
-      console.error("Failed to fetch finance data:", error);
+      setFixedDeposits(parseFinancePackages(await fdRes.json()));
+      setSavingAccounts(parseFinancePackages(await saRes.json()));
+      setLoans(parseFinancePackages(await lpRes.json()));
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Packages failed to load");
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     if (selectedNetworkId) {
-      fetchData();
+      void fetchData(selectedNetworkId);
     }
-  }, [selectedNetworkId]);
+  }, [fetchData, selectedNetworkId]);
 
   // Delete handler
-  const handleDeletePackage = (id, type) => {
+  const handleDeletePackage = (id: string, type: "fixed-deposits" | "saving-accounts" | "loan-packages") => {
     setPackageToDelete({ id, type });
     setIsDeleteModalOpen(true);
   };
@@ -335,14 +324,11 @@ function AdminPackages() {
     setLoading(true);
 
     try {
-      let url = `${apiBase}/finance/${type}/${id}`;
-      await fetch(url, {
-        method: "DELETE",
-        credentials: "include",
-      });
-      fetchData();
-    } catch (error) {
-      console.error("Failed to delete package:", error);
+      const url = `${apiBase}/finance/${type}/${encodeURIComponent(id)}`;
+      await apiFetch(url, { method: "DELETE" });
+      if (selectedNetworkId) await fetchData(selectedNetworkId);
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Package deletion failed");
     } finally {
       setLoading(false);
       setPackageToDelete(null);
@@ -350,38 +336,38 @@ function AdminPackages() {
   };
 
   // View handler
-  const handleViewPackage = (pkg, type) => {
+  const handleViewPackage = (pkg: FinancePackage, type: PackageType) => {
     setCurrentPackageToView(pkg);
     setCurrentPackageType(type);
     setViewPackageModalOpen(true);
   };
 
   // Edit handlers
-  const handleEditFixedDeposit = (pkg) => {
+  const handleEditFixedDeposit = (pkg: FinancePackage) => {
     setCurrentEditPackage(pkg);
     setIsEditFixedDepositModalOpen(true);
   };
 
-  const handleEditSavingAccount = (pkg) => {
+  const handleEditSavingAccount = (pkg: FinancePackage) => {
     setCurrentEditPackage(pkg);
     setIsEditSavingAccountModalOpen(true);
   };
 
-  const handleEditLoan = (pkg) => {
+  const handleEditLoan = (pkg: FinancePackage) => {
     setCurrentEditPackage(pkg);
     setIsEditLoanModalOpen(true);
   };
 
   // Handle form completion
   const handleAdded = () => {
-    fetchData();
+    if (selectedNetworkId) void fetchData(selectedNetworkId);
     setIsAddFixedDepositModalOpen(false);
     setIsAddSavingAccountModalOpen(false);
     setIsAddLoanModalOpen(false);
   };
 
   const handleUpdated = () => {
-    fetchData();
+    if (selectedNetworkId) void fetchData(selectedNetworkId);
     setIsEditFixedDepositModalOpen(false);
     setIsEditSavingAccountModalOpen(false);
     setIsEditLoanModalOpen(false);
@@ -409,6 +395,7 @@ function AdminPackages() {
   return (
     <>
       <div className="bg-white p-3 md:p-6 min-h-[calc(100vh-8.5rem)] rounded-lg shadow-md">
+        {error && <p className="mb-4 text-red-600" role="alert">{error}</p>}
         {loading ? (
           <p className="text-center text-gray-500">Loading...</p>
         ) : (
@@ -441,13 +428,12 @@ function AdminPackages() {
                           </td>
                           <td className="py-3 px-2">
                             <PackageActions
-                              pkg={pkg}
                               onView={() =>
-                                handleViewPackage(pkg, "fixed-deposit")
+                                { handleViewPackage(pkg, "fixed-deposit"); }
                               }
-                              onEdit={() => handleEditFixedDeposit(pkg)}
+                              onEdit={() => { handleEditFixedDeposit(pkg); }}
                               onDelete={() =>
-                                handleDeletePackage(pkg.id, "fixed-deposits")
+                                { handleDeletePackage(pkg.id, "fixed-deposits"); }
                               }
                             />
                           </td>
@@ -456,7 +442,7 @@ function AdminPackages() {
                     ) : (
                       <tr>
                         <td
-                          colSpan="2"
+                          colSpan={2}
                           className="py-8 text-center text-gray-400"
                         >
                           No Fixed Deposit Packages
@@ -496,13 +482,12 @@ function AdminPackages() {
                           </td>
                           <td className="py-3 px-2">
                             <PackageActions
-                              pkg={pkg}
                               onView={() =>
-                                handleViewPackage(pkg, "saving-account")
+                                { handleViewPackage(pkg, "saving-account"); }
                               }
-                              onEdit={() => handleEditSavingAccount(pkg)}
+                              onEdit={() => { handleEditSavingAccount(pkg); }}
                               onDelete={() =>
-                                handleDeletePackage(pkg.id, "saving-accounts")
+                                { handleDeletePackage(pkg.id, "saving-accounts"); }
                               }
                             />
                           </td>
@@ -511,7 +496,7 @@ function AdminPackages() {
                     ) : (
                       <tr>
                         <td
-                          colSpan="2"
+                          colSpan={2}
                           className="py-8 text-center text-gray-400"
                         >
                           No Saving Account Packages
@@ -551,13 +536,12 @@ function AdminPackages() {
                           </td>
                           <td className="py-3 px-2">
                             <PackageActions
-                              pkg={pkg}
                               onView={() =>
-                                handleViewPackage(pkg, "loan-package")
+                                { handleViewPackage(pkg, "loan-package"); }
                               }
-                              onEdit={() => handleEditLoan(pkg)}
+                              onEdit={() => { handleEditLoan(pkg); }}
                               onDelete={() =>
-                                handleDeletePackage(pkg.id, "loan-packages")
+                                { handleDeletePackage(pkg.id, "loan-packages"); }
                               }
                             />
                           </td>
@@ -566,7 +550,7 @@ function AdminPackages() {
                     ) : (
                       <tr>
                         <td
-                          colSpan="2"
+                          colSpan={2}
                           className="py-8 text-center text-gray-400"
                         >
                           No Loan Packages
@@ -587,7 +571,7 @@ function AdminPackages() {
           <button
             title="Add Loan Package"
             className="relative flex items-center justify-center w-14 h-14 bg-white rounded-full text-teal-500 shadow-lg hover:bg-gray-100 hover:scale-105 transition-all"
-            onClick={() => setIsAddLoanModalOpen(true)}
+            onClick={() => { setIsAddLoanModalOpen(true); }}
           >
             <BanknotesIcon className="w-7 h-7" />
           </button>
@@ -595,7 +579,7 @@ function AdminPackages() {
           <button
             title="Add Saving Account Package"
             className="relative flex items-center justify-center w-14 h-14 bg-white rounded-full text-teal-500 shadow-lg hover:bg-gray-100 hover:scale-105 transition-all"
-            onClick={() => setIsAddSavingAccountModalOpen(true)}
+            onClick={() => { setIsAddSavingAccountModalOpen(true); }}
           >
             <CurrencyDollarIcon className="w-7 h-7" />
           </button>
@@ -603,7 +587,7 @@ function AdminPackages() {
           <button
             title="Add Fixed Deposit Package"
             className="relative flex items-center justify-center w-14 h-14 bg-white rounded-full text-teal-500 shadow-lg hover:bg-gray-100 hover:scale-105 transition-all"
-            onClick={() => setIsAddFixedDepositModalOpen(true)}
+            onClick={() => { setIsAddFixedDepositModalOpen(true); }}
           >
             <DocumentTextIcon className="w-7 h-7" />
           </button>
@@ -620,40 +604,40 @@ function AdminPackages() {
       {/* Add Modals */}
       <Modal
         isOpen={isAddFixedDepositModalOpen}
-        onClose={() => setIsAddFixedDepositModalOpen(false)}
+        onClose={() => { setIsAddFixedDepositModalOpen(false); }}
         title="Add New Fixed Deposit Package"
         size="2xl"
       >
         <AddFixedDepositForm
           networkId={selectedNetworkId}
           onAdded={handleAdded}
-          onClose={() => setIsAddFixedDepositModalOpen(false)}
+          onClose={() => { setIsAddFixedDepositModalOpen(false); }}
         />
       </Modal>
 
       <Modal
         isOpen={isAddSavingAccountModalOpen}
-        onClose={() => setIsAddSavingAccountModalOpen(false)}
+        onClose={() => { setIsAddSavingAccountModalOpen(false); }}
         title="Add New Saving Account Package"
         size="2xl"
       >
         <AddSavingAccountForm
           networkId={selectedNetworkId}
           onAdded={handleAdded}
-          onClose={() => setIsAddSavingAccountModalOpen(false)}
+          onClose={() => { setIsAddSavingAccountModalOpen(false); }}
         />
       </Modal>
 
       <Modal
         isOpen={isAddLoanModalOpen}
-        onClose={() => setIsAddLoanModalOpen(false)}
+        onClose={() => { setIsAddLoanModalOpen(false); }}
         title="Add New Loan Package"
         size="2xl"
       >
         <AddLoanForm
           networkId={selectedNetworkId}
           onAdded={handleAdded}
-          onClose={() => setIsAddLoanModalOpen(false)}
+          onClose={() => { setIsAddLoanModalOpen(false); }}
         />
       </Modal>
 
@@ -739,9 +723,9 @@ function AdminPackages() {
           setIsDeleteModalOpen(false);
           setPackageToDelete(null);
         }}
-        onConfirm={confirmDelete}
+        onConfirm={() => { void confirmDelete(); }}
         title="Confirm Deletion"
-        message={`Are you sure you want to delete this ${packageToDelete?.type.replace("-", " ")} package? This action cannot be undone.`}
+        message={`Are you sure you want to delete this ${packageToDelete?.type.replace("-", " ") ?? "financial"} package? This action cannot be undone.`}
         confirmText="Delete"
         type="danger"
       />
