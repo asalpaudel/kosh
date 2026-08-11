@@ -1,8 +1,10 @@
-import { API_BASE } from "../../lib/apiClient";
-import React, { useState, useEffect } from 'react';
+import { useEffect, useState } from "react";
+import { API_BASE, apiFetch } from "../../lib/apiClient";
+import { parseTransactions } from "../../lib/transactions";
+import { isRecord } from "../../lib/validation";
 
 
-const formatAmount = (num) => {
+const formatAmount = (num: number): string => {
   return num.toLocaleString('en-IN', {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2
@@ -22,44 +24,37 @@ function AccountSummary() {
     const fetchAccountSummary = async () => {
       try {
         // 1. Fetch User Info (for Main Wallet Balance)
-        const userRes = await fetch(`${API_BASE}/users/me`, { credentials: "include" });
+        const userRes = await apiFetch(`${API_BASE}/users/me`);
         let userBalance = 0;
-        if (userRes.ok) {
-          const userData = await userRes.json();
-          userBalance = userData.balance || 0;
-        }
+        const userData: unknown = await userRes.json();
+        if (isRecord(userData) && typeof userData.balance === "number") userBalance = userData.balance;
 
         // 2. Fetch All Transactions for User
         // Note: You might need to ensure your backend supports filtering by userId for this endpoint
-        const txRes = await fetch(`${API_BASE}/transactions`, { credentials: "include" });
+        const txRes = await apiFetch(`${API_BASE}/transactions`);
         
         let totalSavings = 0;
         let totalFD = 0;
         let totalLoan = 0;
 
-        if (txRes.ok) {
-          const transactions = await txRes.json();
-          
-          transactions.forEach(tx => {
-            // Ensure we handle both string/number formats if API varies
-            const amount = parseFloat(tx.amount || tx.amountValue || 0);
-            const head = tx.details?.internalHead || tx.accountHead || tx.type; // Adjust based on exact API response
-            const direction = tx.details?.direction || ""; 
+        const transactions = parseTransactions(await txRes.json());
+        for (const transaction of transactions) {
+            const { amount, accountHead: head, direction, type } = transaction;
 
             // ⭐ LOGIC: Calculate based on Head and Direction
             
             // SAVINGS: Credit = Deposit (+), Debit = Withdraw (-)
             if (head && head.includes("Savings")) {
-              if (direction === "Credit" || tx.type.includes("Deposit") || tx.type.includes("Opening")) {
+              if (direction === "Credit" || type.includes("Deposit") || type.includes("Opening")) {
                 totalSavings += amount;
-              } else if (direction === "Debit" || tx.type.includes("Withdraw")) {
+              } else if (direction === "Debit" || type.includes("Withdraw")) {
                 totalSavings -= amount;
               }
             }
 
             // FIXED DEPOSIT: Credit = Deposit (+), Debit = Withdraw (-)
             if (head && head.includes("Fixed Deposit")) {
-              if (direction === "Credit" || tx.type.includes("Creation")) {
+              if (direction === "Credit" || type.includes("Creation")) {
                 totalFD += amount;
               } else if (direction === "Debit") {
                 totalFD -= amount;
@@ -68,13 +63,12 @@ function AccountSummary() {
 
             // LOAN: Debit = Disbursement (Debt Increases +), Credit = Repayment (Debt Decreases -)
             if (head && head.includes("Loan")) {
-              if (direction === "Debit" || tx.type.includes("Disbursement")) {
+              if (direction === "Debit" || type.includes("Disbursement")) {
                 totalLoan += amount; // You owe this money
-              } else if (direction === "Credit" || tx.type.includes("Repayment")) {
+              } else if (direction === "Credit" || type.includes("Repayment")) {
                 totalLoan -= amount; // You paid this back
               }
             }
-          });
         }
 
         setSummary({
@@ -91,7 +85,7 @@ function AccountSummary() {
       }
     };
 
-    fetchAccountSummary();
+    void fetchAccountSummary();
   }, []);
 
   const accounts = [
@@ -108,8 +102,8 @@ function AccountSummary() {
 
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 p-4 bg-white rounded-lg shadow-md">
-      {accounts.map((account, index) => (
-        <div key={index} className="flex flex-col items-start p-3">
+      {accounts.map((account) => (
+        <div key={account.name} className="flex flex-col items-start p-3">
           <span className="text-gray-600 text-sm font-medium">{account.name}</span>
           <span className="text-gray-900 text-xl font-bold">
             Rs. {formatAmount(account.amount)}

@@ -1,9 +1,20 @@
-import { API_BASE } from "../../lib/apiClient";
-import React, { useState, useEffect } from 'react';
-import { PiggyBankIcon } from '../icons';
+import { useEffect, useState } from "react";
+import { API_BASE, apiFetch } from "../../lib/apiClient";
+import { parseTransactions } from "../../lib/transactions";
+import { PiggyBankIcon } from "../icons";
 
 
-const PortfolioItem = ({ label, value, color, total }) => {
+interface PortfolioItemData {
+  label: string;
+  value: number;
+  color: string;
+}
+
+interface PortfolioItemProps extends PortfolioItemData {
+  total: number;
+}
+
+const PortfolioItem = ({ label, value, color, total }: PortfolioItemProps) => {
   // Calculate percentage based on total value (assets + liabilities magnitude)
   const percentage = total > 0 ? (value / total) * 100 : 0;
   
@@ -16,7 +27,7 @@ const PortfolioItem = ({ label, value, color, total }) => {
       <div className="w-full bg-gray-700 rounded-full h-1.5">
         <div
           className={`${color} h-1.5 rounded-full`}
-          style={{ width: `${Math.min(percentage, 100)}%` }}
+          style={{ width: `${String(Math.min(percentage, 100))}%` }}
         ></div>
       </div>
     </div>
@@ -24,7 +35,7 @@ const PortfolioItem = ({ label, value, color, total }) => {
 };
 
 function PortfolioSummary() {
-  const [portfolioData, setPortfolioData] = useState([
+  const [portfolioData, setPortfolioData] = useState<PortfolioItemData[]>([
     { label: "Savings", value: 0, color: "bg-blue-500" },
     { label: "Fixed Deposit", value: 0, color: "bg-teal-400" },
     { label: "Loan", value: 0, color: "bg-red-500" },
@@ -34,31 +45,15 @@ function PortfolioSummary() {
   useEffect(() => {
     const fetchPortfolioData = async () => {
       try {
-        const userId = localStorage.getItem("userId");
-        if (!userId) {
-          setLoading(false);
-          return;
-        }
-
-        const res = await fetch(`${API_BASE}/transactions`, { credentials: "include" });
-        if (!res.ok) throw new Error("Failed to fetch transactions");
-        
-        const allTxns = await res.json();
-
-        // Filter for current user
-        const myTxns = allTxns.filter(t => String(t.userId) === String(userId));
+        const response = await apiFetch(`${API_BASE}/transactions`);
+        const transactions = parseTransactions(await response.json());
 
         let totalSavings = 0;
         let totalFD = 0;
         let totalLoan = 0;
 
-        myTxns.forEach(tx => {
-          const amount = parseFloat(tx.amount || tx.amountValue || 0);
-          
-          // Robust Check for Head and Direction
-          const head = tx.details?.internalHead || tx.accountHead || tx.type || "";
-          const direction = tx.details?.direction || "";
-          const type = tx.type || "";
+        for (const transaction of transactions) {
+          const { amount, accountHead: head, direction, type } = transaction;
 
           // 1. SAVINGS LOGIC
           if (head.includes("Savings") || type.includes("Savings")) {
@@ -88,7 +83,7 @@ function PortfolioSummary() {
             if (isDebit) totalLoan += amount;
             else if (isCredit) totalLoan -= amount;
           }
-        });
+        }
 
         // Update portfolio data
         setPortfolioData([
@@ -104,7 +99,7 @@ function PortfolioSummary() {
       }
     };
 
-    fetchPortfolioData();
+    void fetchPortfolioData();
   }, []);
 
   // Calculate total magnitude for bar visualization

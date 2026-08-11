@@ -1,42 +1,37 @@
-import { API_BASE } from "../../lib/apiClient";
-import React, { useState, useEffect } from 'react';
-import ReactApexChart from 'react-apexcharts';
+import type { ApexOptions } from "apexcharts";
+import { useEffect, useState } from "react";
+import ReactApexChart from "react-apexcharts";
+import { API_BASE, apiFetch } from "../../lib/apiClient";
+import { parseTransactions } from "../../lib/transactions";
 
 
-const parseAmount = (val) => {
-  if (typeof val === 'number') return val;
-  if (!val) return 0;
-  return parseFloat(String(val).replace(/[^\d.-]/g, ''));
-};
+interface ChartPoint {
+  x: number;
+  y: number;
+}
+
+interface ChartSeries {
+  name: string;
+  data: ChartPoint[];
+}
+
+type TimeRange = "1W" | "1M" | "1Y" | "ALL";
 
 const FinancialChart = () => {
-  const [allData, setAllData] = useState([]);
-  const [displaySeries, setDisplaySeries] = useState([]);
-  const [activeFilter, setActiveFilter] = useState('ALL'); 
+  const [allData, setAllData] = useState<ChartPoint[]>([]);
+  const [displaySeries, setDisplaySeries] = useState<ChartSeries[]>([]);
+  const [activeFilter, setActiveFilter] = useState<TimeRange>("ALL");
 
   useEffect(() => {
     const fetchChartData = async () => {
       try {
-        const userId = localStorage.getItem("userId");
-        if (!userId) return;
-
-        const res = await fetch(`${API_BASE}/transactions`, { credentials: "include" });
-        if (!res.ok) return;
-        
-        const data = await res.json();
-        
-        // Filter for current user and Sort by Date Ascending
-        const myTxns = data
-          .filter(t => String(t.userId) === String(userId))
-          .sort((a, b) => new Date(a.date) - new Date(b.date));
+        const response = await apiFetch(`${API_BASE}/transactions`);
+        const transactions = parseTransactions(await response.json());
+        transactions.sort((a, b) => Date.parse(a.date) - Date.parse(b.date));
 
         let currentBalance = 0;
-        const seriesData = myTxns.map(t => {
-          const amount = parseAmount(t.amount || t.amountValue);
-          
-          // ⭐ FIX: Robust Check for Credit vs Debit using Backend Data
-          const direction = t.details?.direction || "";
-          const type = t.type || "";
+        const seriesData = transactions.map((transaction) => {
+          const { amount, direction, type } = transaction;
 
           const isCredit = 
             direction === "Credit" || 
@@ -62,7 +57,7 @@ const FinancialChart = () => {
           // If neither (e.g., internal transfer not affecting wallet), balance stays same.
 
           return {
-            x: new Date(t.date).getTime(),
+            x: Date.parse(transaction.date),
             y: currentBalance
           };
         });
@@ -78,20 +73,20 @@ const FinancialChart = () => {
       }
     };
 
-    fetchChartData();
+    void fetchChartData();
   }, []);
 
   useEffect(() => {
     if (allData.length === 0) return;
 
     const today = new Date();
-    let startDate;
+    let startDate: Date;
 
     switch (activeFilter) {
-      case '1W': startDate = new Date(today.setDate(today.getDate() - 7)); break;
-      case '1M': startDate = new Date(today.setMonth(today.getMonth() - 1)); break;
-      case '1Y': startDate = new Date(today.setFullYear(today.getFullYear() - 1)); break;
-      case 'ALL': default: startDate = new Date(allData[0].x); break;
+      case "1W": startDate = new Date(today.setDate(today.getDate() - 7)); break;
+      case "1M": startDate = new Date(today.setMonth(today.getMonth() - 1)); break;
+      case "1Y": startDate = new Date(today.setFullYear(today.getFullYear() - 1)); break;
+      case "ALL": startDate = new Date(allData[0]?.x ?? Date.now()); break;
     }
 
     const startTime = startDate.getTime();
@@ -100,7 +95,7 @@ const FinancialChart = () => {
     let openingBalance = 0;
     const priorData = allData.filter(d => d.x < startTime);
     if (priorData.length > 0) {
-      openingBalance = priorData[priorData.length - 1].y;
+      openingBalance = priorData.at(-1)?.y ?? 0;
     }
 
     // 2. Get Data Points within range
@@ -113,26 +108,26 @@ const FinancialChart = () => {
     ];
 
     // Add final point for 'now'
-    chartData.push({ x: Date.now(), y: chartData[chartData.length - 1].y });
+    chartData.push({ x: Date.now(), y: chartData.at(-1)?.y ?? openingBalance });
 
     setDisplaySeries([{ name: 'Wallet Balance', data: chartData }]);
   }, [activeFilter, allData]);
 
-  const chartOptions = {
+  const chartOptions: ApexOptions = {
     chart: { type: 'line', height: 350, zoom: { enabled: false }, toolbar: { show: false }, animations: { enabled: true } },
     stroke: { width: 4, curve: 'smooth' },
     xaxis: { type: 'datetime', tooltip: { enabled: false } },
-    yaxis: { title: { text: 'Amount (Rs)' }, labels: { formatter: (val) => val.toLocaleString('en-IN') } },
+    yaxis: { title: { text: "Amount (Rs)" }, labels: { formatter: (val: number) => val.toLocaleString("en-IN") } },
     fill: {
       type: 'gradient',
       gradient: { shade: 'dark', gradientToColors: ['#000000'], shadeIntensity: 1, type: 'horizontal', opacityFrom: 1, opacityTo: 1, stops: [0, 100] },
     },
     colors: ['#3AC249'], 
     dataLabels: { enabled: false },
-    tooltip: { x: { format: 'dd MMM yyyy' }, y: { formatter: (val) => `Rs. ${val.toLocaleString('en-IN')}` } }
+    tooltip: { x: { format: "dd MMM yyyy" }, y: { formatter: (val: number) => `Rs. ${val.toLocaleString("en-IN")}` } },
   };
 
-  const timeRanges = ['1W', '1M', '1Y', 'ALL'];
+  const timeRanges: TimeRange[] = ["1W", "1M", "1Y", "ALL"];
 
   return (
     <div className="bg-white rounded-lg p-4 shadow-md col-span-2 flex flex-col">
@@ -143,7 +138,9 @@ const FinancialChart = () => {
         {timeRanges.map(range => (
           <button
             key={range}
-            onClick={() => setActiveFilter(range)}
+            onClick={() => {
+              setActiveFilter(range);
+            }}
             className={`px-4 py-2 text-sm rounded-full font-semibold transition-colors ${activeFilter === range ? 'bg-black text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}`}
           >
             {range}

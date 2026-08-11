@@ -1,67 +1,46 @@
-import { API_BASE } from "../../lib/apiClient";
-import React, { useState, useEffect } from 'react';
+import { useEffect, useState } from "react";
+import { API_BASE, apiFetch } from "../../lib/apiClient";
+import { parseTransactions } from "../../lib/transactions";
 
-
-const parseAmount = (val) => {
-  if (typeof val === 'number') return val;
-  if (!val) return 0;
-  return parseFloat(String(val).replace(/[^\d.-]/g, ''));
-};
-
-const formatAmount = (num) => {
-  return `Rs. ${Math.abs(num).toLocaleString('en-IN', {
+const formatAmount = (num: number): string => {
+  return `Rs. ${Math.abs(num).toLocaleString("en-IN", {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2
   })}`;
 };
 
 function TransactionsList() {
-  const [transactions, setTransactions] = useState([]);
+  const [transactions, setTransactions] = useState<
+    Array<{ id: string; description: string; date: string; isDebit: boolean; amount: string }>
+  >([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchTransactions = async () => {
       try {
-        const userId = localStorage.getItem("userId");
-        if (!userId) {
-          setLoading(false);
-          return;
-        }
-
-        const res = await fetch(`${API_BASE}/transactions`, { 
-          credentials: "include" 
-        });
-        
-        if (!res.ok) {
-          console.error("Failed to fetch transactions");
-          setLoading(false);
-          return;
-        }
-        
-        const data = await res.json();
-
-        // Filter & sort user transactions
-        const myTxns = data
-          .filter(t => String(t.userId) === String(userId))
-          .sort((a, b) => new Date(b.date) - new Date(a.date));
+        const response = await apiFetch(`${API_BASE}/transactions`);
+        const transactions = parseTransactions(await response.json());
+        transactions.sort((a, b) => Date.parse(b.date) - Date.parse(a.date));
 
         // Process WITHOUT BALANCE
-        const processedTxns = myTxns.slice(0, 5).map(t => {
-          const amount = parseAmount(t.amount || t.amountValue);
-          const isDebit = t.type === 'Withdrawal' || (t.type && t.type.includes('Debit'));
+        const processedTxns = transactions.slice(0, 5).map((transaction) => {
+          const isDebit =
+            transaction.direction === "Debit" ||
+            transaction.type === "Withdrawal" ||
+            transaction.type.includes("Debit");
           
           return {
-            id: t.id || t.transactionId,
-            description: t.type || 'Transaction',
-            date: t.date
-              ? new Date(t.date).toLocaleDateString('en-GB', {
+            id: transaction.id,
+            description: transaction.type,
+            date: transaction.date
+              ? new Date(transaction.date).toLocaleDateString("en-GB", {
                   day: 'numeric',
                   month: 'short',
                   year: 'numeric'
                 }).replace(/ /g, '-')
-              : '-',
+              : "-",
             isDebit,
-            amount: formatAmount(amount)
+            amount: formatAmount(transaction.amount),
           };
         });
 
@@ -73,7 +52,7 @@ function TransactionsList() {
       }
     };
 
-    fetchTransactions();
+    void fetchTransactions();
   }, []);
 
   if (loading) {
@@ -92,8 +71,8 @@ function TransactionsList() {
       <h3 className="text-xl font-bold mb-4">Transactions</h3>
       <div className="space-y-4">
         {transactions.length > 0 ? (
-          transactions.map((transaction, index) => (
-            <div key={index} className="flex justify-between items-center border-b pb-2 last:border-b-0 last:pb-0">
+          transactions.map((transaction) => (
+            <div key={transaction.id} className="flex justify-between items-center border-b pb-2 last:border-b-0 last:pb-0">
               <div className="flex flex-col">
                 <span className="text-gray-800 font-medium">{transaction.description}</span>
                 <span className="text-gray-500 text-sm">{transaction.date}</span>
