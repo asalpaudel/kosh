@@ -1,11 +1,17 @@
-import { API_BASE } from "../../../lib/apiClient";
-import React, { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
+import { API_BASE, apiFetch } from "../../../lib/apiClient";
+import { parseUserProfile, type ProfileUpdate, type UserProfile } from "../../../lib/profile";
 import Modal from "../../superadmin/Modal";
 import EditProfileModal from "./EditProfileModal";
 import { UserCircleIcon } from "../../icons";
 
 
-const InfoItem = ({ label, value }) => (
+interface InfoItemProps {
+  label: string;
+  value: string;
+}
+
+const InfoItem = ({ label, value }: InfoItemProps) => (
   <div className="flex-1 min-w-[250px]">
     <label className="block text-sm font-medium text-gray-500">{label}</label>
     <p className="mt-1 text-base text-gray-900">{value || "-"}</p>
@@ -13,65 +19,49 @@ const InfoItem = ({ label, value }) => (
 );
 
 function ProfileTab() {
-  const [user, setUser] = useState(null);
+  const [user, setUser] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const [error, setError] = useState<string | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [photoError, setPhotoError] = useState(false);
 
   useEffect(() => {
     const fetchUser = async () => {
       try {
-        const response = await fetch(`${API_BASE}/users/me`, {
-          credentials: "include", 
-        });
-
-        if (!response.ok) {
-          throw new Error("Failed to fetch profile data");
-        }
-
-        const data = await response.json();
-        setUser(data);
+        const response = await apiFetch(`${API_BASE}/users/me`);
+        setUser(parseUserProfile(await response.json()));
       } catch (err) {
         console.error("Error fetching profile:", err);
-        setError(err.message);
+        setError(err instanceof Error ? err.message : "Failed to fetch profile data");
       } finally {
         setLoading(false);
       }
     };
 
-    fetchUser();
+    void fetchUser();
   }, []);
 
-  const handleUpdate = async (updatedData) => {
+  const handleUpdate = async (updatedData: ProfileUpdate): Promise<void> => {
     try {
-      const response = await fetch(`${API_BASE}/users/me`, {
+      const response = await apiFetch(`${API_BASE}/users/me`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
         },
-        credentials: "include",
         body: JSON.stringify(updatedData),
       });
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(errorText || "Failed to update profile");
-      }
-
-      const savedUser = await response.json();
-      setUser(savedUser); 
+      setUser(parseUserProfile(await response.json()));
       setIsModalOpen(false);
       alert("Profile Updated Successfully!");
     } catch (err) {
       console.error("Update failed:", err);
-      alert(`Error updating profile: ${err.message}`);
+      alert(`Error updating profile: ${err instanceof Error ? err.message : "Unknown error"}`);
       throw err; 
     }
   };
 
   // Get the photo URL for the user
-  const getPhotoUrl = () => {
+  const getPhotoUrl = (): string | null => {
     if (!user || !user.hasPhoto) return null;
     return `${API_BASE}/users/me/photo`;
   };
@@ -93,7 +83,9 @@ function ProfileTab() {
                 src={photoUrl}
                 alt={user.name}
                 className="w-full h-full object-cover"
-                onError={() => setPhotoError(true)}
+                onError={() => {
+                  setPhotoError(true);
+                }}
               />
             ) : (
               <UserCircleIcon className="w-16 h-16 text-gray-400" />
@@ -115,7 +107,9 @@ function ProfileTab() {
           <div className="flex justify-between items-center mb-6">
             <h3 className="text-xl font-semibold">Personal Information</h3>
             <button
-              onClick={() => setIsModalOpen(true)}
+              onClick={() => {
+                setIsModalOpen(true);
+              }}
               className="text-sm font-semibold text-teal-600 hover:text-teal-800"
             >
               Edit
@@ -130,19 +124,17 @@ function ProfileTab() {
 
         <div className="p-5 border border-gray-200 rounded-lg">
           <div className="flex justify-between items-center mb-6">
-            <h3 className="text-xl font-semibold">Address & Secondary Contact</h3>
+            <h3 className="text-xl font-semibold">Address</h3>
             <button
-              onClick={() => setIsModalOpen(true)}
+              onClick={() => {
+                setIsModalOpen(true);
+              }}
               className="text-sm font-semibold text-teal-600 hover:text-teal-800"
             >
               Edit
             </button>
           </div>
-          <div className="flex flex-wrap gap-x-6 gap-y-5">
-            <InfoItem label="Primary Address" value={user.address} />
-            <InfoItem label="Secondary Address" value={user.secondaryAddress} />
-            <InfoItem label="Secondary Contact Info" value={user.secondaryContact} />
-          </div>
+          <InfoItem label="Primary Address" value={user.address} />
         </div>
 
         {/* Documents Section */}
@@ -161,7 +153,6 @@ function ProfileTab() {
                   >
                     View Photo
                   </a>
-                  <p className="text-xs text-gray-400 mt-1">{user.photoName}</p>
                 </div>
               )}
               
@@ -176,7 +167,6 @@ function ProfileTab() {
                   >
                     View Document
                   </a>
-                  <p className="text-xs text-gray-400 mt-1">{user.citizenshipName}</p>
                 </div>
               )}
               
@@ -191,7 +181,6 @@ function ProfileTab() {
                   >
                     View Signature
                   </a>
-                  <p className="text-xs text-gray-400 mt-1">{user.signatureName}</p>
                 </div>
               )}
             </div>
@@ -201,14 +190,18 @@ function ProfileTab() {
 
       <Modal
         isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
+        onClose={() => {
+          setIsModalOpen(false);
+        }}
         title="Edit Profile"
         size="2xl"
       >
         <EditProfileModal
           currentUserData={user}
           onSave={handleUpdate}
-          onClose={() => setIsModalOpen(false)}
+          onClose={() => {
+            setIsModalOpen(false);
+          }}
         />
       </Modal>
     </>

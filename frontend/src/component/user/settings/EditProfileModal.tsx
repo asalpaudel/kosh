@@ -1,30 +1,33 @@
-import React, { useState } from "react";
+import { type ChangeEvent, type FormEvent, useState } from "react";
+import type { ProfileUpdate, UserProfile } from "../../../lib/profile";
 
-function EditProfileModal({ currentUserData, onSave, onClose }) {
-  const [formData, setFormData] = useState({
-    name: currentUserData.name || "",
-    email: currentUserData.email || "",
-    phone: currentUserData.phone || "",
-    address: currentUserData.address || "",
-    secondaryAddress: currentUserData.secondaryAddress || "",
-    secondaryContact: currentUserData.secondaryContact || "",
-    role: currentUserData.role,
-    sahakari: currentUserData.sahakari,
+interface EditProfileModalProps {
+  currentUserData: UserProfile;
+  onSave: (data: ProfileUpdate) => Promise<void>;
+  onClose: () => void;
+}
+
+function EditProfileModal({ currentUserData, onSave, onClose }: EditProfileModalProps) {
+  const [formData, setFormData] = useState<ProfileUpdate>({
+    name: currentUserData.name,
+    phone: currentUserData.phone,
+    address: currentUserData.address,
   });
   const [saving, setSaving] = useState(false);
 
-  const handleChange = (e) => {
-    const { name, value } = e.target;
+  const handleChange = (event: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    const { name, value } = event.target;
+    if (name !== "name" && name !== "phone" && name !== "address") return;
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
     setSaving(true);
     
     try {
      
-      await onSave({ ...currentUserData, ...formData });
+      await onSave(formData);
    
       onClose();
     } catch (error) {
@@ -35,7 +38,12 @@ function EditProfileModal({ currentUserData, onSave, onClose }) {
   };
 
   return (
-    <form onSubmit={handleSubmit} className="flex flex-col gap-5">
+    <form
+      onSubmit={(event) => {
+        void handleSubmit(event);
+      }}
+      className="flex flex-col gap-5"
+    >
       
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
@@ -54,7 +62,7 @@ function EditProfileModal({ currentUserData, onSave, onClose }) {
           <input
             type="email"
             name="email"
-            value={formData.email}
+            value={currentUserData.email}
             readOnly
             disabled
             className="w-full px-4 py-3 border border-gray-200 bg-gray-50 rounded-full text-gray-500 cursor-not-allowed"
@@ -85,30 +93,6 @@ function EditProfileModal({ currentUserData, onSave, onClose }) {
         />
       </div>
 
-      <div>
-        <label className="block font-semibold mb-2">Secondary Address (Optional)</label>
-        <textarea
-          name="secondaryAddress"
-          value={formData.secondaryAddress}
-          onChange={handleChange}
-          rows={2}
-          placeholder="Enter an optional secondary address"
-          className="w-full px-4 py-3 border border-gray-300 rounded-2xl focus:outline-none focus:border-black resize-none"
-        />
-      </div>
-
-      <div>
-        <label className="block font-semibold mb-2">Secondary Contact Info (Optional)</label>
-        <input
-          type="text"
-          name="secondaryContact"
-          value={formData.secondaryContact}
-          onChange={handleChange}
-          placeholder="e.g., Spouse Name, Phone Number"
-          className="w-full px-4 py-3 border border-gray-300 rounded-full focus:outline-none focus:border-black"
-        />
-      </div>
-      
       <div className="flex justify-end gap-3 pt-4">
         <button
           type="button"
