@@ -62,16 +62,15 @@ public class AnalyticsController {
         return response;
     }
 
-    // Network Snapshot
-    // @GetMapping("/network-snapshot")
-    // public Map<String, Long> getNetworkSnapshot() {
-    //     Map<String, Long> snapshot = new HashMap<>();
-    //     snapshot.put("networks", networkRepository.count());
-    //     snapshot.put("admins", userRepository.countByRole("ADMIN"));
-    //     snapshot.put("staff", userRepository.countByRole("STAFF"));
-    //     snapshot.put("users", userRepository.countByRole("USER"));
-    //     return snapshot;
-    // }
+    /** Platform-wide counts using the only cooperative roles permitted by the schema. */
+    @GetMapping("/network-snapshot")
+    public Map<String, Long> getNetworkSnapshot() {
+        Map<String, Long> snapshot = new HashMap<>();
+        snapshot.put("networks", networkRepository.count());
+        snapshot.put("admins", userRepository.countByRoleIgnoreCase("admin"));
+        snapshot.put("members", userRepository.countByRoleIgnoreCase("member"));
+        return snapshot;
+    }
 
     // Total revenue by type (for percentages)
     @GetMapping("/total-revenue")

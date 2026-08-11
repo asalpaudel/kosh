@@ -15,12 +15,11 @@ interface RevenueTotals {
 interface NetworkStats {
   networks: number;
   admins: number;
-  staff: number;
-  users: number;
+  members: number;
 }
 
 const EMPTY_TOTALS: RevenueTotals = { basic: 0, premium: 0, custom: 0 };
-const EMPTY_STATS: NetworkStats = { networks: 0, admins: 0, staff: 0, users: 0 };
+const EMPTY_STATS: NetworkStats = { networks: 0, admins: 0, members: 0 };
 
 function finiteNumber(value: unknown): number {
   const parsed = typeof value === "number" ? value : typeof value === "string" ? Number(value) : Number.NaN;
@@ -47,7 +46,7 @@ function parseNetworkStats(value: unknown): NetworkStats {
   if (!isRecord(value)) throw new Error("Invalid network snapshot response");
   return {
     networks: finiteNumber(value.networks), admins: finiteNumber(value.admins),
-    staff: finiteNumber(value.staff), users: finiteNumber(value.users),
+    members: finiteNumber(value.members),
   };
 }
 
@@ -122,7 +121,7 @@ export default function Analytics() {
       head: [["Month", "Basic", "Premium", "Custom", "Total"]],
       body: monthlyRevenueData.map((row) => [row.month, row.basic ?? 0, row.premium ?? 0, row.custom ?? 0, (row.basic ?? 0) + (row.premium ?? 0) + (row.custom ?? 0)]),
     });
-    document.text(`Networks: ${String(networkStats.networks)}  Admins: ${String(networkStats.admins)}  Staff: ${String(networkStats.staff)}  Users: ${String(networkStats.users)}`, 14, document.internal.pageSize.getHeight() - 18);
+    document.text(`Networks: ${String(networkStats.networks)}  Admins: ${String(networkStats.admins)}  Members: ${String(networkStats.members)}`, 14, document.internal.pageSize.getHeight() - 18);
     document.save("kosh-analytics.pdf");
   };
 

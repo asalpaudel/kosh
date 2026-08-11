@@ -190,6 +190,15 @@ public class NetworkController {
         return ResponseEntity.ok(networks);
     }
 
+    /** Platform dashboard view of the five newest cooperatives, without stored files. */
+    @GetMapping("/recent")
+    public ResponseEntity<List<Map<String, Object>>> getRecentNetworks() {
+        List<Map<String, Object>> networks = networkRepository.findTop5ByOrderByIdDesc().stream()
+                .map(this::mapNetworkWithoutBinaryData)
+                .toList();
+        return ResponseEntity.ok(networks);
+    }
+
     // ⭐ Get Network by ID (exclude binary data)
     @GetMapping("/{id}")
     public ResponseEntity<Map<String, Object>> getNetworkById(@PathVariable Long id, HttpSession session) {

@@ -107,6 +107,19 @@ class SecurityConfigAuthorizationTest {
     }
 
     @Test
+    void onlySuperAdministratorCanReadPlatformDashboardData() throws Exception {
+        mockMvc.perform(get("/api/networks/recent").session(session("admin")))
+                .andExpect(status().isForbidden());
+        mockMvc.perform(get("/api/analytics/network-snapshot").session(session("admin")))
+                .andExpect(status().isForbidden());
+
+        mockMvc.perform(get("/api/networks/recent").session(session("superadmin")))
+                .andExpect(status().isOk());
+        mockMvc.perform(get("/api/analytics/network-snapshot").session(session("superadmin")))
+                .andExpect(status().isOk());
+    }
+
+    @Test
     void administratorCannotCallSuperAdminUpdateCommand() throws Exception {
         mockMvc.perform(put("/api/users/17/superadmin").with(csrf()).session(session("admin")))
                 .andExpect(status().isForbidden());
@@ -160,6 +173,16 @@ class SecurityConfigAuthorizationTest {
         @GetMapping("/api/networks/{id}/document")
         String document(@PathVariable int id) {
             return Integer.toString(id);
+        }
+
+        @GetMapping("/api/networks/recent")
+        String recentNetworks() {
+            return "ok";
+        }
+
+        @GetMapping("/api/analytics/network-snapshot")
+        String networkSnapshot() {
+            return "ok";
         }
 
         @org.springframework.web.bind.annotation.PutMapping("/api/users/{id}/superadmin")

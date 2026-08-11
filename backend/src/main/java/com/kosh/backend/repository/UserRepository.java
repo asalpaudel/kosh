@@ -21,6 +21,8 @@ public interface UserRepository extends JpaRepository<User, Long> {
 
     long countByRole(String role);
 
+    long countByRoleIgnoreCase(String role);
+
     // ⭐ NEW: Sum of balance for all users in a specific network
     @Query("SELECT COALESCE(SUM(u.balance), 0) FROM User u WHERE u.sahakariId = :networkId")
     BigDecimal getTotalUserBalanceByNetwork(@Param("networkId") Long networkId);

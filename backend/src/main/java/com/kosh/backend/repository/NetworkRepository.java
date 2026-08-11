@@ -26,6 +26,9 @@ public interface NetworkRepository extends JpaRepository<Network, Long> {
     // ✅ Instead, you can count by packageType if needed
     long countByPackageType(String packageType);
 
+    /** The five cooperatives most recently inserted, newest first. */
+    List<Network> findTop5ByOrderByIdDesc();
+
     // 1️⃣ Monthly revenue per package type (Basic, Premium, Custom)
     @Query(
         value = "SELECT SUBSTRING(created_at FROM 1 FOR 7) AS month, " +
