@@ -1,10 +1,11 @@
-import { API_BASE } from "../lib/apiClient";
+import { API_BASE, ApiError, apiFetch } from "../lib/apiClient";
 import { NavLink, useNavigate } from "react-router-dom";
-import { useState, useEffect } from "react";
+import { useEffect, useState, type ChangeEvent } from "react";
+import { parseNetworks, type NetworkSummary } from "../lib/networks";
 
 
 /* -------------------- STEPPER -------------------- */
-const Stepper = ({ currentStep }) => (
+const Stepper = ({ currentStep }: { currentStep: number }) => (
   <div className="flex items-center justify-between mb-8">
     {[1, 2, 3].map((s) => (
       <div key={s} className="flex-1 flex items-center">
@@ -36,10 +37,14 @@ export default function Signup() {
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [sahakariList, setSahakariList] = useState([]);
+  const [sahakariList, setSahakariList] = useState<NetworkSummary[]>([]);
   const [loadingSahakari, setLoadingSahakari] = useState(false);
 
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<{
+    name: string; email: string; dob: string; address: string; phone: string;
+    sahakari: string; password: string; confirm: string;
+    citizenship: File | null; signature: File | null; photo: File | null;
+  }>({
     name: "",
     email: "",
     dob: "",
@@ -57,21 +62,27 @@ export default function Signup() {
     const load = async () => {
       setLoadingSahakari(true);
       try {
-        const res = await fetch(`${API_BASE}/networks`);
-        const data = await res.json();
-        setSahakariList(Array.isArray(data) ? data : []);
+        const res = await apiFetch(`${API_BASE}/networks`);
+        setSahakariList(parseNetworks(await res.json()));
       } catch {
         setSahakariList([]);
       } finally {
         setLoadingSahakari(false);
       }
     };
-    load();
+    void load();
   }, []);
 
-  const handleChange = (e) => {
-    const { name, value, files } = e.target;
-    setFormData((p) => ({ ...p, [name]: files ? files[0] : value }));
+  const handleChange = (e: ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+    const { name, value } = e.target;
+    if (e.target instanceof HTMLInputElement && e.target.type === "file") {
+      const file = e.target.files?.item(0) ?? null;
+      if (name === "citizenship" || name === "signature" || name === "photo") {
+        setFormData((previous) => ({ ...previous, [name]: file }));
+      }
+    } else if (name === "name" || name === "email" || name === "dob" || name === "address" || name === "phone" || name === "sahakari" || name === "password" || name === "confirm") {
+      setFormData((previous) => ({ ...previous, [name]: value }));
+    }
   };
 
   const nextStep = () => {
@@ -99,7 +110,7 @@ export default function Signup() {
     setStep((s) => s + 1);
   };
 
-  const prevStep = () => setStep((s) => s - 1);
+  const prevStep = () => { setStep((s) => s - 1); };
 
   const handleSignup = async () => {
     setError("");
@@ -113,19 +124,19 @@ export default function Signup() {
 
     try {
       const fd = new FormData();
-      Object.entries(formData).forEach(([k, v]) => v && fd.append(k, v));
+      Object.entries(formData).forEach(([key, value]) => {
+        if (value) fd.append(key, value);
+      });
       fd.append("role", "member");
 
-      const res = await fetch(`${API_BASE}/users`, {
+      await apiFetch(`${API_BASE}/users`, {
         method: "POST",
         body: fd,
       });
-      if (!res.ok) throw new Error("Signup failed");
-
-      alert("Account created. Pending approval.");
-      navigate("/");
-    } catch (e) {
-      setError(e.message);
+      window.alert("Account created. Pending approval.");
+      void navigate("/");
+    } catch (caught) {
+      setError(caught instanceof ApiError || caught instanceof Error ? caught.message : "Signup failed");
     } finally {
       setLoading(false);
     }
@@ -179,7 +190,7 @@ export default function Signup() {
                     </label>
                     <input
                       name={f}
-                      value={formData[f]}
+                      value={formData[f as "name" | "email" | "phone" | "address"]}
                       onChange={handleChange}
                       className="mt-2 w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-[#14c596] focus:outline-none"
                     />
@@ -207,9 +218,10 @@ export default function Signup() {
                   name="sahakari"
                   value={formData.sahakari}
                   onChange={handleChange}
+                  disabled={loadingSahakari}
                   className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-[#14c596]"
                 >
-                  <option value="">Select Sahakari</option>
+                  <option value="">{loadingSahakari ? "Loading Sahakaris..." : "Select Sahakari"}</option>
                   {sahakariList.map((s) => (
                     <option key={s.id} value={s.name}>
                       {s.name}
@@ -225,7 +237,7 @@ export default function Signup() {
                     placeholder={
                       f === "confirm" ? "Confirm password" : "Password"
                     }
-                    value={formData[f]}
+                    value={formData[f as "password" | "confirm"]}
                     onChange={handleChange}
                     className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-[#14c596]"
                   />
@@ -341,7 +353,7 @@ export default function Signup() {
               {/* Next / Signup button */}
               <button
                 type="button"
-                onClick={step < 3 ? nextStep : handleSignup}
+                onClick={step < 3 ? nextStep : () => { void handleSignup(); }}
                 disabled={loading}
                 className="px-6 py-3 rounded-lg bg-[#14c596] text-black font-semibold hover:bg-[#21ab87] transition disabled:opacity-50 disabled:cursor-not-allowed"
               >
