@@ -38,6 +38,11 @@ interface AdminTransaction {
   date: string;
   type: string;
   details: TransactionDetails;
+  approvalStatus: string;
+  makerId: string;
+  makerName: string;
+  checkerName: string;
+  checkerNotes: string;
 }
 
 interface TransactionVoucherProps {
@@ -70,6 +75,11 @@ const parseAdminTransactions = (value: unknown): AdminTransaction[] => {
       amountValue: numericValue(item.amountValue ?? item.amount),
       date: textValue(item.date),
       type: textValue(item.type) || "Transaction",
+      approvalStatus: textValue(item.approvalStatus) || "NOT_REQUIRED",
+      makerId: typeof item.makerId === "string" || typeof item.makerId === "number" ? String(item.makerId) : "",
+      makerName: textValue(item.makerName),
+      checkerName: textValue(item.checkerName),
+      checkerNotes: textValue(item.checkerNotes),
       details: {
         internalHead: textValue(details.internalHead),
         direction: textValue(details.direction),
@@ -365,6 +375,11 @@ function AdminTransactions() {
   const [searchQuery, setSearchQuery] = useState("");
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [selectedTransaction, setSelectedTransaction] = useState<AdminTransaction | null>(null);
+  const [networkId, setNetworkId] = useState<number | null>(null);
+  const [currentUserId, setCurrentUserId] = useState("");
+  const [threshold, setThreshold] = useState("");
+  const [savingThreshold, setSavingThreshold] = useState(false);
+  const [decidingId, setDecidingId] = useState("");
 
   const [dateFilter, setDateFilter] = useState<DateFilter>("all");
   const [fromDate, setFromDate] = useState("");
@@ -391,7 +406,40 @@ function AdminTransactions() {
 
   useEffect(() => {
     void loadTransactions();
+    void (async () => {
+      try {
+        const sessionResponse = await apiFetch(`${API_BASE}/session`);
+        const session: unknown = await sessionResponse.json();
+        if (!isRecord(session) || typeof session.sahakariId !== "number") return;
+        setNetworkId(session.sahakariId);
+        if (typeof session.userId === "number" || typeof session.userId === "string") setCurrentUserId(String(session.userId));
+        const controlResponse = await apiFetch(`${API_BASE}/transaction-controls/network/${String(session.sahakariId)}`);
+        const controls: unknown = await controlResponse.json();
+        if (isRecord(controls) && (typeof controls.makerCheckerThreshold === "number" || typeof controls.makerCheckerThreshold === "string")) setThreshold(String(controls.makerCheckerThreshold));
+      } catch { setError("Transactions loaded, but approval controls could not be loaded."); }
+    })();
   }, []);
+
+  const saveThreshold = async () => {
+    if (networkId == null || threshold.trim() === "" || Number(threshold) < 0) { setError("Enter a valid non-negative threshold."); return; }
+    setSavingThreshold(true); setError("");
+    try {
+      const response = await apiFetch(`${API_BASE}/transaction-controls/network/${String(networkId)}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ makerCheckerThreshold: threshold }) });
+      const body: unknown = await response.json();
+      if (isRecord(body) && (typeof body.makerCheckerThreshold === "string" || typeof body.makerCheckerThreshold === "number")) setThreshold(String(body.makerCheckerThreshold));
+    } catch (caught) { setError(caught instanceof Error ? caught.message : "Unable to save threshold"); }
+    finally { setSavingThreshold(false); }
+  };
+
+  const decide = async (transaction: AdminTransaction, decision: "approve" | "reject") => {
+    const notes = window.prompt(`${decision === "approve" ? "Approval" : "Rejection"} notes (optional)`, "") ?? "";
+    setDecidingId(transaction.id); setError("");
+    try {
+      await apiFetch(`${API_BASE}/transactions/${encodeURIComponent(transaction.id)}/${decision}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ notes }) });
+      await loadTransactions();
+    } catch (caught) { setError(caught instanceof Error ? caught.message : `Unable to ${decision} transaction`); }
+    finally { setDecidingId(""); }
+  };
 
   useEffect(() => {
     if (isRecord(location.state)) {
@@ -519,6 +567,19 @@ function AdminTransactions() {
   return (
     <div className="bg-white p-3 md:p-6 min-h-[calc(100vh-8.5rem)]">
       {error && <div role="alert" className="mb-4 rounded border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</div>}
+      <section className="mb-6 grid gap-4 xl:grid-cols-[20rem_1fr]">
+        <div className="rounded-2xl border border-slate-200 bg-slate-950 p-5 text-white">
+          <p className="text-xs font-black uppercase tracking-widest text-teal-400">Maker-checker control</p>
+          <label className="mt-4 block text-sm font-bold text-slate-300" htmlFor="maker-threshold">Independent approval above (Rs.)</label>
+          <div className="mt-2 flex gap-2"><input id="maker-threshold" type="number" min="0" step="0.01" value={threshold} onChange={(event) => { setThreshold(event.target.value); }} className="min-w-0 flex-1 rounded-xl border border-white/20 bg-white/10 px-3 py-2 text-white" /><button onClick={() => { void saveThreshold(); }} disabled={savingThreshold} className="rounded-xl bg-teal-400 px-4 font-black text-slate-950 disabled:opacity-50">{savingThreshold ? "…" : "Save"}</button></div>
+          <p className="mt-3 text-xs leading-5 text-slate-400">Transactions above this amount remain frozen until another administrator approves them.</p>
+        </div>
+        <div className="rounded-2xl border border-amber-200 bg-amber-50 p-5">
+          <div className="flex items-center justify-between"><div><p className="text-xs font-black uppercase tracking-widest text-amber-700">Approval queue</p><h2 className="mt-1 text-xl font-black text-slate-900">{transactions.filter((item) => item.approvalStatus === "PENDING").length} waiting</h2></div></div>
+          <div className="mt-4 grid gap-3 lg:grid-cols-2">{transactions.filter((item) => item.approvalStatus === "PENDING").slice(0, 4).map((item) => <article key={item.id} className="rounded-xl border border-amber-200 bg-white p-4"><div className="flex items-start justify-between gap-3"><div><p className="font-black text-slate-900">{item.voucherId}</p><p className="mt-1 text-sm text-slate-500">Maker: {item.makerName || `#${item.makerId}`} · Rs. {item.amount.toLocaleString()}</p></div><span className="rounded-full bg-amber-100 px-2 py-1 text-[10px] font-black text-amber-800">FROZEN</span></div>{item.makerId === currentUserId ? <p className="mt-3 text-xs font-bold text-amber-700">A different administrator must decide.</p> : <div className="mt-3 flex gap-2"><button onClick={() => { void decide(item, "approve"); }} disabled={decidingId === item.id} className="rounded-lg bg-teal-600 px-3 py-2 text-xs font-black text-white disabled:opacity-50">Approve</button><button onClick={() => { void decide(item, "reject"); }} disabled={decidingId === item.id} className="rounded-lg border border-red-200 px-3 py-2 text-xs font-black text-red-700 disabled:opacity-50">Reject</button></div>}</article>)}</div>
+          {transactions.every((item) => item.approvalStatus !== "PENDING") && <p className="mt-4 text-sm text-slate-500">No transactions require approval.</p>}
+        </div>
+      </section>
       {/* Controls Section — stacks on mobile */}
       {/* Controls Section — stacks on mobile, row on desktop */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6 md:mb-8">

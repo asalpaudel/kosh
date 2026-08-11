@@ -29,6 +29,7 @@ import com.kosh.backend.model.Network;
 import com.kosh.backend.model.SavingAccount;
 import com.kosh.backend.model.SavingAccountApplication;
 import com.kosh.backend.model.User;
+import com.kosh.backend.model.Transaction;
 import com.kosh.backend.model.ApplicationStatus;
 import com.kosh.backend.repository.ActivityLogRepository;
 import com.kosh.backend.repository.FixedDepositApplicationRepository;
@@ -41,7 +42,8 @@ import com.kosh.backend.repository.SavingAccountApplicationRepository;
 import com.kosh.backend.repository.SavingAccountRepository;
 import com.kosh.backend.repository.TransactionRepository;
 import com.kosh.backend.repository.UserRepository;
-import com.kosh.backend.service.EmailService;
+import com.kosh.backend.service.AuditPackService;
+import com.kosh.backend.service.MemberNotificationService;
 import com.kosh.backend.ledger.LedgerReports;
 import com.kosh.backend.ledger.LedgerService;
 import com.kosh.backend.service.LoanService;
@@ -70,11 +72,12 @@ class TenantIsolationTest {
     @Mock TransactionRepository transactionRepo;
     @Mock RepaymentScheduleRepository repaymentScheduleRepo;
     @Mock ActivityLogRepository logRepo;
-    @Mock EmailService emailService;
+    @Mock MemberNotificationService notifications;
     @Mock LoanService loanService;
     @Mock LoanSecurityService loanSecurityService;
     @Mock LedgerService ledger;
     @Mock LedgerReports ledgerReports;
+    @Mock AuditPackService auditPackService;
 
     @Spy NetworkAccessService access = new NetworkAccessService();
 
@@ -85,7 +88,7 @@ class TenantIsolationTest {
     }
 
     private TransactionController transactionController() {
-        return new TransactionController(transactionRepo, userRepo, networkRepo, logRepo, emailService,
+        return new TransactionController(transactionRepo, userRepo, networkRepo, logRepo, notifications,
                 fdAppRepo, fixedDepositRepo, loanAppRepo, loanPackageRepo, saAppRepo, savingAccountRepo,
                 access, ledger, ledgerReports, repaymentScheduleRepo, loanSecurityService);
     }
@@ -362,10 +365,80 @@ class TenantIsolationTest {
         verify(ledger, never()).post(any(), any(), any(), any(), any(), any(), any(), any());
     }
 
+    @Test
+    void highValueTransactionIsFrozenWithoutMovingMoney() {
+        Network own = network(OWN_NETWORK);
+        own.setMakerCheckerThreshold(money("100.00"));
+        when(networkRepo.findById(OWN_NETWORK)).thenReturn(Optional.of(own));
+        when(transactionRepo.save(any(Transaction.class))).thenAnswer(invocation -> {
+            Transaction saved = invocation.getArgument(0); saved.setId(91L); return saved;
+        });
+
+        var response = transactionController().addTransaction(Map.of(
+                "idempotencyKey", "66666666-6666-4666-8666-666666666666",
+                "amountValue", 500,
+                "details", Map.of("mode", "network", "accountHead", "Income: Service fee",
+                        "direction", "Credit", "networkLedger", "Cash")), adminSession());
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(((Map<?, ?>) response.getBody()).get("approvalStatus")).isEqualTo("PENDING");
+        verify(userRepo, never()).save(any());
+        verify(ledger, never()).post(any(), any(), any(), any(), any(), any(), any(), any());
+    }
+
+    @Test
+    void makerCannotApproveOwnPendingTransaction() {
+        Transaction pending = pendingTransaction(1L);
+        when(transactionRepo.findByIdForApproval(92L)).thenReturn(Optional.of(pending));
+
+        var response = transactionController().approveTransaction(92L, Map.of(), adminSession());
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
+        verify(ledger, never()).post(any(), any(), any(), any(), any(), any(), any(), any());
+    }
+
+    @Test
+    void differentCheckerCanApproveAndPostPendingTransaction() {
+        Transaction pending = pendingTransaction(2L);
+        when(transactionRepo.findByIdForApproval(93L)).thenReturn(Optional.of(pending));
+        User checker = admin(); checker.setId(9L); checker.setName("Independent Checker");
+        when(userRepo.findById(9L)).thenReturn(Optional.of(checker));
+        when(transactionRepo.save(any(Transaction.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(ledgerReports.liquidity(OWN_NETWORK)).thenReturn(money("500.00"));
+
+        var response = transactionController().approveTransaction(93L, Map.of("notes", "Evidence checked"),
+                session("admin", 9L));
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(pending.getApprovalStatus()).isEqualTo("APPROVED");
+        assertThat(pending.getChecker().getId()).isEqualTo(9L);
+        verify(ledger).post(any(), any(), any(), any(), any(), any(), any(), any());
+    }
+
+    @Test
+    void transactionControlsAndAuditPackAreTenantScoped() {
+        TransactionControlController controls = new TransactionControlController(networkRepo, access);
+        AuditController audit = new AuditController(auditPackService, networkRepo, access);
+
+        assertThat(controls.get(OTHER_NETWORK, adminSession()).getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
+        assertThat(audit.pack(OTHER_NETWORK, adminSession()).getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
+        verify(networkRepo, never()).findById(OTHER_NETWORK);
+        verify(auditPackService, never()).export(any());
+    }
+
     // -------------------------------------------------------------------- setup
 
     private static BigDecimal money(String value) {
         return new BigDecimal(value);
+    }
+
+    private Transaction pendingTransaction(Long makerId) {
+        Transaction tx = new Transaction(); tx.setId(93L); tx.setNetwork(network(OWN_NETWORK));
+        tx.setVoucherId("MC-93"); tx.setDate(java.time.LocalDate.now()); tx.setStatus("Frozen");
+        tx.setApprovalStatus("PENDING"); tx.setAmount(money("500.00")); tx.setMode("network");
+        tx.setAccountHead("Income: Service fee"); tx.setDirection("Credit"); tx.setNetworkLedger("Cash");
+        tx.setType("Service fee");
+        User maker = admin(); maker.setId(makerId); tx.setMaker(maker); return tx;
     }
 
     private Network network(long id) {
@@ -378,6 +451,7 @@ class TenantIsolationTest {
         User admin = new User();
         admin.setId(1L);
         admin.setName("Coop A Admin");
+        admin.setRole("admin");
         admin.setSahakariId(OWN_NETWORK);
         return admin;
     }

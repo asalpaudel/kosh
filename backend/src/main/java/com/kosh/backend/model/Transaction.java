@@ -3,6 +3,7 @@ package com.kosh.backend.model;
 import java.math.BigDecimal;
 
 import java.time.LocalDate;
+import java.time.Instant;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -64,6 +65,15 @@ public class Transaction {
     private String chequeNo;
     private String bankName;
     private String receivedBy;
+    @Column(length = 20)
+    private String approvalStatus = "NOT_REQUIRED";
+    @ManyToOne @JoinColumn(name = "maker_id") private User maker;
+    private Instant madeAt;
+    @ManyToOne @JoinColumn(name = "checker_id") private User checker;
+    private Instant checkedAt;
+    @Column(length = 1000) private String checkerNotes;
+    private Long packageId;
+    private Integer requestedTerm;
 
     // --- Getters & Setters ---
 
@@ -138,4 +148,20 @@ public class Transaction {
 
     public String getReceivedBy() { return receivedBy; }
     public void setReceivedBy(String receivedBy) { this.receivedBy = receivedBy; }
+    public String getApprovalStatus() { return approvalStatus; }
+    public void setApprovalStatus(String value) { this.approvalStatus = value; }
+    public User getMaker() { return maker; }
+    public void setMaker(User value) { this.maker = value; }
+    public Instant getMadeAt() { return madeAt; }
+    public void setMadeAt(Instant value) { this.madeAt = value; }
+    public User getChecker() { return checker; }
+    public void setChecker(User value) { this.checker = value; }
+    public Instant getCheckedAt() { return checkedAt; }
+    public void setCheckedAt(Instant value) { this.checkedAt = value; }
+    public String getCheckerNotes() { return checkerNotes; }
+    public void setCheckerNotes(String value) { this.checkerNotes = value; }
+    public Long getPackageId() { return packageId; }
+    public void setPackageId(Long value) { this.packageId = value; }
+    public Integer getRequestedTerm() { return requestedTerm; }
+    public void setRequestedTerm(Integer value) { this.requestedTerm = value; }
 }

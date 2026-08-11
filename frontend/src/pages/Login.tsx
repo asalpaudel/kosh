@@ -3,7 +3,7 @@ import { NavLink, useNavigate } from "react-router-dom";
 import { useState, type ChangeEvent, type FormEvent } from "react";
 import { booleanField, isRecord, stringField } from "../lib/validation";
 
-type Role = "member" | "admin" | "superadmin";
+type Role = "member" | "admin" | "auditor" | "superadmin";
 interface AuthenticatedLogin {
   role: Role;
   userId: string;
@@ -15,7 +15,7 @@ function authenticatedLogin(body: unknown): AuthenticatedLogin | null {
   if (!isRecord(body) || booleanField(body, "success") !== true) return null;
   const role = stringField(body, "role");
   const userId = body.userId;
-  if ((role !== "member" && role !== "admin" && role !== "superadmin")
+  if ((role !== "member" && role !== "admin" && role !== "auditor" && role !== "superadmin")
       || (typeof userId !== "string" && typeof userId !== "number")) return null;
   return { role, userId: String(userId), name: stringField(body, "name") ?? "", sahakari: stringField(body, "sahakari") ?? "" };
 }
@@ -43,6 +43,7 @@ export default function Login() {
   const finishLogin = (data: AuthenticatedLogin): void => {
     if (data.role === "member") void nav("/home");
     else if (data.role === "admin") void nav("/admin");
+    else if (data.role === "auditor") void nav("/auditor");
     else void nav("/superadmin");
   };
 

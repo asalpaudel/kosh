@@ -131,6 +131,17 @@ class SecurityConfigAuthorizationTest {
                 .andExpect(status().isOk());
     }
 
+    @Test
+    void auditorCanOnlyReadAuditSurface() throws Exception {
+        MockHttpSession auditor = session("auditor");
+        mockMvc.perform(get("/api/audit/network/17/overview").session(auditor))
+                .andExpect(status().isOk());
+        mockMvc.perform(get("/api/transactions").session(auditor))
+                .andExpect(status().isForbidden());
+        mockMvc.perform(post("/api/transactions").with(csrf()).session(auditor))
+                .andExpect(status().isForbidden());
+    }
+
     private MockHttpSession session(String role) {
         var session = new MockHttpSession();
         session.setAttribute("userEmail", role + "@example.test");
@@ -187,6 +198,11 @@ class SecurityConfigAuthorizationTest {
 
         @org.springframework.web.bind.annotation.PutMapping("/api/users/{id}/superadmin")
         String updateUserAsSuperAdmin(@PathVariable int id) {
+            return Integer.toString(id);
+        }
+
+        @GetMapping("/api/audit/network/{id}/overview")
+        String auditOverview(@PathVariable int id) {
             return Integer.toString(id);
         }
     }

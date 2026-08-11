@@ -44,4 +44,16 @@ class SessionAuthenticationFilterTest {
 
         assertThat(SecurityContextHolder.getContext().getAuthentication()).isNull();
     }
+
+    @Test
+    void authenticatesReadOnlyAuditorRole() throws Exception {
+        var request = new MockHttpServletRequest();
+        request.getSession().setAttribute("userEmail", "auditor@example.test");
+        request.getSession().setAttribute("userRole", "auditor");
+
+        filter.doFilter(request, new MockHttpServletResponse(), new MockFilterChain());
+
+        assertThat(SecurityContextHolder.getContext().getAuthentication().getAuthorities())
+                .extracting("authority").containsExactly("ROLE_AUDITOR");
+    }
 }

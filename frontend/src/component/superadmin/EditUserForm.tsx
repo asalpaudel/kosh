@@ -142,6 +142,7 @@ export default function EditUserForm({
         >
           <option value="">Select Role</option>
           <option value="admin">Admin</option>
+          <option value="auditor">Read-only auditor</option>
           <option value="member">Member</option>
         </select>
 

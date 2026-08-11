@@ -30,6 +30,7 @@ import Landing from "./pages/Landing2";
 import AdminShares from "./pages/admin/Shares";
 import UserShares from "./pages/user/Shares";
 import AdminClose from "./pages/admin/Close";
+import AuditorAudit from "./pages/auditor/Audit";
 
 export default function App() {
   return (
@@ -62,6 +63,7 @@ export default function App() {
           <Route path="close" element={<AdminClose />} />
         </Route>
         <Route path="/super-login" element={<SuperLogin />} />
+        <Route path="/auditor" element={<AuditorAudit />} />
         <Route path="/superadmin" element={<SuperadminProtectedRoute><SuperadminLayout /></SuperadminProtectedRoute>}>
           <Route index element={<SuperadminDashboard />} />
           <Route path="dashboard" element={<SuperadminDashboard />} />

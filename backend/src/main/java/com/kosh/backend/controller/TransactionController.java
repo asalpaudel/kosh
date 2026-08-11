@@ -19,6 +19,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -47,7 +48,7 @@ import com.kosh.backend.repository.SavingAccountRepository;
 import com.kosh.backend.repository.TransactionRepository;
 import com.kosh.backend.repository.RepaymentScheduleRepository;
 import com.kosh.backend.repository.UserRepository;
-import com.kosh.backend.service.EmailService;
+import com.kosh.backend.service.MemberNotificationService;
 import com.kosh.backend.ledger.LedgerLine;
 import com.kosh.backend.ledger.LedgerPostings;
 import com.kosh.backend.ledger.LedgerReports;
@@ -76,7 +77,7 @@ public class TransactionController {
     private final UserRepository userRepo;
     private final NetworkRepository networkRepo;
     private final ActivityLogRepository logRepo;
-    private final EmailService emailService;
+    private final MemberNotificationService notifications;
 
     // --- NEW: Inject Application & Package Repositories ---
     private final FixedDepositApplicationRepository fdAppRepo;
@@ -96,7 +97,7 @@ public class TransactionController {
             UserRepository userRepo, 
             NetworkRepository networkRepo, 
             ActivityLogRepository logRepo,
-            EmailService emailService,
+            MemberNotificationService notifications,
             FixedDepositApplicationRepository fdAppRepo,
             FixedDepositRepository fdPackageRepo,
             LoanApplicationRepository loanAppRepo,
@@ -119,7 +120,7 @@ public class TransactionController {
         this.userRepo = userRepo;
         this.networkRepo = networkRepo;
         this.logRepo = logRepo;
-        this.emailService = emailService;
+        this.notifications = notifications;
         
         // Assign new repos
         this.fdAppRepo = fdAppRepo;
@@ -168,6 +169,11 @@ public class TransactionController {
             Transaction tx = new Transaction();
             tx.setIdempotencyKey(idempotencyKey);
             tx.setRequestFingerprint(fingerprint);
+            User maker = userRepo.getReferenceById(adminId);
+            if (maker == null) { // Keeps the controller testable with a plain repository mock.
+                maker = new User(); maker.setId(adminId); maker.setName(adminName);
+            }
+            tx.setMaker(maker); tx.setMadeAt(Instant.now());
             
             // Basic Mapping
             // The cooperative's own entries carry no member voucher book, but every row
@@ -236,6 +242,44 @@ public class TransactionController {
             }
 
             tx.setNetwork(network);
+
+            // Resolve every reference before a high-value item enters the approval queue.
+            // Pending transactions are inert, but they must still be valid tenant-owned requests.
+            if (payload.get("applicationId") != null) {
+                Long applicationId = Long.valueOf(payload.get("applicationId").toString());
+                String applicationType = (String) payload.get("applicationType");
+                if (!applicationBelongsToNetwork(applicationId, applicationType, networkId)) {
+                    return reject(HttpStatus.FORBIDDEN, "Application belongs to another cooperative");
+                }
+                if (LedgerPostings.LOAN.equals(tx.getAccountHead())
+                        && !approvedSecuredLoan(applicationId, applicationType)) {
+                    return reject(HttpStatus.BAD_REQUEST,
+                            "Loan transaction requires an approved application with pledged collateral");
+                }
+                tx.setApplicationId(applicationId); tx.setApplicationType(applicationType);
+            }
+            if (payload.get("packageId") != null) {
+                Long packageId = Long.valueOf(payload.get("packageId").toString());
+                tx.setPackageId(packageId);
+                if (payload.get("term") != null) tx.setRequestedTerm(Integer.valueOf(payload.get("term").toString()));
+            }
+            if ("Loan".equals(tx.getAccountHead()) && tx.getApplicationId() == null) {
+                return reject(HttpStatus.BAD_REQUEST,
+                        "Loan disbursement must reference an approved secured loan application");
+            }
+
+            if (tx.getAmount().compareTo(network.getMakerCheckerThreshold()) > 0) {
+                if (tx.getPackageId() != null
+                        && !packageBelongsToNetwork(tx.getPackageId(), tx.getAccountHead(), networkId)) {
+                    return reject(HttpStatus.FORBIDDEN, "Package belongs to another cooperative");
+                }
+                tx.setStatus("Frozen"); tx.setApprovalStatus("PENDING");
+                Transaction pending = transactionRepo.save(tx);
+                logDecision(adminName, "admin", networkId, "SUBMIT_TRANSACTION",
+                        "Submitted voucher " + tx.getVoucherId() + " for independent approval");
+                return ResponseEntity.ok(mapTransactionToFrontend(pending));
+            }
+            tx.setApprovalStatus("NOT_REQUIRED");
 
             // --- USER BALANCE UPDATE ---
             // Runs before any application row is written so a rejected withdrawal cannot
@@ -422,7 +466,7 @@ public class TransactionController {
             // Send voucher email to the user
             try {
                 if (targetUser != null && targetUser.getEmail() != null && !targetUser.getEmail().isEmpty()) {
-                    emailService.sendTransactionVoucherEmail(targetUser.getEmail(), savedTx, network);
+                    notifications.sendTransactionVoucher(targetUser, savedTx, network);
                 }
             } catch (Exception e) {
                 LOGGER.warn("Unable to send transaction voucher email");
@@ -433,6 +477,125 @@ public class TransactionController {
         } catch (Exception e) {
             return reject(HttpStatus.BAD_REQUEST, "Transaction request is invalid");
         }
+    }
+
+    @PostMapping("/{id}/approve")
+    @Transactional
+    public ResponseEntity<?> approveTransaction(@PathVariable Long id,
+            @RequestBody(required = false) Map<String, Object> request, HttpSession session) {
+        try {
+            Long checkerId = (Long) session.getAttribute("userId");
+            Long networkId = (Long) session.getAttribute("sahakariId");
+            String checkerName = (String) session.getAttribute("userName");
+            if (checkerId == null || networkId == null) return reject(HttpStatus.UNAUTHORIZED, "Not authenticated");
+            Transaction tx = transactionRepo.findByIdForApproval(id)
+                    .orElseThrow(() -> new IllegalArgumentException("Transaction not found"));
+            if (!networkId.equals(tx.getNetwork().getId())) return reject(HttpStatus.FORBIDDEN, "Cross-tenant access denied");
+            if (!"PENDING".equals(tx.getApprovalStatus())) return reject(HttpStatus.CONFLICT, "Transaction is not pending approval");
+            if (tx.getMaker() == null || checkerId.equals(tx.getMaker().getId())) {
+                return reject(HttpStatus.CONFLICT, "Maker and checker must be different users");
+            }
+            User checker = userRepo.findById(checkerId)
+                    .orElseThrow(() -> new IllegalArgumentException("Checker account not found"));
+            if (!networkId.equals(checker.getSahakariId()) || !"admin".equalsIgnoreCase(checker.getRole())) {
+                return reject(HttpStatus.FORBIDDEN, "Checker must be an administrator of this cooperative");
+            }
+            networkRepo.lockForPosting(networkId);
+            String notes = decisionNotes(request);
+            postPending(tx, checker, checkerName, notes);
+            return ResponseEntity.ok(mapTransactionToFrontend(tx));
+        } catch (IllegalArgumentException exception) {
+            return reject(HttpStatus.BAD_REQUEST, exception.getMessage());
+        } catch (Exception exception) {
+            return reject(HttpStatus.BAD_REQUEST, "Transaction approval failed");
+        }
+    }
+
+    @PostMapping("/{id}/reject")
+    @Transactional
+    public ResponseEntity<?> rejectTransaction(@PathVariable Long id,
+            @RequestBody(required = false) Map<String, Object> request, HttpSession session) {
+        try {
+            Long checkerId = (Long) session.getAttribute("userId");
+            Long networkId = (Long) session.getAttribute("sahakariId");
+            String checkerName = (String) session.getAttribute("userName");
+            if (checkerId == null || networkId == null) return reject(HttpStatus.UNAUTHORIZED, "Not authenticated");
+            Transaction tx = transactionRepo.findByIdForApproval(id)
+                    .orElseThrow(() -> new IllegalArgumentException("Transaction not found"));
+            if (!networkId.equals(tx.getNetwork().getId())) return reject(HttpStatus.FORBIDDEN, "Cross-tenant access denied");
+            if (!"PENDING".equals(tx.getApprovalStatus())) return reject(HttpStatus.CONFLICT, "Transaction is not pending approval");
+            if (tx.getMaker() == null || checkerId.equals(tx.getMaker().getId())) {
+                return reject(HttpStatus.CONFLICT, "Maker and checker must be different users");
+            }
+            User checker = userRepo.findById(checkerId)
+                    .orElseThrow(() -> new IllegalArgumentException("Checker account not found"));
+            if (!networkId.equals(checker.getSahakariId()) || !"admin".equalsIgnoreCase(checker.getRole())) {
+                return reject(HttpStatus.FORBIDDEN, "Checker must be an administrator of this cooperative");
+            }
+            tx.setApprovalStatus("REJECTED"); tx.setChecker(checker); tx.setCheckedAt(Instant.now());
+            tx.setCheckerNotes(decisionNotes(request)); transactionRepo.save(tx);
+            logDecision(checkerName, "admin", networkId, "REJECT_TRANSACTION",
+                    "Rejected pending voucher " + tx.getVoucherId());
+            return ResponseEntity.ok(mapTransactionToFrontend(tx));
+        } catch (IllegalArgumentException exception) {
+            return reject(HttpStatus.BAD_REQUEST, exception.getMessage());
+        }
+    }
+
+    private void postPending(Transaction tx, User checker, String checkerName, String notes) {
+        User member = tx.getUser(); Network network = tx.getNetwork();
+        if (member != null && !LedgerPostings.LOAN.equals(tx.getAccountHead())) {
+            BigDecimal balance = member.getBalance();
+            if ("Credit".equals(tx.getDirection())) member.setBalance(balance.add(tx.getAmount()));
+            else {
+                if (balance.compareTo(tx.getAmount()) < 0) throw new IllegalArgumentException("Insufficient user balance");
+                member.setBalance(balance.subtract(tx.getAmount()));
+            }
+            userRepo.save(member);
+        }
+        createPendingApplication(tx, checkerName);
+        tx.setStatus("Success"); tx.setApprovalStatus("APPROVED"); tx.setChecker(checker);
+        tx.setCheckedAt(Instant.now()); tx.setCheckerNotes(notes); transactionRepo.save(tx);
+        ledger.post(network, tx.getDate(), tx.getNarration() == null ? tx.getType() : tx.getNarration(),
+                tx.getVoucherId(), "transaction", tx.getId(), checkerName, journalLinesFor(tx, member));
+        tx.setNetworkReserve(reports.liquidity(network.getId())); transactionRepo.save(tx);
+        logDecision(checkerName, "admin", network.getId(), "APPROVE_TRANSACTION",
+                "Approved voucher " + tx.getVoucherId() + " made by " + tx.getMaker().getName());
+        if (member != null) {
+            try { notifications.sendTransactionVoucher(member, tx, network); }
+            catch (Exception exception) { LOGGER.warn("Unable to send approved transaction voucher"); }
+        }
+    }
+
+    private void createPendingApplication(Transaction tx, String checkerName) {
+        if (tx.getApplicationId() != null || tx.getPackageId() == null || tx.getUser() == null) return;
+        TransactionType type = LedgerPostings.LOAN.equals(tx.getAccountHead())
+                ? ("Debit".equals(tx.getDirection()) ? TransactionType.DEPOSIT : TransactionType.WITHDRAW)
+                : ("Credit".equals(tx.getDirection()) ? TransactionType.DEPOSIT : TransactionType.WITHDRAW);
+        if (LedgerPostings.SAVINGS.equals(tx.getAccountHead())) {
+            SavingAccount product = saPackageRepo.findById(tx.getPackageId())
+                    .orElseThrow(() -> new IllegalArgumentException("Savings product not found"));
+            SavingAccountApplication value = new SavingAccountApplication(); value.setUser(tx.getUser());
+            value.setSavingAccount(product); value.setNetwork(tx.getNetwork()); value.setInitialDeposit(tx.getAmount());
+            value.setTransactionType(type); value.setApplicationDate(Instant.now()); value.setReviewDate(Instant.now());
+            value.setStatus(ApplicationStatus.APPROVED); value.setReviewNotes("Checked by " + checkerName);
+            tx.setApplicationId(saAppRepo.save(value).getId()); tx.setApplicationType("saving-account");
+        } else if (LedgerPostings.FIXED_DEPOSIT.equals(tx.getAccountHead())) {
+            FixedDeposit product = fdPackageRepo.findById(tx.getPackageId())
+                    .orElseThrow(() -> new IllegalArgumentException("Fixed-deposit product not found"));
+            FixedDepositApplication value = new FixedDepositApplication(); value.setUser(tx.getUser());
+            value.setFixedDeposit(product); value.setNetwork(tx.getNetwork()); value.setDepositAmount(tx.getAmount());
+            value.setDepositTerm(tx.getRequestedTerm() == null ? product.getMinDuration() : tx.getRequestedTerm());
+            value.setTransactionType(type); value.setApplicationDate(Instant.now()); value.setReviewDate(Instant.now());
+            value.setStatus(ApplicationStatus.APPROVED); value.setReviewNotes("Checked by " + checkerName);
+            tx.setApplicationId(fdAppRepo.save(value).getId()); tx.setApplicationType("fixed-deposit");
+        }
+    }
+
+    private String decisionNotes(Map<String, Object> request) {
+        String notes = request == null || request.get("notes") == null ? null : request.get("notes").toString().trim();
+        if (notes != null && notes.length() > 1000) throw new IllegalArgumentException("Checker notes are too long");
+        return notes == null || notes.isEmpty() ? null : notes;
     }
 
 
@@ -484,6 +647,29 @@ public class TransactionController {
             default -> null;
         };
         return owner != null && networkId.equals(owner.getId());
+    }
+
+    private boolean approvedSecuredLoan(Long applicationId, String applicationType) {
+        if (!"loan".equals(applicationType)) return false;
+        return loanAppRepo.findById(applicationId)
+                .filter(value -> value.getStatus() == ApplicationStatus.APPROVED)
+                .filter(value -> loanSecurity.isSecuredLoan(value.getId()))
+                .isPresent();
+    }
+
+    private boolean packageBelongsToNetwork(Long packageId, String accountHead, Long networkId) {
+        Network owner = switch (accountHead == null ? "" : accountHead) {
+            case LedgerPostings.SAVINGS -> saPackageRepo.findById(packageId).map(SavingAccount::getNetwork).orElse(null);
+            case LedgerPostings.FIXED_DEPOSIT -> fdPackageRepo.findById(packageId).map(FixedDeposit::getNetwork).orElse(null);
+            case LedgerPostings.LOAN -> loanPackageRepo.findById(packageId).map(LoanPackage::getNetwork).orElse(null);
+            default -> null;
+        };
+        return owner != null && networkId.equals(owner.getId());
+    }
+
+    private void logDecision(String actor, String role, Long networkId, String action, String details) {
+        try { logRepo.save(new ActivityLog(actor, role, networkId, action, details)); }
+        catch (Exception exception) { LOGGER.warn("Unable to persist transaction control audit event"); }
     }
 
     String requestFingerprint(Long networkId, Map<String, Object> payload) {
@@ -563,6 +749,14 @@ public class TransactionController {
         map.put("narration", tx.getNarration());
         map.put("applicationId", tx.getApplicationId());
         map.put("networkReserve", tx.getNetworkReserve());
+        map.put("approvalStatus", tx.getApprovalStatus());
+        map.put("makerId", tx.getMaker() == null ? null : tx.getMaker().getId());
+        map.put("makerName", tx.getMaker() == null ? null : tx.getMaker().getName());
+        map.put("madeAt", tx.getMadeAt());
+        map.put("checkerId", tx.getChecker() == null ? null : tx.getChecker().getId());
+        map.put("checkerName", tx.getChecker() == null ? null : tx.getChecker().getName());
+        map.put("checkedAt", tx.getCheckedAt());
+        map.put("checkerNotes", tx.getCheckerNotes());
         
         Map<String, String> details = new HashMap<>();
         details.put("mode", tx.getMode());

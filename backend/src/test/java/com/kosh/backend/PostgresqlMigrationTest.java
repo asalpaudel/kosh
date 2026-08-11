@@ -121,6 +121,14 @@ class PostgresqlMigrationTest {
                 "5200", "Provision Expense", "numeric(18,2)");
     }
 
+    @Test
+    void makerCheckerMigrationPreventsSelfApprovalAndAddsScopedAuditorRole() throws IOException {
+        String migration = resource("/db/migration/V14__maker_checker_and_auditor.sql");
+        assertThat(migration).contains(
+                "maker_checker_threshold", "approval_status", "PENDING", "APPROVED", "REJECTED",
+                "maker_id", "checker_id", "checker_id <> maker_id", "auditor");
+    }
+
     private String resource(String path) throws IOException {
         try (var stream = getClass().getResourceAsStream(path)) {
             assertThat(stream).as("resource %s", path).isNotNull();

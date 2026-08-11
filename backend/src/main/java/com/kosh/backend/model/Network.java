@@ -46,6 +46,8 @@ public class Network {
     
     private Integer adminLimit;
     private Integer userLimit;
+    @Column(precision = 18, scale = 2)
+    private BigDecimal makerCheckerThreshold = new BigDecimal("100000.00");
 
     // Getters & Setters
     public Long getId() { return id; }
@@ -104,4 +106,6 @@ public class Network {
 
     public Integer getUserLimit() { return userLimit; }
     public void setUserLimit(Integer userLimit) { this.userLimit = userLimit; }
+    public BigDecimal getMakerCheckerThreshold() { return makerCheckerThreshold == null ? BigDecimal.ZERO : makerCheckerThreshold; }
+    public void setMakerCheckerThreshold(BigDecimal value) { this.makerCheckerThreshold = value; }
 }

@@ -50,7 +50,7 @@ public class SessionAuthenticationFilter extends OncePerRequestFilter {
         }
 
         return switch (role.toLowerCase(Locale.ROOT)) {
-            case "member", "admin", "superadmin" -> role.toLowerCase(Locale.ROOT);
+            case "member", "admin", "auditor", "superadmin" -> role.toLowerCase(Locale.ROOT);
             default -> null;
         };
     }

@@ -103,7 +103,8 @@ public class UserController {
                 sahakari = network.getName();
             }
         } else if ("superadmin".equalsIgnoreCase(actorRole)) {
-            if (!"admin".equalsIgnoreCase(role) && !"member".equalsIgnoreCase(role)) {
+            if (!"admin".equalsIgnoreCase(role) && !"member".equalsIgnoreCase(role)
+                    && !"auditor".equalsIgnoreCase(role)) {
                 return ResponseEntity.status(HttpStatus.FORBIDDEN)
                         .body(Map.of("error", "Unsupported account role"));
             }
@@ -439,8 +440,9 @@ public class UserController {
         User existingUser = repo.findById(id).orElse(null);
         if (existingUser == null) return ResponseEntity.notFound().build();
         if ("superadmin".equalsIgnoreCase(existingUser.getRole())) return forbidden();
-        if (!"admin".equalsIgnoreCase(request.role()) && !"member".equalsIgnoreCase(request.role())) {
-            return ResponseEntity.badRequest().body(Map.of("error", "Only admin and member roles are supported"));
+        if (!"admin".equalsIgnoreCase(request.role()) && !"member".equalsIgnoreCase(request.role())
+                && !"auditor".equalsIgnoreCase(request.role())) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Only admin, member, and auditor roles are supported"));
         }
         if (!"Active".equals(request.status()) && !"Pending".equals(request.status())
                 && !"Rejected".equals(request.status())) {

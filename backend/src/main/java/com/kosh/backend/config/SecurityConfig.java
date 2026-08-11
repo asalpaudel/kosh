@@ -126,8 +126,9 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.PUT, "/api/applications/**").hasRole("ADMIN")
 
                 .requestMatchers(HttpMethod.POST, "/api/transactions").hasRole("ADMIN")
+                .requestMatchers(HttpMethod.POST, "/api/transactions/*/approve", "/api/transactions/*/reject").hasRole("ADMIN")
                 .requestMatchers(HttpMethod.GET, "/api/transactions/sahakari").hasRole("ADMIN")
-                .requestMatchers(HttpMethod.GET, "/api/transactions").authenticated()
+                .requestMatchers(HttpMethod.GET, "/api/transactions").hasAnyRole("MEMBER", "ADMIN")
 
                 .requestMatchers(HttpMethod.GET, "/api/shares/me/**").hasRole("MEMBER")
                 .requestMatchers("/api/shares/network/**").hasRole("ADMIN")
@@ -135,6 +136,8 @@ public class SecurityConfig {
                 .requestMatchers("/api/interest/network/**").hasRole("ADMIN")
                 .requestMatchers("/api/loan-security/network/**").hasRole("ADMIN")
                 .requestMatchers("/api/loan-risk/network/**").hasRole("ADMIN")
+                .requestMatchers("/api/transaction-controls/network/**").hasRole("ADMIN")
+                .requestMatchers(HttpMethod.GET, "/api/audit/network/**").hasAnyRole("ADMIN", "AUDITOR")
 
                 // The books are readable by the cooperative's own admin; a posted entry can
                 // only ever be reversed, never edited, so that is the single write allowed.

@@ -52,7 +52,7 @@ export default function AddUserForm({
   const [step, setStep] = useState(1);
   const [formData, setFormData] = useState<{
     name: string; email: string; phone: string; dob: string; address: string;
-    sahakari: string; password: string; photo: File | null;
+    sahakari: string; password: string; role: "admin" | "auditor"; photo: File | null;
   }>({
     name: "",
     email: "",
@@ -61,6 +61,7 @@ export default function AddUserForm({
     address: "",
     sahakari: "",
     password: "",
+    role: "admin",
     photo: null,
   });
 
@@ -96,7 +97,7 @@ export default function AddUserForm({
       setFormData((previous) => ({ ...previous, photo: file }));
       return;
     }
-    if (name === "name" || name === "email" || name === "phone" || name === "dob" || name === "address" || name === "sahakari" || name === "password") {
+    if (name === "name" || name === "email" || name === "phone" || name === "dob" || name === "address" || name === "sahakari" || name === "password" || name === "role") {
       setFormData((previous) => ({ ...previous, [name]: value }));
     }
   };
@@ -130,7 +131,7 @@ export default function AddUserForm({
       form.append("phone", formData.phone);
       form.append("dob", formData.dob);
       form.append("address", formData.address);
-      form.append("role", "admin");
+      form.append("role", formData.role);
       form.append("sahakari", formData.sahakari);
       form.append("password", formData.password);
       form.append("status", "Active");
@@ -150,7 +151,7 @@ export default function AddUserForm({
       });
       const saved = parseManagedUser(await res.json());
       onUserAdded(saved);
-      window.alert(`Admin "${saved.name}" added successfully to ${formData.sahakari}.`);
+      window.alert(`${formData.role === "auditor" ? "Auditor" : "Admin"} "${saved.name}" added successfully to ${formData.sahakari}.`);
       onClose();
     } catch (caught) {
       let displayError = caught instanceof ApiError || caught instanceof Error ? caught.message : "Unable to add admin";
@@ -209,8 +210,16 @@ export default function AddUserForm({
       {step === 1 && (
         <>
           <h3 className="text-lg font-semibold text-gray-700 -mb-2 text-center">
-            Admin Details
+            Cooperative Staff Details
           </h3>
+
+          <div>
+            <label className="block font-semibold mb-2">Access role</label>
+            <select name="role" value={formData.role} onChange={handleChange} className="w-full px-4 py-3 border border-gray-300 rounded-full focus:outline-none focus:border-black">
+              <option value="admin">Administrator</option>
+              <option value="auditor">Read-only auditor</option>
+            </select>
+          </div>
 
           <div>
             <label className="block font-semibold mb-2">
@@ -404,7 +413,7 @@ export default function AddUserForm({
             disabled={saving}
             className="w-full bg-teal-500 text-white font-semibold py-3 rounded-full hover:bg-teal-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {saving ? "Saving..." : "Add Admin"}
+            {saving ? "Saving..." : `Add ${formData.role === "auditor" ? "Auditor" : "Admin"}`}
           </button>
         ) : null}
       </div>

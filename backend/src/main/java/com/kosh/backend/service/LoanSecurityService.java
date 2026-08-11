@@ -116,6 +116,12 @@ public class LoanSecurityService {
         return guarantors.findByLoanApplicationIdOrderByIdAsc(loanId);
     }
 
+    @Transactional(readOnly = true)
+    public boolean isSecuredLoan(Long loanId) {
+        return loanId != null
+                && !collaterals.findByLoanApplicationIdAndStatus(loanId, "PLEDGED").isEmpty();
+    }
+
     private LoanCollateral collateral(LoanApplication loan, CollateralInput input) {
         String type = required(input.type(), "Collateral type").toUpperCase();
         if (!COLLATERAL_TYPES.contains(type)) throw new IllegalArgumentException("Unsupported collateral type");
