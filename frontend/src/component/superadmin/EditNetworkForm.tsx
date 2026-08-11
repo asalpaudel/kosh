@@ -1,33 +1,40 @@
-import { API_BASE } from "../../lib/apiClient";
-import React, { useState } from "react";
-import { apiFetch } from "../../lib/apiClient";
+import { useState, type ChangeEvent, type FormEvent } from "react";
+import { API_BASE, ApiError, apiFetch } from "../../lib/apiClient";
+import { parseNetwork, type NetworkSummary } from "../../lib/networks";
+
+interface EditNetworkFormProps {
+  initialData: NetworkSummary;
+  onClose: () => void;
+  onNetworkUpdated: (network: NetworkSummary) => void;
+  apiBase?: string;
+}
 
 export default function EditNetworkForm({ 
   initialData, 
   onClose, 
   onNetworkUpdated, 
   apiBase = API_BASE 
-}) {
+}: EditNetworkFormProps) {
   const [formData, setFormData] = useState({
     id: initialData.id,
-    registeredId: initialData.registeredId ?? "",
-    name: initialData.name ?? "",
-    address: initialData.address ?? "",
-    createdAt: initialData.createdAt ?? "",
-    phone: initialData.phone ?? "",
-    panNumber: initialData.panNumber ?? "",
-    staffCount: initialData.staffCount?.toString() ?? "",
-    userCount: initialData.userCount?.toString() ?? "",
-    packageType: initialData.packageType ?? "",
-    packagePrice: initialData.packagePrice?.toString() ?? "",
-    adminLimit: initialData.adminLimit?.toString() ?? "",
-    userLimit: initialData.userLimit?.toString() ?? "",
+    registeredId: initialData.registeredId,
+    name: initialData.name,
+    address: initialData.address,
+    createdAt: initialData.createdAt,
+    phone: initialData.phone,
+    panNumber: initialData.panNumber,
+    staffCount: initialData.staffCount.toString(),
+    userCount: initialData.userCount.toString(),
+    packageType: initialData.packageType,
+    packagePrice: initialData.packagePrice.toString(),
+    adminLimit: initialData.adminLimit.toString(),
+    userLimit: initialData.userLimit.toString(),
   });
 
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
-  const onChange = (e) => {
+  const onChange = (e: ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ 
       ...prev, 
@@ -35,7 +42,7 @@ export default function EditNetworkForm({
     }));
   };
 
-  const onSubmit = async (e) => {
+  const onSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setSaving(true);
     setError("");
@@ -57,9 +64,6 @@ export default function EditNetworkForm({
         userLimit: formData.userLimit ? parseInt(formData.userLimit, 10) : null,
       };
 
-      console.log("Updating network:", formData.id);
-      console.log("Payload:", payload);
-
       const res = await apiFetch(`${apiBase}/networks/${formData.id}`, {
         method: "PUT",
         headers: { 
@@ -69,29 +73,19 @@ export default function EditNetworkForm({
         body: JSON.stringify(payload),
       });
 
-      console.log("HTTP Status:", res.status);
+      const saved = parseNetwork(await res.json());
 
-      if (!res.ok) {
-        const text = await res.text();
-        console.error("Error response:", text);
-        throw new Error(`HTTP ${res.status}: ${text}`);
-      }
-
-      const saved = await res.json();
-      console.log("Updated network:", saved);
-
-      onNetworkUpdated?.(saved);
-      onClose?.();
-    } catch (err) {
-      console.error("Error updating network:", err);
-      setError(`Failed to update: ${err.message}`);
+      onNetworkUpdated(saved);
+      onClose();
+    } catch (caught) {
+      setError(caught instanceof ApiError || caught instanceof Error ? caught.message : "Update failed");
     } finally {
       setSaving(false);
     }
   };
 
   return (
-    <form className="space-y-4" onSubmit={onSubmit}>
+    <form className="space-y-4" onSubmit={(event) => { void onSubmit(event); }}>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <input 
           name="registeredId" 

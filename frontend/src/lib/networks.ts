@@ -27,13 +27,11 @@ function text(value: unknown): string {
   return typeof value === "string" ? value : "";
 }
 
-export function parseNetworks(value: unknown): NetworkSummary[] {
-  if (!Array.isArray(value)) throw new Error("Invalid networks response");
-  return value.map((item) => {
-    if (!isRecord(item) || (typeof item.id !== "string" && typeof item.id !== "number")) {
-      throw new Error("Networks response contains an invalid item");
-    }
-    return {
+export function parseNetwork(item: unknown): NetworkSummary {
+  if (!isRecord(item) || (typeof item.id !== "string" && typeof item.id !== "number")) {
+    throw new Error("Invalid network response");
+  }
+  return {
       id: String(item.id),
       registeredId: text(item.registeredId),
       name: text(item.name) || "Unnamed cooperative",
@@ -49,6 +47,10 @@ export function parseNetworks(value: unknown): NetworkSummary[] {
       userLimit: finiteNumber(item.userLimit),
       hasLogo: item.hasLogo === true,
       hasDocument: item.hasDocument === true,
-    };
-  });
+  };
+}
+
+export function parseNetworks(value: unknown): NetworkSummary[] {
+  if (!Array.isArray(value)) throw new Error("Invalid networks response");
+  return value.map(parseNetwork);
 }
