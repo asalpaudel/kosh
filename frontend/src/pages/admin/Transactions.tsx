@@ -1,6 +1,7 @@
-import { API_BASE } from "../../lib/apiClient";
-import React, { useState, useEffect, useMemo, useRef } from "react";
+import { API_BASE, apiFetch } from "../../lib/apiClient";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { useLocation } from "react-router-dom";
+import { isRecord } from "../../lib/validation";
 import {
   SearchIcon,
   PlusCircleIcon,
@@ -8,17 +9,83 @@ import {
   DocumentIcon,
   Logo,
   CalendarIcon,
-} from "../../component/icons.jsx";
-import Modal from "../../component/superadmin/Modal.jsx";
-import ConfirmationModal from "../../component/ConfirmationModal.jsx";
-import AddTransactionForm from "../../component/admin/AddTransactionForm.jsx";
+} from "../../component/icons";
+import Modal from "../../component/superadmin/Modal";
+import ConfirmationModal from "../../component/ConfirmationModal";
+import AddTransactionForm from "../../component/admin/AddTransactionForm";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import html2canvas from "html2canvas-pro";
 
 
-const TransactionVoucher = ({ transaction, onClose, onStatusUpdate }) => {
-  const voucherRef = useRef(null);
+interface TransactionDetails {
+  internalHead: string;
+  direction: string;
+  paymentMethod: string;
+  chequeNo: string;
+  bankName: string;
+}
+
+interface AdminTransaction {
+  id: string;
+  transactionId: string;
+  voucherId: string;
+  userName: string;
+  user: string;
+  narration: string;
+  status: string;
+  amount: number;
+  amountValue: number;
+  date: string;
+  type: string;
+  details: TransactionDetails;
+}
+
+interface TransactionVoucherProps {
+  transaction: AdminTransaction | null;
+  onClose: () => void;
+  onStatusUpdate: (id: string, status: "Success" | "Frozen") => void;
+}
+
+type DateFilter = "all" | "today" | "week" | "month" | "custom";
+interface StatusUpdate { id: string; newStatus: "Success" | "Frozen" }
+
+const textValue = (value: unknown): string => typeof value === "string" ? value : "";
+const numericValue = (value: unknown): number => {
+  const parsed = typeof value === "number" ? value : typeof value === "string" ? Number(value) : 0;
+  return Number.isFinite(parsed) ? parsed : 0;
+};
+
+const parseAdminTransactions = (value: unknown): AdminTransaction[] => {
+  if (!Array.isArray(value)) throw new Error("Invalid transaction response");
+  return value.filter(isRecord).map((item, index) => {
+    const details = isRecord(item.details) ? item.details : {};
+    const id = typeof item.id === "string" || typeof item.id === "number" ? String(item.id) : `transaction-${String(index)}`;
+    return {
+      id,
+      transactionId: typeof item.transactionId === "string" ? item.transactionId : id,
+      voucherId: textValue(item.voucherId),
+      userName: textValue(item.userName),
+      user: textValue(item.user),
+      narration: textValue(item.narration),
+      status: textValue(item.status) || "Success",
+      amount: numericValue(item.amount ?? item.amountValue),
+      amountValue: numericValue(item.amountValue ?? item.amount),
+      date: textValue(item.date),
+      type: textValue(item.type) || "Transaction",
+      details: {
+        internalHead: textValue(details.internalHead),
+        direction: textValue(details.direction),
+        paymentMethod: textValue(details.paymentMethod),
+        chequeNo: textValue(details.chequeNo),
+        bankName: textValue(details.bankName),
+      },
+    };
+  });
+};
+
+const TransactionVoucher = ({ transaction, onClose, onStatusUpdate }: TransactionVoucherProps) => {
+  const voucherRef = useRef<HTMLDivElement | null>(null);
 
   const [sahakariInfo, setSahakariInfo] = useState({
     name: "",
@@ -26,63 +93,59 @@ const TransactionVoucher = ({ transaction, onClose, onStatusUpdate }) => {
     panNumber: "",
     logoUrl: "",
   });
-  const [sahakariLoading, setSahakariLoading] = useState(false);
-
   useEffect(() => {
     const fetchSahakari = async () => {
-      setSahakariLoading(true);
       try {
         // 1. Get Session
-        const sessionRes = await fetch(`${API_BASE}/session`, { credentials: "include" });
-        const sessionData = await sessionRes.json();
+        const sessionRes = await apiFetch(`${API_BASE}/session`);
+        const sessionData: unknown = await sessionRes.json();
+        if (!isRecord(sessionData)) throw new Error("Invalid session response");
         const sahakariId = Number(sessionData.sahakariId);
 
         if (!sahakariId) {
-          console.warn("No sahakariId in session");
-          setSahakariInfo(prev => ({ ...prev, name: sessionData.sahakari }));
+          setSahakariInfo(prev => ({ ...prev, name: textValue(sessionData.sahakari) }));
           return;
         }
 
         // 2. Get Network Info
-        const networkRes = await fetch(`${API_BASE}/networks/${sahakariId}`, { credentials: "include" });
-        const network = await networkRes.json();
+        const networkRes = await apiFetch(`${API_BASE}/networks/${encodeURIComponent(String(sahakariId))}`);
+        const network: unknown = await networkRes.json();
+        if (!isRecord(network)) throw new Error("Invalid network response");
 
         let logoUrl = "";
 
         // 3. Get Logo
         if (network.hasLogo) {
           try {
-            const logoRes = await fetch(`${API_BASE}/networks/${sahakariId}/logo/base64`, { credentials: "include" });
+            const logoRes = await apiFetch(`${API_BASE}/networks/${encodeURIComponent(String(sahakariId))}/logo/base64`);
             if (logoRes.ok) {
-              const logoJson = await logoRes.json();
+              const logoJson: unknown = await logoRes.json();
 
-              // Ensure data is not empty
-              if (logoJson.data && logoJson.data.length > 0) {
+              if (isRecord(logoJson) && typeof logoJson.data === "string" && logoJson.data.length > 0 &&
+                (logoJson.type === "image/png" || logoJson.type === "image/jpeg" || logoJson.type === "image/webp")) {
                 logoUrl = `data:${logoJson.type};base64,${logoJson.data}`;
-              } else {
-                console.warn("Logo data is empty string");
               }
             }
-          } catch (e) {
-            console.error("Logo fetch error:", e);
+          } catch {
+            logoUrl = "";
           }
         }
 
         setSahakariInfo({
-          name: network.name,
-          address: network.address,
-          panNumber: network.panNumber,
+          name: textValue(network.name),
+          address: textValue(network.address),
+          panNumber: textValue(network.panNumber),
           logoUrl: logoUrl,
         });
 
-      } catch (err) {
-        console.error("Setup error:", err);
+      } catch {
+        setSahakariInfo({ name: "", address: "", panNumber: "", logoUrl: "" });
       } finally {
-        setSahakariLoading(false);
+        // Loading state is intentionally local to the voucher fetch lifecycle.
       }
     };
 
-    fetchSahakari();
+    void fetchSahakari();
   }, []);
 
   if (!transaction) return null;
@@ -90,28 +153,11 @@ const TransactionVoucher = ({ transaction, onClose, onStatusUpdate }) => {
   const rawAmount = transaction.amount || transaction.amountValue || 0;
 
   // Determine if Credit or Debit for color coding in Voucher
-  const isCredit = transaction.details?.direction === "Credit" ||
+  const isCredit = transaction.details.direction === "Credit" ||
     (transaction.type && transaction.type.toLowerCase().includes("credit"));
 
   const isFrozen =
     transaction.status === "Frozen" || transaction.status === "Disputed";
-
-  const mockHistory = [
-    {
-      action: "Created",
-      by: "Admin",
-      time: new Date(transaction.date).toLocaleTimeString(),
-    },
-    ...(isFrozen
-      ? [
-        {
-          action: "Frozen (Dispute)",
-          by: "Superadmin",
-          time: new Date().toLocaleTimeString(),
-        },
-      ]
-      : []),
-  ];
 
   const handleExportVoucher = async () => {
     if (!voucherRef.current) return;
@@ -130,9 +176,8 @@ const TransactionVoucher = ({ transaction, onClose, onStatusUpdate }) => {
 
       pdf.addImage(imgData, "PNG", 0, 20, pdfWidth, pdfHeight);
       pdf.save(`Voucher-${transaction.voucherId || "txn"}.pdf`);
-    } catch (err) {
-      console.error("Voucher export failed:", err);
-      alert("Failed to generate voucher PDF.");
+    } catch {
+      return;
     }
   };
 
@@ -211,7 +256,7 @@ const TransactionVoucher = ({ transaction, onClose, onStatusUpdate }) => {
                 <p className="font-bold text-gray-900 text-lg">
                   {transaction.userName || transaction.user}
                 </p>
-                {transaction.details?.internalHead && (
+                {transaction.details.internalHead && (
                   <p className="text-sm text-gray-500">
                     Head: {transaction.details.internalHead}
                   </p>
@@ -225,7 +270,7 @@ const TransactionVoucher = ({ transaction, onClose, onStatusUpdate }) => {
               </div>
             </div>
 
-            {transaction.details?.paymentMethod && (
+            {transaction.details.paymentMethod && (
               <div className="mt-4 pt-4 border-t border-gray-200 grid grid-cols-1 sm:grid-cols-3 gap-4 text-sm">
                 <div>
                   <span className="block text-xs text-gray-500 uppercase font-bold">
@@ -278,20 +323,6 @@ const TransactionVoucher = ({ transaction, onClose, onStatusUpdate }) => {
             </p>
           </div>
 
-          <div>
-            <p className="text-gray-500 text-xs uppercase font-bold mb-2">
-              Status History
-            </p>
-            <div className="text-xs space-y-1 border-l-2 border-gray-200 pl-3">
-              {mockHistory.map((h, i) => (
-                <div key={i} className="text-gray-600">
-                  <span className="font-semibold text-gray-900">{h.action}</span>{" "}
-                  by {h.by} at {h.time}
-                </div>
-              ))}
-            </div>
-          </div>
-
           <div className="flex justify-between items-end mt-4 pt-4">
             <div>
               <p className="text-gray-500 text-xs uppercase font-bold mb-1">
@@ -308,12 +339,6 @@ const TransactionVoucher = ({ transaction, onClose, onStatusUpdate }) => {
                 {transaction.status}
               </span>
             </div>
-            <div className="text-center">
-              <div className="h-10 border-b border-gray-400 w-32 mb-1"></div>
-              <p className="text-xs text-gray-400 uppercase">
-                Authorized Signature
-              </p>
-            </div>
           </div>
         </div>
 
@@ -321,14 +346,14 @@ const TransactionVoucher = ({ transaction, onClose, onStatusUpdate }) => {
           <div>
             {isFrozen ? (
               <button
-                onClick={() => onStatusUpdate(transaction.id, "Success")}
+                onClick={() => { onStatusUpdate(transaction.id, "Success"); }}
                 className="flex items-center gap-2 text-green-600 hover:text-green-800 text-sm font-bold"
               >
                 <CheckIcon className="w-4 h-4" /> Unfreeze / Resolve
               </button>
             ) : (
               <button
-                onClick={() => onStatusUpdate(transaction.id, "Frozen")}
+                onClick={() => { onStatusUpdate(transaction.id, "Frozen"); }}
                 className="flex items-center gap-2 text-orange-600 hover:text-orange-800 text-sm font-bold"
               >
                 <span className="w-2 h-2 rounded-full bg-orange-500"></span>{" "}
@@ -345,7 +370,7 @@ const TransactionVoucher = ({ transaction, onClose, onStatusUpdate }) => {
               Close
             </button>
             <button
-              onClick={handleExportVoucher}
+              onClick={() => { void handleExportVoucher(); }}
               className="flex items-center gap-2 px-6 py-2.5 rounded-full text-sm font-bold text-white bg-teal-500 hover:bg-teal-600 transition-all shadow-lg"
             >
               <DocumentIcon className="w-4 h-4" /> Export PDF
@@ -358,17 +383,14 @@ const TransactionVoucher = ({ transaction, onClose, onStatusUpdate }) => {
 };
 
 function AdminTransactions() {
-  const [transactions, setTransactions] = useState([]);
+  const [transactions, setTransactions] = useState<AdminTransaction[]>([]);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-  const [selectedTransaction, setSelectedTransaction] = useState(null);
+  const [selectedTransaction, setSelectedTransaction] = useState<AdminTransaction | null>(null);
 
-  // Deletion confirmation
-  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
-  const [transactionToDelete, setTransactionToDelete] = useState(null);
-
-  const [dateFilter, setDateFilter] = useState("all");
+  const [dateFilter, setDateFilter] = useState<DateFilter>("all");
   const [fromDate, setFromDate] = useState("");
   const [toDate, setToDate] = useState("");
 
@@ -377,22 +399,14 @@ function AdminTransactions() {
   const loadTransactions = async () => {
     setLoading(true);
     try {
-      const res = await fetch(`${API_BASE}/transactions/sahakari`, {
-        credentials: "include",
-      });
+      setError("");
+      const res = await apiFetch(`${API_BASE}/transactions/sahakari`);
 
-      if (!res.ok) throw new Error(`Failed to fetch: ${res.status}`);
+      if (!res.ok) throw new Error(`Failed to fetch: ${String(res.status)}`);
 
-      const data = await res.json();
-
-      const enrichedData = (Array.isArray(data) ? data : []).map((t) => ({
-        ...t,
-        status: t.status || "Success",
-      }));
-
-      setTransactions(enrichedData);
-    } catch (err) {
-      console.error("Error loading transactions:", err);
+      setTransactions(parseAdminTransactions(await res.json()));
+    } catch {
+      setError("Unable to load transactions.");
       setTransactions([]);
     } finally {
       setLoading(false);
@@ -400,14 +414,15 @@ function AdminTransactions() {
   };
 
   useEffect(() => {
-    loadTransactions();
+    void loadTransactions();
   }, []);
 
   useEffect(() => {
-    if (location.state) {
-      if (location.state.openTransactionId && transactions.length > 0) {
+    if (isRecord(location.state)) {
+      if ((typeof location.state.openTransactionId === "string" || typeof location.state.openTransactionId === "number") && transactions.length > 0) {
+        const requestedTransactionId = String(location.state.openTransactionId);
         const targetTxn = transactions.find(
-          (t) => t.id == location.state.openTransactionId
+          (t) => t.id === requestedTransactionId
         );
         if (targetTxn) {
           setSelectedTransaction(targetTxn);
@@ -422,7 +437,7 @@ function AdminTransactions() {
     }
   }, [location, transactions]);
 
-  const handleFilterClick = (filter) => {
+  const handleFilterClick = (filter: DateFilter) => {
     setDateFilter(filter);
     if (filter !== "custom") {
       setFromDate("");
@@ -430,7 +445,7 @@ function AdminTransactions() {
     }
   };
 
-  const handleDateChange = (type, val) => {
+  const handleDateChange = (type: "from" | "to", val: string) => {
     if (type === "from") setFromDate(val);
     if (type === "to") setToDate(val);
     setDateFilter("custom");
@@ -439,7 +454,7 @@ function AdminTransactions() {
   const filteredTransactions = useMemo(() => {
     let data = transactions;
     const today = new Date();
-    const todayStr = today.toISOString().split("T")[0];
+    const todayStr = today.toISOString().split("T")[0] ?? "";
 
     if (dateFilter === "today") {
       data = data.filter((t) => t.date && t.date.startsWith(todayStr));
@@ -452,7 +467,7 @@ function AdminTransactions() {
     } else if (dateFilter === "custom" && fromDate && toDate) {
       data = data.filter((t) => {
         if (!t.date) return false;
-        const tDate = t.date.split("T")[0];
+        const tDate = t.date.split("T")[0] ?? "";
         return tDate >= fromDate && tDate <= toDate;
       });
     }
@@ -461,12 +476,12 @@ function AdminTransactions() {
     if (query) {
       data = data.filter(
         (log) =>
-          log.user?.toLowerCase().includes(query) ||
-          log.userName?.toLowerCase().includes(query) ||
-          log.type?.toLowerCase().includes(query) ||
-          log.amount?.toString().includes(query) ||
-          log.voucherId?.toLowerCase().includes(query) ||
-          log.transactionId?.toLowerCase().includes(query)
+          log.user.toLowerCase().includes(query) ||
+          log.userName.toLowerCase().includes(query) ||
+          log.type.toLowerCase().includes(query) ||
+          log.amount.toString().includes(query) ||
+          log.voucherId.toLowerCase().includes(query) ||
+          log.transactionId.toLowerCase().includes(query)
       );
     }
 
@@ -501,7 +516,7 @@ function AdminTransactions() {
       t.voucherId || "-",
       t.userName || t.user || "-",
       t.type || "-",
-      t.details?.paymentMethod || "Cash",
+      t.details.paymentMethod || "Cash",
       `Rs. ${(t.amount || t.amountValue || 0).toLocaleString()}`,
       t.status,
     ]);
@@ -516,19 +531,19 @@ function AdminTransactions() {
     });
 
     doc.save(
-      `Transactions_Report_${new Date().toISOString().split("T")[0]}.pdf`
+      `Transactions_Report_${new Date().toISOString().split("T")[0] ?? "export"}.pdf`
     );
   };
 
   const handleTransactionAdded = () => {
     setIsAddModalOpen(false);
-    loadTransactions();
+    void loadTransactions();
   };
 
-  const [statusUpdateInfo, setStatusUpdateInfo] = useState(null);
+  const [statusUpdateInfo, setStatusUpdateInfo] = useState<StatusUpdate | null>(null);
   const [isStatusUpdateModalOpen, setIsStatusUpdateModalOpen] = useState(false);
 
-  const handleUpdateStatus = (id, newStatus) => {
+  const handleUpdateStatus = (id: string, newStatus: "Success" | "Frozen") => {
     setStatusUpdateInfo({ id, newStatus });
     setIsStatusUpdateModalOpen(true);
   };
@@ -538,21 +553,22 @@ function AdminTransactions() {
     const { id, newStatus } = statusUpdateInfo;
     setIsStatusUpdateModalOpen(false);
 
-    // Update state optimistically or via API
+    const previousTransactions = transactions;
     setTransactions((prev) =>
       prev.map((t) => (t.id === id ? { ...t, status: newStatus } : t))
     );
 
     try {
-      await fetch(`${API_BASE}/transactions/${id}/status`, {
+      const response = await apiFetch(`${API_BASE}/transactions/${encodeURIComponent(id)}/status`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ status: newStatus }),
-        credentials: "include",
       });
-    } catch (err) {
-      console.error("Failed to update status:", err);
-      // Rollback if needed
+      if (!response.ok) throw new Error("Status update rejected");
+      setSelectedTransaction((current) => current?.id === id ? { ...current, status: newStatus } : current);
+    } catch {
+      setTransactions(previousTransactions);
+      setError("Unable to update transaction status.");
     } finally {
       setStatusUpdateInfo(null);
     }
@@ -560,6 +576,7 @@ function AdminTransactions() {
 
   return (
     <div className="bg-white p-3 md:p-6 min-h-[calc(100vh-8.5rem)]">
+      {error && <div role="alert" className="mb-4 rounded border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</div>}
       {/* Controls Section — stacks on mobile */}
       {/* Controls Section — stacks on mobile, row on desktop */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6 md:mb-8">
@@ -573,17 +590,17 @@ function AdminTransactions() {
             placeholder="Search Txn ID, Voucher, User..."
             className="w-full bg-gray-100 text-gray-700 border border-transparent rounded-full py-2.5 md:py-3 pl-11 pr-4 text-sm md:text-base focus:outline-none focus:bg-white focus:border-gray-300 transition-all"
             value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
+            onChange={(e) => { setSearchQuery(e.target.value); }}
           />
         </div>
 
         {/* Row 2: Filters + Date Pickers + Export */}
         <div className="flex flex-wrap items-center justify-end gap-2 md:gap-3">
           <div className="flex items-center gap-1.5 bg-gray-100 p-1 md:p-1.5 rounded-full overflow-x-auto">
-            {["all", "today", "week", "month"].map((filter) => (
+            {(["all", "today", "week", "month"] as const).map((filter) => (
               <button
                 key={filter}
-                onClick={() => handleFilterClick(filter)}
+                onClick={() => { handleFilterClick(filter); }}
                 className={`px-3 md:px-4 py-1 md:py-1.5 text-xs md:text-sm font-bold rounded-full transition-all whitespace-nowrap ${dateFilter === filter
                   ? "bg-teal-500 text-white shadow-md"
                   : "text-gray-500 hover:text-gray-700 hover:bg-gray-200"
@@ -606,7 +623,7 @@ function AdminTransactions() {
                 <input
                   type="date"
                   value={fromDate}
-                  onChange={(e) => handleDateChange("from", e.target.value)}
+                  onChange={(e) => { handleDateChange("from", e.target.value); }}
                   className="bg-transparent text-xs md:text-sm font-semibold text-gray-700 outline-none w-28 md:w-32 z-10 relative cursor-pointer"
                 />
                 <CalendarIcon className="w-4 h-4 text-teal-600 absolute right-0 top-1/2 -translate-y-1/2 pointer-events-none" />
@@ -620,7 +637,7 @@ function AdminTransactions() {
                 <input
                   type="date"
                   value={toDate}
-                  onChange={(e) => handleDateChange("to", e.target.value)}
+                  onChange={(e) => { handleDateChange("to", e.target.value); }}
                   className="bg-transparent text-xs md:text-sm font-semibold text-gray-700 outline-none w-28 md:w-32 z-10 relative cursor-pointer"
                 />
                 <CalendarIcon className="w-4 h-4 text-teal-600 absolute right-0 top-1/2 -translate-y-1/2 pointer-events-none" />
@@ -669,7 +686,7 @@ function AdminTransactions() {
           <tbody className="divide-y divide-gray-100">
             {loading ? (
               <tr>
-                <td colSpan="7" className="py-8 text-center text-gray-500">
+                <td colSpan={7} className="py-8 text-center text-gray-500">
                   Loading...
                 </td>
               </tr>
@@ -683,13 +700,13 @@ function AdminTransactions() {
                   const rawAmount = log.amount || log.amountValue || 0;
 
                   // NEW: Determine Credit vs Debit based on direction or type
-                  const isCredit = log.details?.direction === "Credit" ||
+                  const isCredit = log.details.direction === "Credit" ||
                     (log.type && log.type.toLowerCase().includes("credit"));
 
                   return (
                     <tr
                       key={log.id}
-                      onClick={() => setSelectedTransaction(log)}
+                      onClick={() => { setSelectedTransaction(log); }}
                       className={`hover:bg-gray-50 transition-colors cursor-pointer ${isFrozen ? "bg-red-50 border-l-4 border-red-400" : ""
                         }`}
                     >
@@ -711,7 +728,7 @@ function AdminTransactions() {
                       </td>
                       <td className="py-3 md:py-4 px-2 md:px-4 text-gray-900 font-semibold text-xs md:text-sm">
                         {log.userName || log.user}
-                        {log.details?.internalHead && (
+                        {log.details.internalHead && (
                           <span className="text-[10px] md:text-xs text-gray-500 block">
                             ({log.details.internalHead})
                           </span>
@@ -738,7 +755,7 @@ function AdminTransactions() {
                 })
             ) : (
               <tr>
-                <td colSpan="7" className="py-12 text-center text-gray-400">
+                <td colSpan={7} className="py-12 text-center text-gray-400">
                   No transactions found in selected range.
                 </td>
               </tr>
@@ -750,7 +767,7 @@ function AdminTransactions() {
       <div className="group fixed z-20 bottom-20 right-6 md:bottom-10 md:right-10 flex flex-col items-center gap-3">
         <button
           title="New Transaction"
-          onClick={() => setIsAddModalOpen(true)}
+          onClick={() => { setIsAddModalOpen(true); }}
           className="fab-button bg-teal-500 rounded-full p-4 text-white shadow-lg hover:bg-teal-600 transition-all"
         >
           <PlusCircleIcon className="w-10 h-10 fab-icon" />
@@ -759,25 +776,24 @@ function AdminTransactions() {
 
       <Modal
         isOpen={isAddModalOpen}
-        onClose={() => setIsAddModalOpen(false)}
+        onClose={() => { setIsAddModalOpen(false); }}
         size="2xl"
         title=""
       >
         <AddTransactionForm
           onAdded={handleTransactionAdded}
-          onClose={() => setIsAddModalOpen(false)}
         />
       </Modal>
 
       <Modal
         isOpen={!!selectedTransaction}
-        onClose={() => setSelectedTransaction(null)}
+        onClose={() => { setSelectedTransaction(null); }}
         size="2xl"
         title=""
       >
         <TransactionVoucher
           transaction={selectedTransaction}
-          onClose={() => setSelectedTransaction(null)}
+          onClose={() => { setSelectedTransaction(null); }}
           onStatusUpdate={handleUpdateStatus}
         />
       </Modal>
@@ -788,9 +804,9 @@ function AdminTransactions() {
           setIsStatusUpdateModalOpen(false);
           setStatusUpdateInfo(null);
         }}
-        onConfirm={confirmStatusUpdate}
+        onConfirm={() => { void confirmStatusUpdate(); }}
         title="Confirm Status Update"
-        message={`Are you sure you want to change the status to ${statusUpdateInfo?.newStatus}?`}
+        message={`Are you sure you want to change the status to ${statusUpdateInfo?.newStatus ?? "the selected value"}?`}
         confirmText="Update Status"
         type="info"
       />

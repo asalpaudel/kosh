@@ -1,5 +1,6 @@
-import { API_BASE as apiBase } from "../../lib/apiClient";
-import React, { useState, useEffect, useRef } from "react";
+import { API_BASE as apiBase, apiFetch } from "../../lib/apiClient";
+import { useState, useEffect, useRef, type ChangeEvent, type FormEvent } from "react";
+import { isRecord } from "../../lib/validation";
 import {
   BanknotesIcon,
   DocumentTextIcon,
@@ -11,7 +12,34 @@ import ConfirmationModal from "../ConfirmationModal";
 
 
 // --- 📅 Helper: Custom Calendar Component ---
-const CustomCalendar = ({ selectedDate, onChange, onClose }) => {
+interface CalendarProps {
+  selectedDate: string;
+  onChange: (date: string) => void;
+  onClose: () => void;
+}
+
+interface PrefilledTransaction {
+  voucherId?: string;
+  date?: string;
+  userId?: string | number;
+  userName?: string;
+  userProduct?: string;
+  transactionType?: string;
+  amountValue?: string | number;
+  narration?: string;
+  applicationId?: string | number;
+  applicationType?: string;
+}
+
+interface AddTransactionFormProps {
+  onAdded: () => void;
+  prefilledData?: PrefilledTransaction;
+}
+
+interface PackageOption { id: string; name: string; interestRate: number | null }
+interface UserOption { id: string; name: string }
+
+const CustomCalendar = ({ selectedDate, onChange, onClose }: CalendarProps) => {
   const [currentMonth, setCurrentMonth] = useState(
     new Date(selectedDate || new Date()),
   );
@@ -35,28 +63,28 @@ const CustomCalendar = ({ selectedDate, onChange, onClose }) => {
   const currentYear = new Date().getFullYear();
   const years = Array.from({ length: 80 }, (_, i) => currentYear - 50 + i);
 
-  const getDaysInMonth = (year, month) =>
+  const getDaysInMonth = (year: number, month: number) =>
     new Date(year, month + 1, 0).getDate();
-  const getFirstDayOfMonth = (year, month) => new Date(year, month, 1).getDay();
+  const getFirstDayOfMonth = (year: number, month: number) => new Date(year, month, 1).getDay();
 
   const year = currentMonth.getFullYear();
   const month = currentMonth.getMonth();
   const totalDays = getDaysInMonth(year, month);
   const firstDay = getFirstDayOfMonth(year, month);
 
-  const handleMonthChange = (e) => {
+  const handleMonthChange = (e: ChangeEvent<HTMLSelectElement>) => {
     setCurrentMonth(new Date(year, parseInt(e.target.value), 1));
   };
 
-  const handleYearChange = (e) => {
+  const handleYearChange = (e: ChangeEvent<HTMLSelectElement>) => {
     setCurrentMonth(new Date(parseInt(e.target.value), month, 1));
   };
 
-  const handleDayClick = (day) => {
+  const handleDayClick = (day: number) => {
     const newDate = new Date(year, month, day);
     const offset = newDate.getTimezoneOffset();
     const localDate = new Date(newDate.getTime() - offset * 60 * 1000);
-    onChange(localDate.toISOString().split("T")[0]);
+    onChange(localDate.toISOString().split("T")[0] ?? "");
     onClose();
   };
 
@@ -65,7 +93,7 @@ const CustomCalendar = ({ selectedDate, onChange, onClose }) => {
       <div className="flex justify-between items-center mb-4 gap-2">
         <button
           type="button"
-          onClick={() => setCurrentMonth(new Date(year, month - 1, 1))}
+          onClick={() => { setCurrentMonth(new Date(year, month - 1, 1)); }}
           className="p-1 hover:bg-gray-100 rounded text-gray-600"
         >
           ←
@@ -99,7 +127,7 @@ const CustomCalendar = ({ selectedDate, onChange, onClose }) => {
 
         <button
           type="button"
-          onClick={() => setCurrentMonth(new Date(year, month + 1, 1))}
+          onClick={() => { setCurrentMonth(new Date(year, month + 1, 1)); }}
           className="p-1 hover:bg-gray-100 rounded text-gray-600"
         >
           →
@@ -121,7 +149,7 @@ const CustomCalendar = ({ selectedDate, onChange, onClose }) => {
 
       <div className="grid grid-cols-7 gap-1">
         {Array.from({ length: firstDay }).map((_, i) => (
-          <div key={`empty-${i}`} />
+          <div key={`empty-${String(i)}`} />
         ))}
 
         {Array.from({ length: totalDays }).map((_, i) => {
@@ -136,7 +164,7 @@ const CustomCalendar = ({ selectedDate, onChange, onClose }) => {
             <button
               key={day}
               type="button"
-              onClick={() => handleDayClick(day)}
+              onClick={() => { handleDayClick(day); }}
               className={`
                 h-9 w-9 rounded-full text-sm flex items-center justify-center transition-colors
                 ${
@@ -160,21 +188,21 @@ const CustomCalendar = ({ selectedDate, onChange, onClose }) => {
   );
 };
 
-function AddTransactionForm({ onAdded, onClose, prefilledData }) {
+function AddTransactionForm({ onAdded, prefilledData }: AddTransactionFormProps) {
   const [mode, setMode] = useState(prefilledData ? "member" : "member");
   const [showCalendar, setShowCalendar] = useState(false);
-  const calendarRef = useRef(null);
+  const calendarRef = useRef<HTMLDivElement | null>(null);
 
   // --- NEW STATE: Packages & Session ---
-  const [packages, setPackages] = useState([]);
-  const [sahakariId, setSahakariId] = useState(null);
+  const [packages, setPackages] = useState<PackageOption[]>([]);
+  const [sahakariId, setSahakariId] = useState<string | number | null>(null);
   const [loadingPackages, setLoadingPackages] = useState(false);
-  const [activeLoanId, setActiveLoanId] = useState(null); // ⭐ NEW
+  const [activeLoanId, setActiveLoanId] = useState<string | number | null>(null);
 
   const [formData, setFormData] = useState({
     voucherId:
-      prefilledData?.voucherId || `V-${Math.floor(Math.random() * 10000)}`,
-    date: prefilledData?.date || new Date().toISOString().split("T")[0],
+      prefilledData?.voucherId || `V-${crypto.randomUUID().slice(0, 8).toUpperCase()}`,
+    date: prefilledData?.date || new Date().toISOString().split("T")[0] || "",
     fyType: "Current FY",
 
     userId: prefilledData?.userId || null,
@@ -188,7 +216,7 @@ function AddTransactionForm({ onAdded, onClose, prefilledData }) {
     headCategory: "Expense",
     networkLedger: "Cash",
     transactionType: prefilledData?.transactionType || "Credit",
-    amountValue: prefilledData?.amountValue || "",
+    amountValue: String(prefilledData?.amountValue ?? ""),
     paymentMethod: "Cash",
     chequeNo: "",
     bankName: "",
@@ -201,11 +229,11 @@ function AddTransactionForm({ onAdded, onClose, prefilledData }) {
   const [balances, setBalances] = useState({ current: 0, projected: 0 });
   const [fetchedBalance, setFetchedBalance] = useState(0);
   const [userSearch, setUserSearch] = useState(prefilledData?.userName || "");
-  const [userResults, setUserResults] = useState([]);
+  const [userResults, setUserResults] = useState<UserOption[]>([]);
   const [showUserResults, setShowUserResults] = useState(false);
-  const searchTimeoutRef = useRef(null);
-  const searchBoxRef = useRef(null);
-  const idempotencyKeyRef = useRef(null);
+  const searchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const searchBoxRef = useRef<HTMLDivElement | null>(null);
+  const idempotencyKeyRef = useRef<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
@@ -214,14 +242,14 @@ function AddTransactionForm({ onAdded, onClose, prefilledData }) {
 
   // 1. Fetch Session ID on mount
   useEffect(() => {
-    fetch(`${apiBase}/session`, { credentials: "include" })
+    apiFetch(`${apiBase}/session`)
       .then((res) => res.json())
-      .then((data) => {
-        if (data && data.sahakariId) {
+      .then((data: unknown) => {
+        if (isRecord(data) && (typeof data.sahakariId === "string" || typeof data.sahakariId === "number")) {
           setSahakariId(data.sahakariId);
         }
       })
-      .catch((err) => console.error("Failed to fetch session", err));
+      .catch(() => { setError("Unable to verify the current session."); });
   }, []);
 
   // 2. Fetch Packages when Product changes
@@ -230,21 +258,25 @@ function AddTransactionForm({ onAdded, onClose, prefilledData }) {
 
     let endpoint = "";
     if (formData.userProduct === "Fixed Deposit") {
-      endpoint = `/finance/fixed-deposits/${sahakariId}`;
+      endpoint = `/finance/fixed-deposits/${String(sahakariId)}`;
     } else if (formData.userProduct === "Savings") {
-      endpoint = `/finance/saving-accounts/${sahakariId}`;
+      endpoint = `/finance/saving-accounts/${String(sahakariId)}`;
     } else if (formData.userProduct === "Loan") {
-      endpoint = `/finance/loan-packages/${sahakariId}`;
+      endpoint = `/finance/loan-packages/${String(sahakariId)}`;
     } else {
       setPackages([]);
       return;
     }
 
     setLoadingPackages(true);
-    fetch(`${apiBase}${endpoint}`, { credentials: "include" })
+    apiFetch(`${apiBase}${endpoint}`)
       .then((res) => res.json())
-      .then((data) => {
-        setPackages(data || []);
+      .then((data: unknown) => {
+        const parsed = Array.isArray(data) ? data.filter(isRecord).flatMap((item) => {
+          if ((typeof item.id !== "string" && typeof item.id !== "number") || typeof item.name !== "string") return [];
+          return [{ id: String(item.id), name: item.name, interestRate: typeof item.interestRate === "number" ? item.interestRate : null }];
+        }) : [];
+        setPackages(parsed);
         setLoadingPackages(false);
       })
       .catch(() => {
@@ -262,31 +294,30 @@ function AddTransactionForm({ onAdded, onClose, prefilledData }) {
       sahakariId
     ) {
       // Fetch all loans for network and filter for this user (Since we don't have an Admin getLoansByUserId endpoint)
-      fetch(`${apiBase}/applications/loan/network/${sahakariId}`, {
-        credentials: "include",
-      })
+      apiFetch(`${apiBase}/applications/loan/network/${encodeURIComponent(String(sahakariId))}`)
         .then((res) => res.json())
-        .then((data) => {
+        .then((data: unknown) => {
           // Find Approved loan for this user
-          const activeLoan = data.find(
-            (app) =>
-              app.user.id === formData.userId && app.status === "APPROVED",
-          );
+          const activeLoan = Array.isArray(data) ? data.filter(isRecord).find(
+            (app) => isRecord(app.user) &&
+              String(app.user.id) === String(formData.userId) && app.status === "APPROVED",
+          ) : undefined;
 
-          if (activeLoan) {
-            setActiveLoanId(activeLoan.id);
+          if (activeLoan && (typeof activeLoan.id === "string" || typeof activeLoan.id === "number")) {
+            const loanId = activeLoan.id;
+            setActiveLoanId(loanId);
             setFormData((prev) => ({
               ...prev,
-              applicationId: activeLoan.id,
+              applicationId: loanId,
               applicationType: "loan",
               narration:
-                prev.narration || `Loan Repayment for ID #${activeLoan.id}`,
+                prev.narration || `Loan Repayment for ID #${String(loanId)}`,
             }));
           } else {
             setActiveLoanId(null);
           }
         })
-        .catch((err) => console.error("Failed to fetch user loans", err));
+        .catch(() => { setActiveLoanId(null); });
     } else {
       setActiveLoanId(null);
     }
@@ -299,19 +330,19 @@ function AddTransactionForm({ onAdded, onClose, prefilledData }) {
 
   // Close popups
   useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (calendarRef.current && !calendarRef.current.contains(event.target)) {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (calendarRef.current && event.target instanceof Node && !calendarRef.current.contains(event.target)) {
         setShowCalendar(false);
       }
       if (
         searchBoxRef.current &&
-        !searchBoxRef.current.contains(event.target)
+        event.target instanceof Node && !searchBoxRef.current.contains(event.target)
       ) {
         setShowUserResults(false);
       }
     };
     document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
+    return () => { document.removeEventListener("mousedown", handleClickOutside); };
   }, []);
 
   // Balance Calc (Real)
@@ -319,27 +350,28 @@ function AddTransactionForm({ onAdded, onClose, prefilledData }) {
     if (mode === "member" && formData.userId && formData.userProduct) {
       const isLoan = formData.userProduct === "Loan";
 
-      fetch(`${apiBase}/transactions`, { credentials: "include" })
+      apiFetch(`${apiBase}/transactions`)
         .then((res) => res.json())
-        .then((data) => {
+        .then((data: unknown) => {
           if (!Array.isArray(data)) return;
 
-          const userTxns = data.filter(
+          const userTxns = data.filter(isRecord).filter(
             (t) =>
               String(t.userId) === String(formData.userId) &&
-              t.type &&
+              typeof t.type === "string" &&
               t.type.includes(formData.userProduct),
           );
 
           let currentBal = 0;
           userTxns.forEach((t) => {
-            const val = parseFloat(t.amountValue || t.amount || 0);
+            const rawAmount = t.amountValue ?? t.amount ?? 0;
+            const val = typeof rawAmount === "number" ? rawAmount : Number(rawAmount);
 
             // Check direction
             const isCredit =
-              t.details?.direction === "Credit" ||
-              (t.type && t.type.includes("Credit")) ||
-              (t.type && t.type.includes("Deposit"));
+              (isRecord(t.details) && t.details.direction === "Credit") ||
+              (typeof t.type === "string" && t.type.includes("Credit")) ||
+              (typeof t.type === "string" && t.type.includes("Deposit"));
 
             if (isLoan) {
               // LOAN LOGIC (Liability Perspective):
@@ -358,7 +390,7 @@ function AddTransactionForm({ onAdded, onClose, prefilledData }) {
 
           setFetchedBalance(currentBal);
         })
-        .catch((err) => console.error("Balance fetch error", err));
+        .catch(() => { setFetchedBalance(0); });
     } else {
       setFetchedBalance(0);
     }
@@ -393,16 +425,16 @@ function AddTransactionForm({ onAdded, onClose, prefilledData }) {
     formData.userProduct,
   ]);
 
-  const handleChange = (e) => {
+  const handleChange = (e: ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
-  const handleDateInput = (e) => {
+  const handleDateInput = (e: ChangeEvent<HTMLInputElement>) => {
     setFormData((prev) => ({ ...prev, date: e.target.value }));
   };
 
-  const handleUserSearchChange = (e) => {
+  const handleUserSearchChange = (e: ChangeEvent<HTMLInputElement>) => {
     const query = e.target.value;
     setUserSearch(query);
     if (query === "")
@@ -419,29 +451,29 @@ function AddTransactionForm({ onAdded, onClose, prefilledData }) {
 
     searchTimeoutRef.current = setTimeout(async () => {
       try {
-        const response = await fetch(
+        const response = await apiFetch(
           `${apiBase}/users?search=${encodeURIComponent(query)}`,
-          {
-            credentials: "include",
-          },
         );
 
         if (!response.ok) throw new Error("Failed to fetch users");
-        const data = await response.json();
-        setUserResults(data);
-      } catch (err) {
+        const data: unknown = await response.json();
+        setUserResults(Array.isArray(data) ? data.filter(isRecord).flatMap((item) => {
+          if ((typeof item.id !== "string" && typeof item.id !== "number") || typeof item.name !== "string") return [];
+          return [{ id: String(item.id), name: item.name }];
+        }) : []);
+      } catch {
         setUserResults([]);
       }
     }, 300);
   };
 
-  const handleUserSelect = (user) => {
+  const handleUserSelect = (user: UserOption) => {
     setFormData((prev) => ({ ...prev, userId: user.id, userName: user.name }));
     setUserSearch(user.name);
     setShowUserResults(false);
   };
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setLoading(true);
     setError("");
@@ -504,22 +536,21 @@ function AddTransactionForm({ onAdded, onClose, prefilledData }) {
         applicationType: formData.applicationType,
       };
 
-      const response = await fetch(`${apiBase}/transactions`, {
+      const response = await apiFetch(`${apiBase}/transactions`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        credentials: "include",
         body: JSON.stringify(payload),
       });
 
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || (await response.text()));
+        const errorData: unknown = await response.json();
+        throw new Error(isRecord(errorData) && typeof errorData.error === "string" ? errorData.error : "Transaction rejected");
       }
 
       onAdded();
       idempotencyKeyRef.current = null;
-    } catch (err) {
-      setError(err.message);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Unable to save transaction");
     } finally {
       setLoading(false);
     }
@@ -544,10 +575,9 @@ function AddTransactionForm({ onAdded, onClose, prefilledData }) {
 
         <div
           className="relative bg-gray-200 p-1 rounded-full flex items-center w-48 h-10 cursor-pointer shadow-inner"
-          onClick={() =>
-            !isPrefilledMode &&
-            setMode(mode === "member" ? "network" : "member")
-          }
+          onClick={() => {
+            if (!isPrefilledMode) setMode(mode === "member" ? "network" : "member");
+          }}
           style={{
             opacity: isPrefilledMode ? 0.5 : 1,
             cursor: isPrefilledMode ? "not-allowed" : "pointer",
@@ -640,12 +670,12 @@ function AddTransactionForm({ onAdded, onClose, prefilledData }) {
               value={formData.date}
               onChange={handleDateInput}
               placeholder="YYYY-MM-DD"
-              onFocus={() => setShowCalendar(true)}
+              onFocus={() => { setShowCalendar(true); }}
               className="w-full bg-white border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none focus:border-black font-mono z-10 relative"
             />
             <span
               className="absolute right-3 top-1/2 -translate-y-1/2 cursor-pointer z-20"
-              onClick={() => setShowCalendar(!showCalendar)}
+              onClick={() => { setShowCalendar(!showCalendar); }}
             >
               <CalendarIcon className="w-4 h-4 text-teal-600" />
             </span>
@@ -654,8 +684,8 @@ function AddTransactionForm({ onAdded, onClose, prefilledData }) {
           {showCalendar && (
             <CustomCalendar
               selectedDate={formData.date}
-              onChange={(date) => setFormData((prev) => ({ ...prev, date }))}
-              onClose={() => setShowCalendar(false)}
+              onChange={(date) => { setFormData((prev) => ({ ...prev, date })); }}
+              onClose={() => { setShowCalendar(false); }}
             />
           )}
         </div>
@@ -703,11 +733,9 @@ function AddTransactionForm({ onAdded, onClose, prefilledData }) {
                   type="text"
                   value={userSearch}
                   onChange={handleUserSearchChange}
-                  onFocus={() =>
-                    userSearch.length > 1 &&
-                    !isPrefilledMode &&
-                    setShowUserResults(true)
-                  }
+                  onFocus={() => {
+                    if (userSearch.length > 1 && !isPrefilledMode) setShowUserResults(true);
+                  }}
                   placeholder="Search Member..."
                   disabled={isPrefilledMode}
                   className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none focus:border-teal-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
@@ -717,7 +745,7 @@ function AddTransactionForm({ onAdded, onClose, prefilledData }) {
                     {userResults.map((u) => (
                       <div
                         key={u.id}
-                        onClick={() => handleUserSelect(u)}
+                        onClick={() => { handleUserSelect(u); }}
                         className="p-2 hover:bg-teal-50 cursor-pointer text-sm border-b last:border-0"
                       >
                         <div className="font-semibold">{u.name}</div>
@@ -765,7 +793,7 @@ function AddTransactionForm({ onAdded, onClose, prefilledData }) {
                       {packages.map((pkg) => (
                         <option key={pkg.id} value={pkg.id}>
                           {pkg.name}{" "}
-                          {pkg.interestRate ? `(${pkg.interestRate}%)` : ""}
+                          {pkg.interestRate ? `(${String(pkg.interestRate)}%)` : ""}
                         </option>
                       ))}
                     </select>
@@ -825,7 +853,7 @@ function AddTransactionForm({ onAdded, onClose, prefilledData }) {
             <button
               type="button"
               onClick={() =>
-                setFormData((prev) => ({ ...prev, transactionType: "Credit" }))
+                { setFormData((prev) => ({ ...prev, transactionType: "Credit" })); }
               }
               className={`flex-1 py-2 text-sm font-semibold rounded-lg border ${
                 formData.transactionType === "Credit"
@@ -840,7 +868,7 @@ function AddTransactionForm({ onAdded, onClose, prefilledData }) {
             <button
               type="button"
               onClick={() =>
-                setFormData((prev) => ({ ...prev, transactionType: "Debit" }))
+                { setFormData((prev) => ({ ...prev, transactionType: "Debit" })); }
               }
               className={`flex-1 py-2 text-sm font-semibold rounded-lg border ${
                 formData.transactionType === "Debit"
@@ -978,7 +1006,7 @@ function AddTransactionForm({ onAdded, onClose, prefilledData }) {
             value={formData.narration}
             onChange={handleChange}
             placeholder="Remarks..."
-            rows="2"
+            rows={2}
             className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:border-black outline-none resize-none h-[52px]"
           />
         </div>
@@ -999,8 +1027,8 @@ function AddTransactionForm({ onAdded, onClose, prefilledData }) {
       </div>
       <ConfirmationModal
         isOpen={isConfirmModalOpen}
-        onClose={() => setIsConfirmModalOpen(false)}
-        onConfirm={processSubmit}
+        onClose={() => { setIsConfirmModalOpen(false); }}
+        onConfirm={() => { void processSubmit(); }}
         title="Confirm Transaction"
         message={`Are you sure you want to process this transaction of Rs. ${parseFloat(formData.amountValue).toLocaleString()}?`}
         confirmText="Confirm & Process"
