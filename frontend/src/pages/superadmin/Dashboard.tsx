@@ -1,9 +1,8 @@
-import { API_BASE } from "../../lib/apiClient";
-import React, { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   PieChart,
   Pie,
-  Cell,
   Tooltip,
   ResponsiveContainer,
   LineChart,
@@ -12,25 +11,54 @@ import {
   YAxis,
   CartesianGrid,
 } from "recharts";
-import { apiFetch } from "../../lib/apiClient";
+import { API_BASE, apiFetch } from "../../lib/apiClient";
+import { parseNetworks } from "../../lib/networks";
+import { isRecord } from "../../lib/validation";
 
 const COLORS = ["#3B82F6", "#10B981", "#F59E0B"];
+const chartColor = (index: number): string => COLORS[index % COLORS.length] ?? "#3B82F6";
 
 /* ----------------------------- UI Primitives ----------------------------- */
 
-const Kicker = ({ children }) => (
+interface NetworkStats {
+  total: number;
+  totalBasic: number;
+  totalPremium: number;
+  totalCustom: number;
+  totalUsers: number;
+  activeUsers: number;
+}
+interface PieDatum { name: string; value: number; fill: string }
+interface GrowthDatum { date: string; users: number }
+interface RecentNetwork { name: string; type: string; value: string; date: string }
+
+function numberField(record: Record<string, unknown>, key: string): number {
+  const value = record[key];
+  return typeof value === "number" && Number.isFinite(value) ? value : 0;
+}
+
+function parseStats(value: unknown): NetworkStats {
+  if (!isRecord(value)) throw new Error("Invalid network statistics response");
+  return {
+    total: numberField(value, "total"), totalBasic: numberField(value, "totalBasic"),
+    totalPremium: numberField(value, "totalPremium"), totalCustom: numberField(value, "totalCustom"),
+    totalUsers: numberField(value, "totalUsers"), activeUsers: numberField(value, "activeUsers"),
+  };
+}
+
+const Kicker = ({ children }: { children: ReactNode }) => (
   <p className="text-[11px] uppercase tracking-widest text-gray-400 mb-1">
     {children}
   </p>
 );
 
-const SectionTitle = ({ children }) => (
+const SectionTitle = ({ children }: { children: ReactNode }) => (
   <h2 className="text-lg font-medium text-gray-900">{children}</h2>
 );
 
 const Divider = () => <div className="border-t border-gray-200 my-10" />;
 
-const Stat = ({ label, value, hint, trend }) => (
+const Stat = ({ label, value, hint, trend }: { label: string; value: number; hint?: string; trend?: string }) => (
   <div className="space-y-1">
     <p className="text-[11px] uppercase tracking-wide text-gray-500">{label}</p>
     <p className="text-2xl font-semibold text-gray-900">{value}</p>
@@ -45,7 +73,7 @@ const Stat = ({ label, value, hint, trend }) => (
 
 /* ----------------------------- Sections ----------------------------- */
 
-const MetricsOverview = ({ networkStats }) => (
+const MetricsOverview = ({ networkStats }: { networkStats: NetworkStats }) => (
   <section className="space-y-6">
     <div className="space-y-1">
       <Kicker>Platform Overview</Kicker>
@@ -88,7 +116,7 @@ const MetricsOverview = ({ networkStats }) => (
   </section>
 );
 
-const NetworkDistribution = ({ networkPieData }) => (
+const NetworkDistribution = ({ networkPieData }: { networkPieData: PieDatum[] }) => (
   <section className="space-y-4">
     <div className="space-y-1">
       <Kicker>Distribution</Kicker>
@@ -105,21 +133,17 @@ const NetworkDistribution = ({ networkPieData }) => (
             innerRadius={70}
             outerRadius={110}
             paddingAngle={2}
-          >
-            {networkPieData.map((entry, idx) => (
-              <Cell key={idx} fill={COLORS[idx % COLORS.length]} />
-            ))}
-          </Pie>
+          />
           <Tooltip />
         </PieChart>
       </ResponsiveContainer>
 
       <div className="flex justify-center gap-6 mt-4">
-        {networkPieData.map((entry, idx) => (
-          <div key={idx} className="flex items-center gap-2">
+        {networkPieData.map((entry) => (
+          <div key={entry.name} className="flex items-center gap-2">
             <div
               className="w-3 h-3 rounded-full"
-              style={{ backgroundColor: COLORS[idx % COLORS.length] }}
+              style={{ backgroundColor: entry.fill }}
             />
             <span className="text-sm text-gray-600">{entry.name}</span>
             <span className="text-sm font-semibold text-gray-900">{entry.value}</span>
@@ -130,7 +154,7 @@ const NetworkDistribution = ({ networkPieData }) => (
   </section>
 );
 
-const UserGrowthTrend = ({ activeUsersData }) => (
+const UserGrowthTrend = ({ activeUsersData }: { activeUsersData: GrowthDatum[] }) => (
   <section className="space-y-4">
     <div className="space-y-1">
       <Kicker>Growth</Kicker>
@@ -176,7 +200,7 @@ const UserGrowthTrend = ({ activeUsersData }) => (
   </section>
 );
 
-const RecentNetworksTable = ({ recentNetworks }) => (
+const RecentNetworksTable = ({ recentNetworks }: { recentNetworks: RecentNetwork[] }) => (
   <section className="space-y-4">
     <div className="space-y-1">
       <Kicker>Recent Activity</Kicker>
@@ -227,7 +251,7 @@ const RecentNetworksTable = ({ recentNetworks }) => (
               ))
             ) : (
               <tr>
-                <td colSpan="4" className="px-6 py-8 text-center text-sm text-gray-400">
+                <td colSpan={4} className="px-6 py-8 text-center text-sm text-gray-400">
                   No recent networks
                 </td>
               </tr>
@@ -239,7 +263,7 @@ const RecentNetworksTable = ({ recentNetworks }) => (
   </section>
 );
 
-const QuickActions = () => (
+const QuickActions = ({ onNetworks, onAnalytics }: { onNetworks: () => void; onAnalytics: () => void }) => (
   <section className="space-y-4">
     <div className="space-y-1">
       <Kicker>Quick Access</Kicker>
@@ -247,16 +271,10 @@ const QuickActions = () => (
     </div>
 
     <div className="border border-gray-200 rounded-lg p-3 md:p-6 bg-white space-y-3">
-      <button className="w-full text-left px-4 py-3 rounded-md bg-gray-50 hover:bg-gray-100 transition text-sm font-medium text-gray-900">
-        + Add New Network
+      <button onClick={onNetworks} className="w-full text-left px-4 py-3 rounded-md bg-gray-50 hover:bg-gray-100 transition text-sm font-medium text-gray-900">
+        Manage Networks
       </button>
-      <button className="w-full text-left px-4 py-3 rounded-md bg-gray-50 hover:bg-gray-100 transition text-sm font-medium text-gray-900">
-        Manage Users
-      </button>
-      <button className="w-full text-left px-4 py-3 rounded-md bg-gray-50 hover:bg-gray-100 transition text-sm font-medium text-gray-900">
-        System Settings
-      </button>
-      <button className="w-full text-left px-4 py-3 rounded-md bg-gray-50 hover:bg-gray-100 transition text-sm font-medium text-gray-900">
+      <button onClick={onAnalytics} className="w-full text-left px-4 py-3 rounded-md bg-gray-50 hover:bg-gray-100 transition text-sm font-medium text-gray-900">
         View Analytics
       </button>
     </div>
@@ -266,62 +284,61 @@ const QuickActions = () => (
 /* ----------------------------- Main Dashboard ----------------------------- */
 
 export default function SuperadminDashboard() {
-  const [networkStats, setNetworkStats] = useState({});
-  const [recentNetworks, setRecentNetworks] = useState([]);
-  const [activeUsersData, setActiveUsersData] = useState([]);
+  const navigate = useNavigate();
+  const [networkStats, setNetworkStats] = useState<NetworkStats>({ total: 0, totalBasic: 0, totalPremium: 0, totalCustom: 0, totalUsers: 0, activeUsers: 0 });
+  const [recentNetworks, setRecentNetworks] = useState<RecentNetwork[]>([]);
+  const [activeUsersData, setActiveUsersData] = useState<GrowthDatum[]>([]);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    // Fetch network stats
-    apiFetch(`${API_BASE}/networks/stats`)
-      .then((res) => res.json())
-      .then((data) => setNetworkStats(data))
-      .catch(console.error);
-
-    // Fetch recent networks
-    apiFetch(`${API_BASE}/networks/recent`)
-      .then((res) => res.json())
-      .then((data) => {
+    const load = async () => {
+      try {
+        const [statsResponse, recentResponse, usersResponse] = await Promise.all([
+          apiFetch(`${API_BASE}/networks/stats`), apiFetch(`${API_BASE}/networks/recent`), apiFetch(`${API_BASE}/users/all`),
+        ]);
+        setNetworkStats(parseStats(await statsResponse.json()));
+        const networks = parseNetworks(await recentResponse.json());
         setRecentNetworks(
-          data.map((net) => ({
+          networks.map((net) => ({
             name: net.name,
             type: net.packageType,
             value: `Rs. ${net.packagePrice.toLocaleString()}`,
             date: new Date(net.createdAt).toLocaleDateString("en-GB"),
           }))
         );
-      })
-      .catch(console.error);
-
-    // Fetch active users
-    apiFetch(`${API_BASE}/users/all`)
-      .then((res) => res.json())
-      .then((users) => {
-        const map = {};
-        users.forEach((u) => {
-          if (u.status === "Active") {
-            const date = u.createdAt
-              ? new Date(u.createdAt).toLocaleDateString("en-GB")
+        const users: unknown = await usersResponse.json();
+        if (!Array.isArray(users)) throw new Error("Invalid users response");
+        const map: Record<string, number> = {};
+        users.filter(isRecord).forEach((user) => {
+          if (user.status === "Active") {
+            const date = typeof user.createdAt === "string" && user.createdAt
+              ? new Date(user.createdAt).toLocaleDateString("en-GB")
               : "Unknown";
             map[date] = (map[date] || 0) + 1;
           }
         });
         const chartData = Object.entries(map)
           .map(([date, users]) => ({ date, users }))
-          .sort((a, b) => new Date(a.date) - new Date(b.date));
+          .sort((a, b) => Date.parse(a.date) - Date.parse(b.date));
         setActiveUsersData(chartData);
-      })
-      .catch(console.error);
+      } catch (caught) {
+        setError(caught instanceof Error ? caught.message : "Dashboard data failed to load");
+      }
+    };
+    void load();
   }, []);
 
   const networkPieData = [
-    { name: "Basic", value: networkStats.totalBasic || 0 },
-    { name: "Premium", value: networkStats.totalPremium || 0 },
-    { name: "Custom", value: networkStats.totalCustom || 0 },
+    { name: "Basic", value: networkStats.totalBasic, fill: chartColor(0) },
+    { name: "Premium", value: networkStats.totalPremium, fill: chartColor(1) },
+    { name: "Custom", value: networkStats.totalCustom, fill: chartColor(2) },
   ];
 
   return (
     <div className="min-h-screen bg-white">
       <div className="px-3 md:px-10 py-6 md:py-10 space-y-8 md:space-y-12 max-w-[1400px] mx-auto">
+
+        {error && <p className="text-red-600" role="alert">{error}</p>}
 
         <MetricsOverview networkStats={networkStats} />
 
@@ -341,7 +358,7 @@ export default function SuperadminDashboard() {
             <RecentNetworksTable recentNetworks={recentNetworks} />
           </div>
           <div>
-            <QuickActions />
+            <QuickActions onNetworks={() => { void navigate("/superadmin/networks"); }} onAnalytics={() => { void navigate("/superadmin/analytics"); }} />
           </div>
         </div>
       </div>
