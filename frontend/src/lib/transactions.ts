@@ -6,6 +6,7 @@ export interface TransactionRecord {
   voucherId: string;
   userName: string;
   narration: string;
+  status: string;
   amount: number;
   date: string;
   type: string;
@@ -42,6 +43,7 @@ export function parseTransactions(value: unknown): TransactionRecord[] {
       voucherId: typeof record.voucherId === "string" ? record.voucherId : "",
       userName: typeof record.userName === "string" ? record.userName : "",
       narration: typeof record.narration === "string" ? record.narration : "",
+      status: typeof record.status === "string" ? record.status : "",
       amount: finiteAmount(record.amount ?? record.amountValue),
       date,
       type,

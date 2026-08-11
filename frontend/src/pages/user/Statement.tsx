@@ -1,11 +1,12 @@
-import { API_BASE } from "../../lib/apiClient";
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from 'react-router-dom';
+import { API_BASE, ApiError, apiFetch } from "../../lib/apiClient";
+import { parseTransactions, type TransactionRecord } from "../../lib/transactions";
+import { isRecord } from "../../lib/validation";
 import {
   SearchIcon,
   DocumentIcon,
   Logo,
-  XIcon
 } from '../../component/icons';
 import Modal from '../../component/superadmin/Modal';
 import jsPDF from 'jspdf';
@@ -13,85 +14,80 @@ import autoTable from 'jspdf-autotable';
 import html2canvas from 'html2canvas-pro';
 
 
-const parseAmountToNumber = (raw) => {
-  if (raw === null || raw === undefined) return 0;
-  if (typeof raw === 'number') return raw;
-
-  const cleaned = String(raw).replace(/[^\d.-]/g, '').trim();
-  const num = parseFloat(cleaned);
-  return isNaN(num) ? 0 : num;
-};
-
-const formatBalance = (num) => {
+const formatBalance = (num: number) => {
   return `Rs. ${num.toLocaleString('en-IN', {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2
   })}`;
 };
 
-const UserTransactionVoucher = ({ transaction, onClose }) => {
-  const voucherRef = useRef(null);
+interface ProcessedTransaction extends TransactionRecord {
+  displayAmount: string;
+  isCredit: boolean;
+  runningBalance: number;
+}
 
-  const [sahakariInfo, setSahakariInfo] = useState({
+interface VoucherProps {
+  transaction: ProcessedTransaction;
+  onClose: () => void;
+}
+
+interface CooperativeInfo {
+  name: string;
+  address: string;
+  panNumber: string;
+  logoUrl: string;
+}
+
+const UserTransactionVoucher = ({ transaction, onClose }: VoucherProps) => {
+  const voucherRef = useRef<HTMLDivElement | null>(null);
+
+  const [sahakariInfo, setSahakariInfo] = useState<CooperativeInfo>({
     name: "",
     address: "",
     panNumber: "",
     logoUrl: "",
   });
-  const [sahakariLoading, setSahakariLoading] = useState(false);
-
   useEffect(() => {
     const fetchSahakari = async () => {
-      setSahakariLoading(true);
       try {
-        const sessionRes = await fetch(`${API_BASE}/session`, { credentials: "include" });
-        const sessionData = await sessionRes.json();
-        const sahakariId = Number(sessionData.sahakariId);
-
-        if (!sahakariId) {
-          setSahakariInfo(prev => ({ ...prev, name: sessionData.sahakari }));
+        const sessionRes = await apiFetch(`${API_BASE}/session`);
+        const sessionData: unknown = await sessionRes.json();
+        if (!isRecord(sessionData)) return;
+        const rawId = sessionData.sahakariId;
+        if (typeof rawId !== "number" && typeof rawId !== "string") {
+          setSahakariInfo(prev => ({ ...prev, name: typeof sessionData.sahakari === "string" ? sessionData.sahakari : "" }));
           return;
         }
+        const sahakariId = encodeURIComponent(String(rawId));
 
-        const networkRes = await fetch(`${API_BASE}/networks/${sahakariId}`, { credentials: "include" });
-        const network = await networkRes.json();
+        const networkRes = await apiFetch(`${API_BASE}/networks/${sahakariId}`);
+        const network: unknown = await networkRes.json();
+        if (!isRecord(network)) return;
         let logoUrl = "";
 
-        if (network.hasLogo) {
+        if (network.hasLogo === true) {
           try {
-            const logoRes = await fetch(`${API_BASE}/networks/${sahakariId}/logo/base64`, { credentials: "include" });
-            if (logoRes.ok) {
-              const logoJson = await logoRes.json();
-              if (logoJson.data && logoJson.data.length > 0) {
-                logoUrl = `data:${logoJson.type};base64,${logoJson.data}`;
-              }
+            const logoRes = await apiFetch(`${API_BASE}/networks/${sahakariId}/logo/base64`);
+            const logoJson: unknown = await logoRes.json();
+            if (isRecord(logoJson) && typeof logoJson.data === "string" && typeof logoJson.type === "string" && logoJson.data.length > 0) {
+              logoUrl = `data:${logoJson.type};base64,${logoJson.data}`;
             }
-          } catch (e) { console.error("Logo fetch error:", e); }
+          } catch { /* Voucher export works without a logo. */ }
         }
 
         setSahakariInfo({
-          name: network.name,
-          address: network.address,
-          panNumber: network.panNumber,
-          logoUrl: logoUrl,
+          name: typeof network.name === "string" ? network.name : "",
+          address: typeof network.address === "string" ? network.address : "",
+          panNumber: typeof network.panNumber === "string" ? network.panNumber : "",
+          logoUrl,
         });
-
-      } catch (err) { console.error("Setup error:", err); }
-      finally { setSahakariLoading(false); }
+      } catch { /* Session-scoped transaction details still render. */ }
     };
-    fetchSahakari();
+    void fetchSahakari();
   }, []);
 
-  if (!transaction) return null;
-
-  // Transaction is already processed with isCredit flag in parent
-  const isCredit = transaction.isCredit;
   const totalDisplay = transaction.displayAmount;
-
-  const mockHistory = [
-    { action: "Created", by: "System", time: new Date(transaction.date).toLocaleTimeString() },
-    { action: "Processed", by: "Core Banking", time: new Date(transaction.date).toLocaleTimeString() }
-  ];
 
   const handleExportVoucher = async () => {
     if (!voucherRef.current) return;
@@ -104,12 +100,7 @@ const UserTransactionVoucher = ({ transaction, onClose }) => {
       const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
       pdf.addImage(imgData, 'PNG', 0, 20, pdfWidth, pdfHeight);
       pdf.save(`Voucher-${transaction.voucherId || 'txn'}.pdf`);
-    } catch (err) { alert("Failed to generate voucher PDF."); }
-  };
-
-  const handleReportIssue = () => {
-    const reason = window.prompt("Please describe the issue with this transaction:");
-    if (reason) alert("Issue reported successfully! Our support team will review it shortly.");
+    } catch { window.alert("Failed to generate voucher PDF."); }
   };
 
   return (
@@ -159,7 +150,7 @@ const UserTransactionVoucher = ({ transaction, onClose }) => {
             </div>
             <div className="text-right">
               <p className="text-gray-500 text-xs uppercase font-bold">System Txn ID</p>
-              <p className="font-mono">{transaction.id || transaction.transactionId}</p>
+              <p className="font-mono">{transaction.id}</p>
             </div>
           </div>
 
@@ -168,10 +159,10 @@ const UserTransactionVoucher = ({ transaction, onClose }) => {
               <div>
                 <p className="text-gray-500 text-xs uppercase font-bold mb-1">Account / User</p>
                 <p className="font-bold text-gray-900 text-lg">
-                  {transaction.userName || transaction.user}
+                  {transaction.userName || "Member"}
                 </p>
-                {transaction.details?.internalHead && (
-                  <p className="text-sm text-gray-500">Head: {transaction.details.internalHead}</p>
+                {transaction.accountHead && (
+                  <p className="text-sm text-gray-500">Head: {transaction.accountHead}</p>
                 )}
               </div>
               <div className="text-right">
@@ -180,23 +171,23 @@ const UserTransactionVoucher = ({ transaction, onClose }) => {
               </div>
             </div>
 
-            {transaction.details?.paymentMethod && (
+            {transaction.paymentMethod && (
               <div className="mt-4 pt-4 border-t border-gray-200 grid grid-cols-3 gap-4 text-sm">
                 <div>
                   <span className="block text-xs text-gray-500 uppercase font-bold">Method</span>
-                  <span className="font-medium">{transaction.details.paymentMethod}</span>
+                  <span className="font-medium">{transaction.paymentMethod}</span>
                 </div>
-                {transaction.details.paymentMethod !== 'Cash' && (
+                {transaction.paymentMethod !== 'Cash' && (
                   <>
                     <div>
                       <span className="block text-xs text-gray-500 uppercase font-bold">Cheque No</span>
                       <span className="font-medium font-mono">
-                        {transaction.details.chequeNo || '-'}
+                        {transaction.chequeNo || '-'}
                       </span>
                     </div>
                     <div>
                       <span className="block text-xs text-gray-500 uppercase font-bold">Bank</span>
-                      <span className="font-medium">{transaction.details.bankName || '-'}</span>
+                      <span className="font-medium">{transaction.bankName || '-'}</span>
                     </div>
                   </>
                 )}
@@ -221,18 +212,6 @@ const UserTransactionVoucher = ({ transaction, onClose }) => {
             </p>
           </div>
 
-          <div>
-            <p className="text-gray-500 text-xs uppercase font-bold mb-2">Status History</p>
-            <div className="text-xs space-y-1 border-l-2 border-gray-200 pl-3">
-              {mockHistory.map((h, i) => (
-                <div key={i} className="text-gray-600">
-                  <span className="font-semibold text-gray-900">{h.action}</span> by {h.by} at{' '}
-                  {h.time}
-                </div>
-              ))}
-            </div>
-          </div>
-
           <div className="flex justify-between items-end mt-4 pt-4">
             <div>
               <p className="text-gray-500 text-xs uppercase font-bold mb-1">Current Status</p>
@@ -240,22 +219,11 @@ const UserTransactionVoucher = ({ transaction, onClose }) => {
                 {transaction.status || 'Success'}
               </span>
             </div>
-            <div className="text-center">
-              <div className="h-10 border-b border-gray-400 w-32 mb-1"></div>
-              <p className="text-xs text-gray-400 uppercase">Authorized Signature</p>
-            </div>
           </div>
         </div>
 
         <div className="flex flex-wrap justify-between items-center bg-gray-50 p-4 rounded-xl border border-gray-200 gap-4">
-          <button
-            onClick={handleReportIssue}
-            className="flex items-center gap-2 text-red-600 hover:text-red-800 text-sm font-bold border border-red-200 bg-red-50 px-4 py-2 rounded-full hover:bg-red-100 transition-colors"
-          >
-            <XIcon className="w-4 h-4" /> Report an Issue
-          </button>
-
-          <div className="flex gap-3">
+          <div className="flex gap-3 ml-auto">
             <button
               onClick={onClose}
               className="px-6 py-2.5 rounded-full text-sm font-bold text-gray-600 hover:bg-gray-200 transition-colors"
@@ -263,7 +231,7 @@ const UserTransactionVoucher = ({ transaction, onClose }) => {
               Close
             </button>
             <button
-              onClick={handleExportVoucher}
+              onClick={() => { void handleExportVoucher(); }}
               className="flex items-center gap-2 px-6 py-2.5 rounded-full text-sm font-bold text-white bg-teal-500 hover:bg-teal-600 transition-all shadow-lg"
             >
               <DocumentIcon className="w-4 h-4" /> Export PDF
@@ -279,55 +247,31 @@ const UserTransactionVoucher = ({ transaction, onClose }) => {
 function Statement() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
-  const [transactions, setTransactions] = useState([]);
+  const [transactions, setTransactions] = useState<ProcessedTransaction[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
-  const [dateFilter, setDateFilter] = useState('all');
+  const [dateFilter, setDateFilter] = useState<"all" | "today" | "week" | "month" | "custom">('all');
   const [fromDate, setFromDate] = useState('');
   const [toDate, setToDate] = useState('');
-  const [selectedTransaction, setSelectedTransaction] = useState(null);
+  const [selectedTransaction, setSelectedTransaction] = useState<ProcessedTransaction | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const init = async () => {
       try {
-        const userId = localStorage.getItem('userId');
-        if (!userId) { navigate('/'); return; }
-
-        const txRes = await fetch(`${API_BASE}/transactions`, { credentials: 'include' });
-        if (!txRes.ok) throw new Error('Failed to load transactions');
-
-        const allTx = await txRes.json();
+        const txRes = await apiFetch(`${API_BASE}/transactions`);
+        const allTx = parseTransactions(await txRes.json());
 
         // 1. Filter for User & Sort Oldest to Newest for Calculation
-        const myTx = allTx
-          .filter((t) => String(t.userId) === String(userId))
-          .sort((a, b) => new Date(a.date) - new Date(b.date));
+        const myTx = allTx.sort((a, b) => Date.parse(a.date) - Date.parse(b.date));
 
         let runningBalance = 0;
 
         const processedTx = myTx.map((t) => {
-          const numericVal = parseAmountToNumber(t.amount ?? t.amountValue ?? 0);
+          const numericVal = t.amount;
 
           // ⭐ FIX: Robust Logic to determine Credit vs Debit (Aligned with Admin Side)
-          const direction = t.details?.direction || "";
-          const type = t.type || "";
-
-          const isCredit =
-            direction === "Credit" ||
-            type.includes("Deposit") ||
-            type.includes("Credit") ||
-            type.includes("Repayment"); // Repayment credits the Network, but usually implies money leaving user? 
-          // Wait - from User perspective:
-          // Deposit to Savings = Credit (+)
-          // Withdrawal from Savings = Debit (-)
-          // Loan Disbursement = Debit/Liability (+) ? No, standard statement usually tracks "Wallet Balance".
-          // Loan Disbursal = Money comes IN to wallet = Credit (+)
-          // Loan Repayment = Money goes OUT of wallet = Debit (-)
-
-          // However, your system treats "Loan" head differently in AdminChart.
-          // Let's stick to the FinancialChart logic which users see:
-          // Credit = Deposit/Credit/Repayment(if treated as income to ledger?)
-
-          // Let's use the explicit check:
+          const direction = t.direction;
+          const type = t.type;
           let finalIsCredit = false;
 
           if (direction === 'Credit' || type.includes('Deposit') || type.includes('Opening')) {
@@ -355,22 +299,24 @@ function Statement() {
 
         // 2. Reverse for Display (Newest First)
         setTransactions(processedTx.reverse());
-      } catch (error) {
-        console.error('Error loading statement:', error);
+      } catch (caught) {
+        if (caught instanceof ApiError && caught.status === 401) void navigate("/");
+        else setError(caught instanceof Error ? caught.message : "Failed to load transactions");
       } finally {
         setLoading(false);
       }
     };
 
-    init();
+    void init();
   }, [navigate]);
 
-  const handleFilterClick = (filter) => {
+  const handleFilterClick = (filter: "all" | "today" | "week" | "month") => {
     setDateFilter(filter);
-    if (filter !== 'custom') { setFromDate(''); setToDate(''); }
+    setFromDate('');
+    setToDate('');
   };
 
-  const handleDateChange = (type, val) => {
+  const handleDateChange = (type: "from" | "to", val: string) => {
     if (type === 'from') setFromDate(val);
     if (type === 'to') setToDate(val);
     setDateFilter('custom');
@@ -378,10 +324,10 @@ function Statement() {
 
   const filteredTransactions = useMemo(() => {
     let data = [...transactions];
-    const today = new Date().toISOString().split('T')[0];
+    const today = new Date().toISOString().split('T')[0] ?? "";
 
     if (dateFilter === 'today') {
-      data = data.filter((t) => t.date && t.date.startsWith(todayStr));
+      data = data.filter((t) => t.date.startsWith(today));
     } else if (dateFilter === 'week') {
       const d = new Date(); d.setDate(d.getDate() - 7);
       data = data.filter((t) => new Date(t.date) >= d);
@@ -389,15 +335,18 @@ function Statement() {
       const d = new Date(); d.setMonth(d.getMonth() - 1);
       data = data.filter((t) => new Date(t.date) >= d);
     } else if (dateFilter === 'custom' && fromDate && toDate) {
-      data = data.filter((t) => t.date?.split('T')[0] >= fromDate && t.date?.split('T')[0] <= toDate);
+      data = data.filter((t) => {
+        const day = t.date.split('T')[0] ?? "";
+        return day >= fromDate && day <= toDate;
+      });
     }
 
     if (searchQuery) {
       const q = searchQuery.toLowerCase();
       data = data.filter((t) =>
-        t.type?.toLowerCase().includes(q) ||
-        t.date?.toLowerCase().includes(q) ||
-        t.voucherId?.toLowerCase().includes(q)
+        t.type.toLowerCase().includes(q) ||
+        t.date.toLowerCase().includes(q) ||
+        t.voucherId.toLowerCase().includes(q)
       );
     }
     return data;
@@ -447,7 +396,7 @@ function Statement() {
             type="text"
             placeholder="Search transactions..."
             value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
+            onChange={(e) => { setSearchQuery(e.target.value); }}
             className="w-full bg-gray-100 text-gray-700 border border-transparent rounded-full py-2.5 md:py-3 pl-11 pr-4 text-sm md:text-base focus:outline-none focus:bg-white focus:border-gray-300"
           />
         </div>
@@ -456,10 +405,10 @@ function Statement() {
         <div className="flex flex-wrap items-center gap-2 md:gap-3 justify-end w-full md:w-auto">
           {/* Filters */}
           <div className="flex items-center gap-1.5 bg-gray-100 p-1 md:p-1.5 rounded-full overflow-x-auto">
-            {['all', 'today', 'week', 'month'].map((filter) => (
+            {(["all", "today", "week", "month"] as const).map((filter) => (
               <button
                 key={filter}
-                onClick={() => handleFilterClick(filter)}
+                onClick={() => { handleFilterClick(filter); }}
                 className={`px-3 md:px-4 py-1 md:py-1.5 text-xs md:text-sm font-bold rounded-full transition-all whitespace-nowrap ${dateFilter === filter
                   ? 'bg-teal-500 text-white shadow-md'
                   : 'text-gray-500 hover:text-gray-700 hover:bg-gray-200'
@@ -480,7 +429,7 @@ function Statement() {
               <input
                 type="date"
                 value={fromDate}
-                onChange={(e) => handleDateChange('from', e.target.value)}
+                onChange={(e) => { handleDateChange('from', e.target.value); }}
                 className="bg-transparent text-xs md:text-sm font-semibold text-gray-700 outline-none w-28 md:w-32 cursor-pointer"
               />
             </div>
@@ -489,7 +438,7 @@ function Statement() {
               <input
                 type="date"
                 value={toDate}
-                onChange={(e) => handleDateChange('to', e.target.value)}
+                onChange={(e) => { handleDateChange('to', e.target.value); }}
                 className="bg-transparent text-xs md:text-sm font-semibold text-gray-700 outline-none w-28 md:w-32 cursor-pointer"
               />
             </div>
@@ -530,7 +479,7 @@ function Statement() {
               filteredTransactions.map((t, index) => (
                 <tr
                   key={index}
-                  onClick={() => setSelectedTransaction(t)}
+                  onClick={() => { setSelectedTransaction(t); }}
                   className="hover:bg-gray-50 transition-colors cursor-pointer"
                 >
                   <td className="py-3 md:py-4 px-2 md:px-4 text-gray-600 text-xs md:text-sm font-medium text-left">
@@ -545,7 +494,7 @@ function Statement() {
                   <td className="py-3 md:py-4 px-2 md:px-4 text-gray-800 font-semibold text-xs md:text-sm text-left">
                     {t.type}
                     <span className="block text-[10px] md:text-xs text-gray-400 font-normal font-mono mt-0.5 hidden md:block">
-                      ID: {t.transactionId ? t.transactionId.substring(0, 8) : 'N/A'}
+                      ID: {t.id.slice(0, 8)}
                     </span>
                   </td>
                   <td
@@ -561,7 +510,7 @@ function Statement() {
               ))
             ) : (
               <tr>
-                <td colSpan="6" className="py-12 text-center text-gray-500">
+                <td colSpan={6} className="py-12 text-center text-gray-500">
                   <p className="text-lg font-medium">No transactions found.</p>
                   <p className="text-sm mt-1">Try adjusting your filters.</p>
                 </td>
@@ -571,8 +520,9 @@ function Statement() {
         </table>
       </div>
 
-      <Modal isOpen={!!selectedTransaction} onClose={() => setSelectedTransaction(null)} size="2xl">
-        <UserTransactionVoucher transaction={selectedTransaction} onClose={() => setSelectedTransaction(null)} />
+      {error && <p className="mb-4 text-red-600" role="alert">{error}</p>}
+      <Modal isOpen={selectedTransaction !== null} onClose={() => { setSelectedTransaction(null); }} title="Transaction voucher" size="2xl">
+        {selectedTransaction && <UserTransactionVoucher transaction={selectedTransaction} onClose={() => { setSelectedTransaction(null); }} />}
       </Modal>
     </div>
   );
