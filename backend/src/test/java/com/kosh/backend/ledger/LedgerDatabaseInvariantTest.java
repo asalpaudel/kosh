@@ -47,6 +47,7 @@ class LedgerDatabaseInvariantTest {
             statement.execute(migration("V12__loan_security.sql"));
             statement.execute(migration("V13__loan_classification_and_provisioning.sql"));
             statement.execute(migration("V14__maker_checker_and_auditor.sql"));
+            statement.execute(migration("V15__member_transparency_checkpoints.sql"));
 
             statement.execute("""
                     INSERT INTO networks (id, registered_id, name, package_type, package_price)
@@ -163,6 +164,18 @@ class LedgerDatabaseInvariantTest {
                 """))
                 .isInstanceOf(SQLException.class)
                 .hasMessageContaining("accounting_period_dates_ck");
+    }
+
+    @Test
+    void publishedCheckpointCannotBeChangedOrDeleted() throws SQLException {
+        execute("""
+                INSERT INTO ledger_checkpoints (network_id, checkpoint_date, sequence_no, entry_hash)
+                VALUES (1, DATE '2026-08-10', 0, repeat('0', 64))
+                """);
+        assertThatThrownBy(() -> execute("UPDATE ledger_checkpoints SET sequence_no = 1 WHERE network_id = 1"))
+                .isInstanceOf(SQLException.class).hasMessageContaining("append-only");
+        assertThatThrownBy(() -> execute("DELETE FROM ledger_checkpoints WHERE network_id = 1"))
+                .isInstanceOf(SQLException.class).hasMessageContaining("append-only");
     }
 
     /** Writes a complete balanced entry in one transaction, the way the application does. */

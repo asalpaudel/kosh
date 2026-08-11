@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from 'react-router-dom';
 import { API_BASE, ApiError, apiFetch } from "../../lib/apiClient";
-import { parseTransactions, type TransactionRecord } from "../../lib/transactions";
+import { parseMemberTransparency, type LedgerCheckpoint } from "../../lib/memberTransparency";
 import { isRecord } from "../../lib/validation";
 import {
   SearchIcon,
@@ -23,7 +23,22 @@ const formatBalance = (num: number) => {
   })}`;
 };
 
-interface ProcessedTransaction extends TransactionRecord {
+interface ProcessedTransaction {
+  id: string;
+  sequenceNo: number;
+  entryHash: string;
+  voucherId: string;
+  userName: string;
+  narration: string;
+  status: string;
+  amount: number;
+  date: string;
+  type: string;
+  accountHead: string;
+  direction: string;
+  paymentMethod: string;
+  chequeNo: string;
+  bankName: string;
   displayAmount: string;
   isCredit: boolean;
   runningBalance: number;
@@ -151,8 +166,8 @@ const UserTransactionVoucher = ({ transaction, onClose }: VoucherProps) => {
               </p>
             </div>
             <div className="text-right">
-              <p className="text-gray-500 text-xs uppercase font-bold">System Txn ID</p>
-              <p className="font-mono">{transaction.id}</p>
+              <p className="text-gray-500 text-xs uppercase font-bold">Journal sequence</p>
+              <p className="font-mono">#{transaction.sequenceNo}</p>
             </div>
           </div>
 
@@ -195,6 +210,11 @@ const UserTransactionVoucher = ({ transaction, onClose }: VoucherProps) => {
                 )}
               </div>
             )}
+          </div>
+
+          <div className="rounded-lg border border-teal-100 bg-teal-50 p-4">
+            <p className="text-[10px] font-bold uppercase tracking-widest text-teal-700">Tamper-evident entry hash</p>
+            <p className="mt-2 break-all font-mono text-xs text-teal-900">{transaction.entryHash}</p>
           </div>
 
           <div className="flex justify-between items-center py-4 border-t border-b border-gray-100">
@@ -255,52 +275,24 @@ function Statement() {
   const [fromDate, setFromDate] = useState('');
   const [toDate, setToDate] = useState('');
   const [selectedTransaction, setSelectedTransaction] = useState<ProcessedTransaction | null>(null);
+  const [checkpoints, setCheckpoints] = useState<LedgerCheckpoint[]>([]);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const init = async () => {
       try {
-        const txRes = await apiFetch(`${API_BASE}/transactions`);
-        const allTx = parseTransactions(await txRes.json());
-
-        // 1. Filter for User & Sort Oldest to Newest for Calculation
-        const myTx = allTx.sort((a, b) => Date.parse(a.date) - Date.parse(b.date));
-
-        let runningBalance = 0;
-
-        const processedTx = myTx.map((t) => {
-          const numericVal = t.amount;
-
-          // ⭐ FIX: Robust Logic to determine Credit vs Debit (Aligned with Admin Side)
-          const direction = t.direction;
-          const type = t.type;
-          let finalIsCredit = false;
-
-          if (direction === 'Credit' || type.includes('Deposit') || type.includes('Opening')) {
-            finalIsCredit = true;
-          } else if (direction === 'Debit' || type.includes('Withdraw')) {
-            finalIsCredit = false;
-          } else {
-            // Fallback based on type strings if direction is missing
-            finalIsCredit = !type.toLowerCase().includes('withdraw') && !type.toLowerCase().includes('debit');
-          }
-
-          if (finalIsCredit) {
-            runningBalance += numericVal;
-          } else {
-            runningBalance -= numericVal;
-          }
-
-          return {
-            ...t,
-            displayAmount: `Rs. ${numericVal.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`,
-            isCredit: finalIsCredit,
-            runningBalance,
-          };
-        });
-
-        // 2. Reverse for Display (Newest First)
-        setTransactions(processedTx.reverse());
+        const response = await apiFetch(`${API_BASE}/member-transparency/me`);
+        const ledger = parseMemberTransparency(await response.json());
+        setCheckpoints(ledger.checkpoints);
+        setTransactions(ledger.history.map((line) => ({
+          id: line.lineId, sequenceNo: line.sequenceNo, entryHash: line.entryHash,
+          voucherId: line.voucherRef, userName: ledger.memberName, narration: line.narration,
+          status: "Posted", amount: Math.abs(line.change), date: line.date,
+          type: line.narration || line.sourceType || "Ledger posting", accountHead: line.accountName,
+          direction: line.change >= 0 ? "Credit" : "Debit", paymentMethod: "", chequeNo: "", bankName: "",
+          displayAmount: `Rs. ${Math.abs(line.change).toLocaleString('en-IN', { minimumFractionDigits: 2 })}`,
+          isCredit: line.change >= 0, runningBalance: line.balanceAfter,
+        })));
       } catch (caught) {
         if (caught instanceof ApiError && caught.status === 401) void navigate("/");
         else setError(caught instanceof Error ? caught.message : "Failed to load transactions");
@@ -360,11 +352,11 @@ function Statement() {
     doc.setFontSize(10);
     doc.text(`Generated: ${formatDualDate(todayInNepal())}`, 14, 26);
 
-    const tableColumn = ['Date', 'Voucher', 'Description', 'Amount', 'Balance'];
+    const tableColumn = ['Journal #', 'Date', 'Voucher', 'Account / description', 'Amount', 'Account balance'];
 
     // ⭐ FIX: Add (Cr)/(Dr) signs to PDF
     const tableRows = filteredTransactions.map((item) => [
-      item.date ? formatDualDate(item.date) : '-',
+      String(item.sequenceNo), item.date ? formatDualDate(item.date) : '-',
       item.voucherId || '-',
       item.type,
       `${item.isCredit ? '(Cr) +' : '(Dr) -'} ${item.displayAmount}`,
@@ -386,6 +378,10 @@ function Statement() {
 
   return (
     <div className="bg-white p-4 md:p-6 min-h-[calc(100vh-8.5rem)]">
+      <section className="mb-6 rounded-2xl border border-teal-200 bg-teal-50 p-5">
+        <p className="text-xs font-black uppercase tracking-widest text-teal-700">Ledger checkpoint</p>
+        {checkpoints[0] ? <><p className="mt-2 font-bold text-slate-900">Latest checkpoint: journal #{checkpoints[0].sequenceNo} on {formatDualDate(checkpoints[0].checkpointDate)}</p><p className="mt-2 break-all font-mono text-xs text-teal-900">{checkpoints[0].entryHash}</p>{checkpoints[0].recipientCount > 0 ? <p className="mt-2 text-xs text-slate-600">Externally anchored in {checkpoints[0].recipientCount} member email inbox{checkpoints[0].recipientCount === 1 ? "" : "es"}. Keep that email as an independent receipt.</p> : <p className="mt-2 text-xs font-bold text-amber-700">This checkpoint was not delivered externally. Ask the cooperative to verify its email channel.</p>}</> : <p className="mt-2 text-sm text-slate-600">The first checkpoint will be emailed after the cooperative completes month-end close.</p>}
+      </section>
       {/* Controls Section — stacks on mobile */}
       {/* Controls Section */}
       <div className="flex flex-col md:flex-row justify-between items-center gap-4 mb-6 md:mb-8">
@@ -452,7 +448,7 @@ function Statement() {
         <table className="w-full text-left">
           <thead className="bg-gray-50 text-gray-500">
             <tr>
-              <th className="py-3 md:py-4 px-2 md:px-4 text-[10px] md:text-xs font-bold uppercase tracking-wider text-left">S.N</th>
+              <th className="py-3 md:py-4 px-2 md:px-4 text-[10px] md:text-xs font-bold uppercase tracking-wider text-left">Journal #</th>
               <th className="py-3 md:py-4 px-2 md:px-4 text-[10px] md:text-xs font-bold uppercase tracking-wider text-left">Date</th>
               <th className="py-3 md:py-4 px-2 md:px-4 text-[10px] md:text-xs font-bold uppercase tracking-wider text-left hidden md:table-cell">Voucher</th>
               <th className="py-3 md:py-4 px-2 md:px-4 text-[10px] md:text-xs font-bold uppercase tracking-wider text-left">
@@ -468,14 +464,14 @@ function Statement() {
           </thead>
           <tbody className="divide-y divide-gray-100">
             {filteredTransactions.length > 0 ? (
-              filteredTransactions.map((t, index) => (
+              filteredTransactions.map((t) => (
                 <tr
-                  key={index}
+                  key={t.id}
                   onClick={() => { setSelectedTransaction(t); }}
                   className="hover:bg-gray-50 transition-colors cursor-pointer"
                 >
                   <td className="py-3 md:py-4 px-2 md:px-4 text-gray-600 text-xs md:text-sm font-medium text-left">
-                    {index + 1}
+                    {t.sequenceNo}
                   </td>
                   <td className="py-3 md:py-4 px-2 md:px-4 text-gray-600 text-xs md:text-sm whitespace-nowrap text-left">
                     {t.date}
@@ -486,7 +482,7 @@ function Statement() {
                   <td className="py-3 md:py-4 px-2 md:px-4 text-gray-800 font-semibold text-xs md:text-sm text-left">
                     {t.type}
                     <span className="block text-[10px] md:text-xs text-gray-400 font-normal font-mono mt-0.5 hidden md:block">
-                      ID: {t.id.slice(0, 8)}
+                      {t.accountHead} · hash {t.entryHash.slice(0, 10)}…
                     </span>
                   </td>
                   <td

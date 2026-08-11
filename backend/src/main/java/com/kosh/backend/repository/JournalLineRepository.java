@@ -15,6 +15,13 @@ public interface JournalLineRepository extends JpaRepository<JournalLine, Long> 
 
     List<JournalLine> findByEntryIdOrderByIdAsc(Long entryId);
 
+    @Query("""
+           SELECT l FROM JournalLine l JOIN FETCH l.entry e JOIN FETCH l.account a
+           WHERE e.network.id = :networkId AND l.member.id = :memberId
+           ORDER BY e.sequenceNo ASC, l.id ASC
+           """)
+    List<JournalLine> memberHistory(@Param("networkId") Long networkId, @Param("memberId") Long memberId);
+
     /** Net movement on an account, as debit minus credit. Callers apply the account's normal side. */
     @Query("""
            SELECT COALESCE(SUM(l.debit - l.credit), 0) FROM JournalLine l

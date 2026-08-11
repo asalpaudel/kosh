@@ -39,7 +39,7 @@ public class LedgerService {
     private static final ZoneId NEPAL_TIME = ZoneId.of("Asia/Kathmandu");
 
     /** Seed of a cooperative's chain: the "previous hash" of its first entry. */
-    static final String GENESIS_HASH = "0".repeat(64);
+    public static final String GENESIS_HASH = "0".repeat(64);
 
     private final AccountRepository accountRepo;
     private final JournalEntryRepository entryRepo;

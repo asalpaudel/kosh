@@ -19,6 +19,7 @@ import com.kosh.backend.repository.NetworkRepository;
 import com.kosh.backend.service.CloseService;
 import com.kosh.backend.service.CloseService.CloseType;
 import com.kosh.backend.service.NetworkAccessService;
+import com.kosh.backend.service.CheckpointPublicationService;
 
 import jakarta.servlet.http.HttpSession;
 
@@ -28,11 +29,14 @@ public class CloseController {
     private final CloseService closeService;
     private final NetworkRepository networks;
     private final NetworkAccessService access;
+    private final CheckpointPublicationService checkpoints;
 
-    public CloseController(CloseService closeService, NetworkRepository networks, NetworkAccessService access) {
+    public CloseController(CloseService closeService, NetworkRepository networks, NetworkAccessService access,
+            CheckpointPublicationService checkpoints) {
         this.closeService = closeService;
         this.networks = networks;
         this.access = access;
+        this.checkpoints = checkpoints;
     }
 
     @PostMapping("/network/{networkId}/run")
@@ -43,6 +47,7 @@ public class CloseController {
         if (network == null) return ResponseEntity.notFound().build();
         return execute(() -> {
             var result = closeService.close(network, request.processingDate(), request.closeType(), actor(session));
+            if (request.closeType() == CloseType.MONTH_END) checkpoints.publish(network, request.processingDate());
             return new CloseView(periodView(result.period()), result.alreadyProcessed(), result.tasksExecuted());
         });
     }

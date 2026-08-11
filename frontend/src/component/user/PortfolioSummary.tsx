@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { API_BASE, apiFetch } from "../../lib/apiClient";
-import { parseTransactions } from "../../lib/transactions";
+import { parseMemberTransparency } from "../../lib/memberTransparency";
 import { PiggyBankIcon } from "../icons";
 
 
@@ -45,51 +45,13 @@ function PortfolioSummary() {
   useEffect(() => {
     const fetchPortfolioData = async () => {
       try {
-        const response = await apiFetch(`${API_BASE}/transactions`);
-        const transactions = parseTransactions(await response.json());
-
-        let totalSavings = 0;
-        let totalFD = 0;
-        let totalLoan = 0;
-
-        for (const transaction of transactions) {
-          const { amount, accountHead: head, direction, type } = transaction;
-
-          // 1. SAVINGS LOGIC
-          if (head.includes("Savings") || type.includes("Savings")) {
-            const isCredit = direction === "Credit" || type.includes("Deposit") || type.includes("Opening");
-            const isDebit = direction === "Debit" || type.includes("Withdraw");
-
-            if (isCredit) totalSavings += amount;
-            else if (isDebit) totalSavings -= amount;
-          }
-
-          // 2. FIXED DEPOSIT LOGIC
-          if (head.includes("Fixed Deposit") || type.includes("Fixed Deposit")) {
-            const isCredit = direction === "Credit" || type.includes("Creation") || type.includes("Deposit");
-            const isDebit = direction === "Debit" || type.includes("Withdraw");
-
-            if (isCredit) totalFD += amount;
-            else if (isDebit) totalFD -= amount;
-          }
-
-          // 3. LOAN LOGIC (Outstanding Debt)
-          // Debit = Disbursement (Debt Increases +)
-          // Credit = Repayment (Debt Decreases -)
-          if (head.includes("Loan") || type.includes("Loan")) {
-            const isDebit = direction === "Debit" || type.includes("Disbursement");
-            const isCredit = direction === "Credit" || type.includes("Repayment");
-
-            if (isDebit) totalLoan += amount;
-            else if (isCredit) totalLoan -= amount;
-          }
-        }
-
-        // Update portfolio data
+        const response = await apiFetch(`${API_BASE}/member-transparency/me`);
+        const ledger = parseMemberTransparency(await response.json());
         setPortfolioData([
-          { label: "Savings", value: Math.max(0, totalSavings), color: "bg-blue-500" },
-          { label: "Fixed Deposit", value: Math.max(0, totalFD), color: "bg-teal-400" },
-          { label: "Loan", value: Math.max(0, totalLoan), color: "bg-red-500" },
+          { label: "Savings", value: Math.max(0, ledger.savingsBalance), color: "bg-blue-500" },
+          { label: "Fixed Deposit", value: Math.max(0, ledger.fixedDepositBalance), color: "bg-teal-400" },
+          { label: "Loan", value: Math.max(0, ledger.loanBalance), color: "bg-red-500" },
+          { label: "Share capital", value: Math.max(0, ledger.shareCapitalBalance), color: "bg-amber-400" },
         ]);
 
       } catch (error) {

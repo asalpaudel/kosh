@@ -142,6 +142,16 @@ class SecurityConfigAuthorizationTest {
                 .andExpect(status().isForbidden());
     }
 
+    @Test
+    void onlyMemberCanReadPersonalTransparencyLedger() throws Exception {
+        mockMvc.perform(get("/api/member-transparency/me").session(session("member")))
+                .andExpect(status().isOk());
+        mockMvc.perform(get("/api/member-transparency/me").session(session("admin")))
+                .andExpect(status().isForbidden());
+        mockMvc.perform(get("/api/member-transparency/me").session(session("auditor")))
+                .andExpect(status().isForbidden());
+    }
+
     private MockHttpSession session(String role) {
         var session = new MockHttpSession();
         session.setAttribute("userEmail", role + "@example.test");
@@ -205,5 +215,8 @@ class SecurityConfigAuthorizationTest {
         String auditOverview(@PathVariable int id) {
             return Integer.toString(id);
         }
+
+        @GetMapping("/api/member-transparency/me")
+        String memberTransparency() { return "ok"; }
     }
 }

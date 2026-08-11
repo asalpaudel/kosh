@@ -2,7 +2,7 @@ import type { ApexOptions } from "apexcharts";
 import { useEffect, useState } from "react";
 import ReactApexChart from "react-apexcharts";
 import { API_BASE, apiFetch } from "../../lib/apiClient";
-import { parseTransactions } from "../../lib/transactions";
+import { parseMemberTransparency } from "../../lib/memberTransparency";
 
 
 interface ChartPoint {
@@ -25,42 +25,12 @@ const FinancialChart = () => {
   useEffect(() => {
     const fetchChartData = async () => {
       try {
-        const response = await apiFetch(`${API_BASE}/transactions`);
-        const transactions = parseTransactions(await response.json());
-        transactions.sort((a, b) => Date.parse(a.date) - Date.parse(b.date));
-
-        let currentBalance = 0;
-        const seriesData = transactions.map((transaction) => {
-          const { amount, direction, type } = transaction;
-
-          const isCredit = 
-            direction === "Credit" || 
-            type.includes("Deposit") || 
-            type.includes("Credit") ||
-            type.includes("Repayment"); // Repayment is a credit to the network, but usually debit to user wallet. 
-            // Wait, standard banking:
-            // Credit = Money In (Deposit)
-            // Debit = Money Out (Withdrawal)
-            
-          const isDebit = 
-            direction === "Debit" || 
-            type.includes("Withdraw") || 
-            type.includes("Debit") ||
-            type.includes("Disbursement");
-
-          // Apply to Balance
-          if (isCredit) {
-            currentBalance += amount;
-          } else if (isDebit) {
-            currentBalance -= amount;
-          }
-          // If neither (e.g., internal transfer not affecting wallet), balance stays same.
-
-          return {
+        const response = await apiFetch(`${API_BASE}/member-transparency/me`);
+        const ledger = parseMemberTransparency(await response.json());
+        const seriesData = ledger.history.filter((line) => line.accountCode === "2000").slice().reverse().map((transaction) => ({
             x: Date.parse(transaction.date),
-            y: currentBalance
-          };
-        });
+            y: transaction.balanceAfter
+          }));
 
         // If no data, add a zero point for today
         if (seriesData.length === 0) {

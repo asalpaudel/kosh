@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { API_BASE, apiFetch } from "../../lib/apiClient";
-import { parseTransactions } from "../../lib/transactions";
+import { parseMemberTransparency } from "../../lib/memberTransparency";
 import { formatDualDate } from "../../lib/nepaliDate";
 
 const formatAmount = (num: number): string => {
@@ -12,30 +12,24 @@ const formatAmount = (num: number): string => {
 
 function TransactionsList() {
   const [transactions, setTransactions] = useState<
-    Array<{ id: string; description: string; date: string; isDebit: boolean; amount: string }>
+    Array<{ id: string; sequence: number; description: string; date: string; isDebit: boolean; amount: string }>
   >([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchTransactions = async () => {
       try {
-        const response = await apiFetch(`${API_BASE}/transactions`);
-        const transactions = parseTransactions(await response.json());
-        transactions.sort((a, b) => Date.parse(b.date) - Date.parse(a.date));
-
-        // Process WITHOUT BALANCE
-        const processedTxns = transactions.slice(0, 5).map((transaction) => {
-          const isDebit =
-            transaction.direction === "Debit" ||
-            transaction.type === "Withdrawal" ||
-            transaction.type.includes("Debit");
-          
+        const response = await apiFetch(`${API_BASE}/member-transparency/me`);
+        const ledger = parseMemberTransparency(await response.json());
+        const processedTxns = ledger.history.slice(0, 5).map((transaction) => {
+          const isDebit = transaction.change < 0;
           return {
-            id: transaction.id,
-            description: transaction.type,
+            id: transaction.lineId,
+            sequence: transaction.sequenceNo,
+            description: transaction.narration || transaction.accountName,
             date: transaction.date ? formatDualDate(transaction.date) : "-",
             isDebit,
-            amount: formatAmount(transaction.amount),
+            amount: formatAmount(transaction.change),
           };
         });
 
@@ -70,7 +64,7 @@ function TransactionsList() {
             <div key={transaction.id} className="flex justify-between items-center border-b pb-2 last:border-b-0 last:pb-0">
               <div className="flex flex-col">
                 <span className="text-gray-800 font-medium">{transaction.description}</span>
-                <span className="text-gray-500 text-sm">{transaction.date}</span>
+                <span className="text-gray-500 text-sm">Journal #{transaction.sequence} · {transaction.date}</span>
               </div>
               <div className="flex flex-col items-end">
                 <span className={`${transaction.isDebit ? 'text-red-500' : 'text-green-500'} font-semibold`}>

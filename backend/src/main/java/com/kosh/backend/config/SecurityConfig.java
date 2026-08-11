@@ -129,6 +129,7 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.POST, "/api/transactions/*/approve", "/api/transactions/*/reject").hasRole("ADMIN")
                 .requestMatchers(HttpMethod.GET, "/api/transactions/sahakari").hasRole("ADMIN")
                 .requestMatchers(HttpMethod.GET, "/api/transactions").hasAnyRole("MEMBER", "ADMIN")
+                .requestMatchers(HttpMethod.GET, "/api/member-transparency/me").hasRole("MEMBER")
 
                 .requestMatchers(HttpMethod.GET, "/api/shares/me/**").hasRole("MEMBER")
                 .requestMatchers("/api/shares/network/**").hasRole("ADMIN")

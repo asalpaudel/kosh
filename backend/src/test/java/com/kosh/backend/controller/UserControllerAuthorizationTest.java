@@ -25,7 +25,9 @@ import com.kosh.backend.repository.ActivityLogRepository;
 import com.kosh.backend.repository.NetworkRepository;
 import com.kosh.backend.repository.UserRepository;
 import com.kosh.backend.service.ShareCapitalService;
+import com.kosh.backend.ledger.LedgerReports;
 import java.time.LocalDate;
+import java.math.BigDecimal;
 
 @ExtendWith(MockitoExtension.class)
 class UserControllerAuthorizationTest {
@@ -35,13 +37,14 @@ class UserControllerAuthorizationTest {
     @Mock ActivityLogRepository activityLogRepository;
     @Mock PasswordEncoder passwordEncoder;
     @Mock ShareCapitalService shareCapitalService;
+    @Mock LedgerReports ledgerReports;
 
     private UserController controller;
 
     @BeforeEach
     void setUp() {
         controller = new UserController(userRepository, networkRepository, activityLogRepository, passwordEncoder,
-                shareCapitalService);
+                shareCapitalService, ledgerReports);
     }
 
     @Test
@@ -56,6 +59,19 @@ class UserControllerAuthorizationTest {
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
         verify(userRepository, never()).save(any());
+    }
+
+    @Test
+    void memberProfileBalanceComesFromLedgerInsteadOfCachedColumn() {
+        User target = member(21, 100L); target.setBalance(new BigDecimal("9999.00"));
+        when(userRepository.findById(21L)).thenReturn(Optional.of(target));
+        when(ledgerReports.derivedSavingsBalance(21L)).thenReturn(new BigDecimal("725.50"));
+        MockHttpSession session = new MockHttpSession(); session.setAttribute("userId", 21L);
+
+        var response = controller.getCurrentUser(session);
+
+        assertThat(((java.util.Map<?, ?>) response.getBody()).get("balance"))
+                .isEqualTo(new BigDecimal("725.50"));
     }
 
     @Test

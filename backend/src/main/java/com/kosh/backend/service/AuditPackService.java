@@ -18,11 +18,13 @@ import com.kosh.backend.model.ActivityLog;
 import com.kosh.backend.model.JournalEntry;
 import com.kosh.backend.model.Network;
 import com.kosh.backend.model.Transaction;
+import com.kosh.backend.model.LedgerCheckpoint;
 import com.kosh.backend.repository.AccountingPeriodRepository;
 import com.kosh.backend.repository.ActivityLogRepository;
 import com.kosh.backend.repository.JournalEntryRepository;
 import com.kosh.backend.repository.JournalLineRepository;
 import com.kosh.backend.repository.TransactionRepository;
+import com.kosh.backend.repository.LedgerCheckpointRepository;
 
 @Service
 public class AuditPackService {
@@ -31,13 +33,14 @@ public class AuditPackService {
     private final JournalLineRepository lines;
     private final ActivityLogRepository activities;
     private final AccountingPeriodRepository periods;
+    private final LedgerCheckpointRepository checkpoints;
     private final ObjectMapper json;
 
     public AuditPackService(TransactionRepository transactions, JournalEntryRepository entries,
             JournalLineRepository lines, ActivityLogRepository activities,
-            AccountingPeriodRepository periods, ObjectMapper json) {
+            AccountingPeriodRepository periods, LedgerCheckpointRepository checkpoints, ObjectMapper json) {
         this.transactions = transactions; this.entries = entries; this.lines = lines;
-        this.activities = activities; this.periods = periods; this.json = json;
+        this.activities = activities; this.periods = periods; this.checkpoints = checkpoints; this.json = json;
     }
 
     @Transactional(readOnly = true)
@@ -59,17 +62,19 @@ public class AuditPackService {
             List<JournalEntry> journalRows = entries.findByNetworkIdOrderBySequenceNoAsc(network.getId());
             List<ActivityLog> activityRows = activities.findBySahakariIdOrderByTimestampDesc(network.getId());
             List<AccountingPeriod> periodRows = periods.findByNetworkIdOrderByPeriodEndDescIdDesc(network.getId());
+            List<LedgerCheckpoint> checkpointRows = checkpoints.findByNetworkIdOrderByCheckpointDateAsc(network.getId());
             ByteArrayOutputStream output = new ByteArrayOutputStream();
             try (ZipOutputStream zip = new ZipOutputStream(output, StandardCharsets.UTF_8)) {
                 add(zip, "manifest.json", json.writeValueAsBytes(Map.of(
                         "networkId", network.getId(), "networkName", network.getName(),
                         "generatedAt", Instant.now().toString(), "transactionCount", transactionRows.size(),
                         "journalEntryCount", journalRows.size(), "activityCount", activityRows.size(),
-                        "periodCount", periodRows.size())));
+                        "periodCount", periodRows.size(), "checkpointCount", checkpointRows.size())));
                 add(zip, "transactions.csv", transactionCsv(transactionRows));
                 add(zip, "journal.csv", journalCsv(journalRows));
                 add(zip, "activity-log.csv", activityCsv(activityRows));
                 add(zip, "accounting-periods.csv", periodCsv(periodRows));
+                add(zip, "ledger-checkpoints.csv", checkpointCsv(checkpointRows));
             }
             return output.toByteArray();
         } catch (IOException exception) {
@@ -109,6 +114,13 @@ public class AuditPackService {
         values.forEach(value -> row(csv, value.getPeriodType(), value.getPeriodStart(), value.getPeriodEnd(),
                 value.getClosedAt(), value.getClosedBy(), value.getReopenedAt(), value.getReopenedBy(),
                 value.getReopenReason()));
+        return csv.toString().getBytes(StandardCharsets.UTF_8);
+    }
+
+    private byte[] checkpointCsv(List<LedgerCheckpoint> values) {
+        StringBuilder csv = new StringBuilder("date,sequence,entry_hash,published_at,recipient_count\n");
+        values.forEach(value -> row(csv, value.getCheckpointDate(), value.getSequenceNo(), value.getEntryHash(),
+                value.getPublishedAt(), value.getRecipientCount()));
         return csv.toString().getBytes(StandardCharsets.UTF_8);
     }
 

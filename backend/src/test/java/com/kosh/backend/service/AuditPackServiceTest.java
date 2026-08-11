@@ -20,6 +20,7 @@ import com.kosh.backend.repository.ActivityLogRepository;
 import com.kosh.backend.repository.JournalEntryRepository;
 import com.kosh.backend.repository.JournalLineRepository;
 import com.kosh.backend.repository.TransactionRepository;
+import com.kosh.backend.repository.LedgerCheckpointRepository;
 
 @ExtendWith(MockitoExtension.class)
 class AuditPackServiceTest {
@@ -28,6 +29,7 @@ class AuditPackServiceTest {
     @Mock JournalLineRepository lines;
     @Mock ActivityLogRepository activities;
     @Mock AccountingPeriodRepository periods;
+    @Mock LedgerCheckpointRepository checkpoints;
 
     @Test
     void exportsCompletePortableAuditPack() throws Exception {
@@ -36,7 +38,8 @@ class AuditPackServiceTest {
         when(entries.findByNetworkIdOrderBySequenceNoAsc(7L)).thenReturn(List.of());
         when(activities.findBySahakariIdOrderByTimestampDesc(7L)).thenReturn(List.of());
         when(periods.findByNetworkIdOrderByPeriodEndDescIdDesc(7L)).thenReturn(List.of());
-        AuditPackService service = new AuditPackService(transactions, entries, lines, activities, periods,
+        when(checkpoints.findByNetworkIdOrderByCheckpointDateAsc(7L)).thenReturn(List.of());
+        AuditPackService service = new AuditPackService(transactions, entries, lines, activities, periods, checkpoints,
                 new ObjectMapper().findAndRegisterModules());
 
         byte[] exported = service.export(network);
@@ -46,6 +49,6 @@ class AuditPackServiceTest {
         }
 
         assertThat(names).containsExactly("manifest.json", "transactions.csv", "journal.csv",
-                "activity-log.csv", "accounting-periods.csv");
+                "activity-log.csv", "accounting-periods.csv", "ledger-checkpoints.csv");
     }
 }

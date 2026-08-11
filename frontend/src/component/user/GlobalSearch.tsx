@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useNavigate } from 'react-router-dom';
 import { API_BASE, apiFetch } from "../../lib/apiClient";
-import { parseTransactions, type TransactionRecord } from "../../lib/transactions";
+import { parseMemberTransparency } from "../../lib/memberTransparency";
 import { 
   SearchIcon, 
   LayoutDashboardIcon, 
@@ -22,7 +22,9 @@ interface SearchLink {
 type SearchResult =
   | (SearchLink & { category: "action" })
   | (SearchLink & { category: "page" })
-  | (TransactionRecord & { category: "transaction" });
+  | (SearchTransaction & { category: "transaction" });
+
+interface SearchTransaction { id: string; sequenceNo: number; voucherId: string; type: string; amount: number; }
 
 interface GlobalSearchProps {
   isOpen: boolean;
@@ -31,7 +33,7 @@ interface GlobalSearchProps {
 
 export default function GlobalSearch({ isOpen, onClose }: GlobalSearchProps) {
   const [query, setQuery] = useState("");
-  const [results, setResults] = useState<{ pages: SearchLink[]; transactions: TransactionRecord[]; actions: SearchLink[] }>({ pages: [], transactions: [], actions: [] });
+  const [results, setResults] = useState<{ pages: SearchLink[]; transactions: SearchTransaction[]; actions: SearchLink[] }>({ pages: [], transactions: [], actions: [] });
   const [selectedIndex, setSelectedIndex] = useState(0);
   const inputRef = useRef<HTMLInputElement | null>(null);
   const listRef = useRef<HTMLDivElement | null>(null);
@@ -71,16 +73,14 @@ export default function GlobalSearch({ isOpen, onClose }: GlobalSearchProps) {
       const matchingPages = pages.filter(p => p.name.toLowerCase().includes(lowerQuery));
       const matchingActions = staticActions.filter(a => a.name.toLowerCase().includes(lowerQuery));
 
-      let matchingTransactions: TransactionRecord[] = [];
+      let matchingTransactions: SearchTransaction[] = [];
       try {
-        const txnRes = await apiFetch(`${API_BASE}/transactions`);
-        matchingTransactions = parseTransactions(await txnRes.json())
-          .filter((transaction) =>
-            transaction.id.toLowerCase().includes(lowerQuery) ||
-            transaction.voucherId.toLowerCase().includes(lowerQuery) ||
-            transaction.type.toLowerCase().includes(lowerQuery) ||
-            String(transaction.amount).includes(lowerQuery)
-          ).slice(0, 3);
+        const response = await apiFetch(`${API_BASE}/member-transparency/me`);
+        matchingTransactions = parseMemberTransparency(await response.json()).history
+          .filter((line) => line.lineId.toLowerCase().includes(lowerQuery) || line.voucherRef.toLowerCase().includes(lowerQuery)
+            || line.narration.toLowerCase().includes(lowerQuery) || String(line.sequenceNo).includes(lowerQuery))
+          .slice(0, 3).map((line) => ({ id: line.lineId, sequenceNo: line.sequenceNo, voucherId: line.voucherRef,
+            type: line.narration || line.accountName, amount: Math.abs(line.change) }));
       } catch {
         matchingTransactions = [];
       }
@@ -193,7 +193,7 @@ export default function GlobalSearch({ isOpen, onClose }: GlobalSearchProps) {
               subtitle = "Navigation";
             } else {
               icon = <DocumentTextIcon className="w-5 h-5 text-orange-500" />;
-              title = `Voucher: ${item.voucherId || "N/A"}`;
+              title = `Journal #${String(item.sequenceNo)} · ${item.voucherId || "No voucher"}`;
               subtitle = `${item.type} • Rs. ${item.amount.toLocaleString()}`;
             }
 

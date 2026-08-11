@@ -37,6 +37,7 @@ import com.kosh.backend.repository.UserRepository;
 import com.kosh.backend.service.FileSecurity;
 import com.kosh.backend.service.FileSecurity.StoredFile;
 import com.kosh.backend.service.ShareCapitalService;
+import com.kosh.backend.ledger.LedgerReports;
 
 import jakarta.servlet.http.HttpSession;
 
@@ -51,14 +52,16 @@ public class UserController {
     private final ActivityLogRepository logRepo;
     private final PasswordEncoder passwordEncoder;
     private final ShareCapitalService shareCapital;
+    private final LedgerReports ledgerReports;
 
     public UserController(UserRepository repo, NetworkRepository networkRepo, ActivityLogRepository logRepo,
-            PasswordEncoder passwordEncoder, ShareCapitalService shareCapital) {
+            PasswordEncoder passwordEncoder, ShareCapitalService shareCapital, LedgerReports ledgerReports) {
         this.repo = repo;
         this.networkRepo = networkRepo;
         this.logRepo = logRepo;
         this.passwordEncoder = passwordEncoder;
         this.shareCapital = shareCapital;
+        this.ledgerReports = ledgerReports;
     }
 
     @PostMapping
@@ -746,7 +749,8 @@ public class UserController {
         response.put("address", user.getAddress());
         response.put("role", user.getRole());
         response.put("sahakari", user.getSahakari());
-        response.put("balance", user.getBalance());
+        response.put("balance", "member".equalsIgnoreCase(user.getRole())
+                ? ledgerReports.derivedSavingsBalance(user.getId()) : user.getBalance());
         response.put("status", user.getStatus());
         response.put("hasPhoto", user.getPhotoData() != null);
         response.put("hasCitizenship", user.getCitizenshipData() != null);

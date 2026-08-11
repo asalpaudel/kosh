@@ -12,6 +12,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.ByteArrayResource;
 import org.springframework.mail.javamail.JavaMailSender;
+import org.springframework.mail.MailException;
 import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.stereotype.Service;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -105,6 +106,10 @@ public class EmailService {
      * ⭐ NEW METHOD: Generic email sender used by AuthController for 2FA.
      */
     public void sendEmail(String to, String subject, String body) {
+        sendNotificationEmail(to, subject, body);
+    }
+
+    public boolean sendNotificationEmail(String to, String subject, String body) {
         try {
             MimeMessage message = mailSender.createMimeMessage();
             MimeMessageHelper helper = new MimeMessageHelper(message, "UTF-8");
@@ -117,8 +122,10 @@ public class EmailService {
             helper.setText(body, false); 
 
             mailSender.send(message);
-        } catch (MessagingException e) {
-            LOGGER.warn("Unable to send authentication email");
+            return true;
+        } catch (MessagingException | MailException e) {
+            LOGGER.warn("Unable to send email notification");
+            return false;
         }
     }
 

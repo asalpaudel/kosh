@@ -49,7 +49,7 @@ function Report() {
             <div className="bg-white p-6 rounded-xl shadow-md border border-gray-100">
               <h2 className="text-2xl font-bold mb-4 text-gray-800">Summary</h2>
               <p className="text-gray-600 leading-relaxed">
-                This report is calculated from transactions returned for your authenticated server session. Use the period controls to review balance changes over time.
+                This report is calculated directly from your cooperative's append-only journal. Each movement has a public sequence and participates in the checkpoint hash shown on your statement.
               </p>
             </div>
           </div>

@@ -129,6 +129,14 @@ class PostgresqlMigrationTest {
                 "maker_id", "checker_id", "checker_id <> maker_id", "auditor");
     }
 
+    @Test
+    void memberCheckpointMigrationIsUniqueAndAppendOnly() throws IOException {
+        String migration = resource("/db/migration/V15__member_transparency_checkpoints.sql");
+        assertThat(migration).contains("CREATE TABLE ledger_checkpoints", "sequence_no", "entry_hash",
+                "recipient_count", "ledger_checkpoint_network_date_uq", "ledger_checkpoints_append_only",
+                "ledger checkpoints are append-only");
+    }
+
     private String resource(String path) throws IOException {
         try (var stream = getClass().getResourceAsStream(path)) {
             assertThat(stream).as("resource %s", path).isNotNull();
