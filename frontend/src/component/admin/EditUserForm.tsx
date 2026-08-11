@@ -1,6 +1,25 @@
-import React, { useState, useEffect } from "react";
-import ConfirmationModal from "../ConfirmationModal.jsx";
+import { type ChangeEvent, type FormEvent, useEffect, useState } from "react";
+import ConfirmationModal from "../ConfirmationModal";
 import { apiFetch } from "../../lib/apiClient";
+import { parseManagedUser, type ManagedUser } from "../../lib/users";
+
+interface EditUserFormProps {
+  user: ManagedUser | null;
+  onClose: () => void;
+  onUserUpdated?: (user: ManagedUser) => void;
+  onUserDeleted?: (id: string | number) => void;
+  apiBase: string;
+}
+
+interface EditableUserFields {
+  name: string;
+  email: string;
+  phone: string;
+  role: string;
+  sahakari: string;
+  status: string;
+  password: string;
+}
 
 function EditUserForm({
   user,
@@ -8,8 +27,8 @@ function EditUserForm({
   onUserUpdated,
   onUserDeleted,
   apiBase,
-}) {
-  const [formData, setFormData] = useState({
+}: EditUserFormProps) {
+  const [formData, setFormData] = useState<EditableUserFields>({
     name: "",
     email: "",
     phone: "",
@@ -20,7 +39,7 @@ function EditUserForm({
   });
 
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
+  const [error, setError] = useState<string | null>(null);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
 
   useEffect(() => {
@@ -32,19 +51,20 @@ function EditUserForm({
         role: user.role || "member",
         sahakari: user.sahakari || "",
         status: user.status || "Pending",
-        password: user.password || "",
+        password: "",
       });
     }
   }, [user]);
 
-  const handleChange = (e) => {
-    const { name, value } = e.target;
+  const handleChange = (event: ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+    const { name, value } = event.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
     if (error) setError(null);
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!user) return;
     setLoading(true);
     setError(null);
 
@@ -56,20 +76,18 @@ function EditUserForm({
         ...(formData.password ? { password: formData.password } : {}),
       };
 
-      const res = await apiFetch(`${apiBase}/users/${user.id}`, {
+      const res = await apiFetch(`${apiBase}/users/${String(user.id)}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
 
-      if (!res.ok) throw new Error("Failed to update user");
-
-      const updated = await res.json();
+      const updated = parseManagedUser(await res.json());
       onUserUpdated?.(updated);
       alert(`User "${formData.name}" updated successfully`);
       onClose();
     } catch (err) {
-      setError(err.message);
+      setError(err instanceof Error ? err.message : "Failed to update user");
     } finally {
       setLoading(false);
     }
@@ -80,22 +98,21 @@ function EditUserForm({
   };
 
   const confirmDelete = async () => {
+    if (!user) return;
     setIsDeleteModalOpen(false);
     setLoading(true);
     setError(null);
 
     try {
-      const res = await apiFetch(`${apiBase}/users/${user.id}`, {
+      await apiFetch(`${apiBase}/users/${String(user.id)}`, {
         method: "DELETE",
       });
-
-      if (!res.ok) throw new Error("Failed to delete user");
 
       onUserDeleted?.(user.id);
       // alert(`User "${formData.name}" deleted`); // Optional
       onClose();
     } catch (err) {
-      setError(err.message);
+      setError(err instanceof Error ? err.message : "Failed to delete user");
     } finally {
       setLoading(false);
     }
@@ -107,7 +124,12 @@ function EditUserForm({
     <div className="bg-white">
       {/* Header */}
 
-      <form onSubmit={handleSubmit} className="space-y-6">
+      <form
+        onSubmit={(event) => {
+          void handleSubmit(event);
+        }}
+        className="space-y-6"
+      >
         {/* Error */}
         {error && (
           <div className="rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">
@@ -241,8 +263,12 @@ function EditUserForm({
 
       <ConfirmationModal
         isOpen={isDeleteModalOpen}
-        onClose={() => setIsDeleteModalOpen(false)}
-        onConfirm={confirmDelete}
+        onClose={() => {
+          setIsDeleteModalOpen(false);
+        }}
+        onConfirm={() => {
+          void confirmDelete();
+        }}
         title="Confirm Delete User"
         message={`Are you sure you want to delete "${formData.name}" permanently? This action cannot be undone.`}
         confirmText="Delete Permanently"

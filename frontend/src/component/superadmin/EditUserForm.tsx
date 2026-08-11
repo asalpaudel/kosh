@@ -1,43 +1,69 @@
 import { API_BASE } from "../../lib/apiClient";
-import React, { useState } from "react";
+import { type ChangeEvent, type FormEvent, useState } from "react";
 import { apiFetch } from "../../lib/apiClient";
+import { parseManagedUser, type ManagedUser } from "../../lib/users";
+
+interface EditUserFormProps {
+  initialData: ManagedUser;
+  onClose: () => void;
+  onUserUpdated?: (user: ManagedUser) => void;
+  apiBase?: string;
+}
+
+interface SuperadminUserUpdate {
+  name: string;
+  email: string;
+  phone: string;
+  role: string;
+  sahakari: string;
+  status: string;
+  password: string;
+}
 
 export default function EditUserForm({
   initialData,
   onClose,
   onUserUpdated,
   apiBase = API_BASE,
-}) {
-  const [formData, setFormData] = useState({
+}: EditUserFormProps) {
+  const [formData, setFormData] = useState<SuperadminUserUpdate & { id: string | number }>({
     id: initialData.id,
-    name: initialData.name ?? "",
-    email: initialData.email ?? "",
-    phone: initialData.phone ?? "",
-    role: initialData.role ?? "",
-    sahakari: initialData.sahakari ?? "",
-    status: initialData.status ?? "Pending",
+    name: initialData.name,
+    email: initialData.email,
+    phone: initialData.phone,
+    role: initialData.role,
+    sahakari: initialData.sahakari,
+    status: initialData.status,
     password: "", // Leave empty - only update if user enters new password
   });
 
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
-  const onChange = (e) => {
-    const { name, value } = e.target;
+  const onChange = (event: ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+    const { name, value } = event.target;
     setFormData((prev) => ({
       ...prev,
       [name]: value,
     }));
   };
 
-  const onSubmit = async (e) => {
-    e.preventDefault();
+  const onSubmit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
     setSaving(true);
     setError("");
 
     try {
       // Prepare payload with ALL fields
-      const payload = {
+      const payload: {
+        name: string;
+        email: string;
+        phone: string | null;
+        role: string;
+        sahakari: string;
+        status: string;
+        password?: string;
+      } = {
         name: formData.name,
         email: formData.email,
         phone: formData.phone || null,
@@ -51,10 +77,7 @@ export default function EditUserForm({
         payload.password = formData.password;
       }
 
-      console.log("Updating user:", formData.id);
-      console.log("Payload:", payload);
-
-      const res = await apiFetch(`${apiBase}/users/${formData.id}/superadmin`, {
+      const res = await apiFetch(`${apiBase}/users/${String(formData.id)}/superadmin`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
@@ -63,29 +86,24 @@ export default function EditUserForm({
         body: JSON.stringify(payload),
       });
 
-      console.log("HTTP Status:", res.status);
-
-      if (!res.ok) {
-        const text = await res.text();
-        console.error("Error response:", text);
-        throw new Error(`HTTP ${res.status}: ${text}`);
-      }
-
-      const saved = await res.json();
-      console.log("Updated user:", saved);
+      const saved = parseManagedUser(await res.json());
 
       onUserUpdated?.(saved);
-      onClose?.();
+      onClose();
     } catch (err) {
-      console.error("Error updating user:", err);
-      setError(`Failed to update: ${err.message}`);
+      setError(`Failed to update: ${err instanceof Error ? err.message : "Unknown error"}`);
     } finally {
       setSaving(false);
     }
   };
 
   return (
-    <form className="space-y-4" onSubmit={onSubmit}>
+    <form
+      className="space-y-4"
+      onSubmit={(event) => {
+        void onSubmit(event);
+      }}
+    >
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <input
           name="name"
