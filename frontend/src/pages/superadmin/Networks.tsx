@@ -1,5 +1,7 @@
-import { API_BASE } from "../../lib/apiClient";
-import React, { useState, useEffect } from "react";
+import { useEffect, useState, type ReactNode } from "react";
+import { API_BASE, apiFetch } from "../../lib/apiClient";
+import { parseNetworks, type NetworkSummary } from "../../lib/networks";
+import { parseManagedUsers, type ManagedUser } from "../../lib/users";
 
 import {
   SearchIcon,
@@ -9,33 +11,32 @@ import {
   PlusCircleIcon,
   BuildingIcon,
   UserCircleIcon,
-  DocumentIcon,
-} from "../../component/icons.jsx";
+} from "../../component/icons";
 
 // --- ADDED IMPORTS ---
-import Modal from "../../component/superadmin/Modal.jsx";
-import AddNetworkForm from "../../component/superadmin/AddNetworkForm.jsx";
-import EditNetworkForm from "../../component/superadmin/EditNetworkForm.jsx";
-import AddUserForm from "../../component/superadmin/AddUserForm.jsx";
-import EditUserForm from "../../component/superadmin/EditUserForm.jsx";
-import ConfirmationModal from "../../component/ConfirmationModal.jsx";
-import { apiFetch } from "../../lib/apiClient";
+import Modal from "../../component/superadmin/Modal";
+import AddNetworkForm from "../../component/superadmin/AddNetworkForm";
+import EditNetworkForm from "../../component/superadmin/EditNetworkForm";
+import AddUserForm from "../../component/superadmin/AddUserForm";
+import EditUserForm from "../../component/superadmin/EditUserForm";
+import ConfirmationModal from "../../component/ConfirmationModal";
 
 // --- API BASE ---
 
 /* ----------------------------- UI Primitives ----------------------------- */
 
-const Kicker = ({ children }) => (
+const Kicker = ({ children }: { children: ReactNode }) => (
   <p className="text-[11px] uppercase tracking-widest text-gray-400 mb-1">
     {children}
   </p>
 );
 
-const SectionTitle = ({ children }) => (
+const SectionTitle = ({ children }: { children: ReactNode }) => (
   <h2 className="text-lg font-medium text-gray-900">{children}</h2>
 );
 
-const Badge = ({ children, variant = "default" }) => {
+type BadgeVariant = "default" | "blue" | "green" | "amber" | "red";
+const Badge = ({ children, variant = "default" }: { children: ReactNode; variant?: BadgeVariant }) => {
   const variants = {
     default: "bg-gray-100 text-gray-700",
     blue: "bg-blue-50 text-blue-700",
@@ -55,26 +56,14 @@ const Badge = ({ children, variant = "default" }) => {
 
 /* ----------------------------- Detail Components ----------------------------- */
 
-const DetailItem = ({ label, value }) => (
+const DetailItem = ({ label, value }: { label: string; value: ReactNode }) => (
   <div className="space-y-1">
     <p className="text-[11px] uppercase tracking-wide text-gray-500">{label}</p>
     <p className="text-sm text-gray-900">{value ?? "—"}</p>
   </div>
 );
 
-const DocumentLink = ({ doc }) => (
-  <a
-    href={doc.url}
-    target="_blank"
-    rel="noopener noreferrer"
-    className="flex items-center gap-2 text-blue-600 hover:text-blue-700 transition"
-  >
-    <DocumentIcon className="w-4 h-4" />
-    <span className="text-sm font-medium">{doc.name}</span>
-  </a>
-);
-
-const NetworkDetails = ({ item }) => (
+const NetworkDetails = ({ item }: { item: NetworkSummary }) => (
   <div className="space-y-6">
     <div className="flex items-start gap-6">
       <div className="flex-shrink-0 w-20 h-20 bg-gray-100 rounded-lg flex items-center justify-center">
@@ -97,25 +86,15 @@ const NetworkDetails = ({ item }) => (
         <DetailItem label="Staff Count" value={item.staffCount} />
         <DetailItem
           label="User Count"
-          value={item.userCount?.toLocaleString?.("en-IN") ?? item.userCount}
+          value={item.userCount.toLocaleString("en-IN")}
         />
       </div>
     </div>
 
-    {!!item.regDocuments?.length && (
-      <div className="border-t border-gray-200 pt-6">
-        <Kicker>Documents</Kicker>
-        <div className="mt-3 space-y-2">
-          {item.regDocuments.map((doc, index) => (
-            <DocumentLink key={index} doc={doc} />
-          ))}
-        </div>
-      </div>
-    )}
   </div>
 );
 
-const UserDetails = ({ item }) => (
+const UserDetails = ({ item }: { item: ManagedUser }) => (
   <div className="space-y-6">
     <div className="flex items-start gap-6">
       <div className="flex-shrink-0 w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center">
@@ -136,7 +115,7 @@ const UserDetails = ({ item }) => (
                   : "red"
             }
           >
-            {item.status ?? "Active"}
+            {item.status}
           </Badge>
         </div>
       </div>
@@ -151,45 +130,36 @@ const UserDetails = ({ item }) => (
       </div>
     </div>
 
-    {!!item.documents?.length && (
-      <div className="border-t border-gray-200 pt-6">
-        <Kicker>Documents</Kicker>
-        <div className="mt-3 space-y-2">
-          {item.documents.map((doc, index) => (
-            <DocumentLink key={index} doc={doc} />
-          ))}
-        </div>
-      </div>
-    )}
   </div>
 );
 
 /* ----------------------------- Main Component ----------------------------- */
 
 function Networks() {
-  const [activeView, setActiveView] = useState("networks");
+  const [activeView, setActiveView] = useState<"networks" | "users">("networks");
 
   // Networks and Users state from backend
-  const [networks, setNetworks] = useState([]);
-  const [users, setUsers] = useState([]);
+  const [networks, setNetworks] = useState<NetworkSummary[]>([]);
+  const [users, setUsers] = useState<ManagedUser[]>([]);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
 
   // View Details modal
-  const [viewModalItem, setViewModalItem] = useState(null);
+  const [viewModalItem, setViewModalItem] = useState<{ kind: "network"; item: NetworkSummary } | { kind: "user"; item: ManagedUser } | null>(null);
 
   // Add / Edit modals
   const [isAddNetworkModalOpen, setIsAddNetworkModalOpen] = useState(false);
   const [isAddUserModalOpen, setIsAddUserModalOpen] = useState(false);
   const [isEditNetworkModalOpen, setIsEditNetworkModalOpen] = useState(false);
-  const [editingNetwork, setEditingNetwork] = useState(null);
+  const [editingNetwork, setEditingNetwork] = useState<NetworkSummary | null>(null);
 
   const [isEditUserModalOpen, setIsEditUserModalOpen] = useState(false);
-  const [editingUser, setEditingUser] = useState(null);
+  const [editingUser, setEditingUser] = useState<ManagedUser | null>(null);
 
   // Deletion confirmation
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
-  const [deleteData, setDeleteData] = useState(null); // { id, type: 'network' | 'user' }
+  const [deleteData, setDeleteData] = useState<{ id: string | number; type: "network" | "user" } | null>(null);
 
   // Load networks
   const loadNetworks = async () => {
@@ -197,20 +167,8 @@ function Networks() {
       setLoading(true);
       const res = await apiFetch(`${API_BASE}/networks`);
 
-      if (!res.ok) {
-        throw new Error(`Failed to fetch: ${res.status} ${res.statusText}`);
-      }
-
-      const data = await res.json();
-
-      if (Array.isArray(data)) {
-        setNetworks(data);
-      } else {
-        console.error("API did not return an array:", data);
-        setNetworks([]);
-      }
-    } catch (e) {
-      console.error("Error fetching networks:", e);
+      setNetworks(parseNetworks(await res.json()));
+    } catch {
       setNetworks([]);
     } finally {
       setLoading(false);
@@ -223,20 +181,8 @@ function Networks() {
       setLoading(true);
       const res = await apiFetch(`${API_BASE}/users/all`);
 
-      if (!res.ok) {
-        throw new Error(`Failed to fetch: ${res.status} ${res.statusText}`);
-      }
-
-      const data = await res.json();
-
-      if (Array.isArray(data)) {
-        setUsers(data);
-      } else {
-        console.error("API did not return an array:", data);
-        setUsers([]);
-      }
-    } catch (e) {
-      console.error("Error fetching users:", e);
+      setUsers(parseManagedUsers(await res.json()));
+    } catch {
       setUsers([]);
     } finally {
       setLoading(false);
@@ -244,68 +190,67 @@ function Networks() {
   };
 
   useEffect(() => {
-    loadNetworks();
-    loadUsers();
+    void loadNetworks();
+    void loadUsers();
   }, []);
 
   // Filtering
   const filteredNetworks = networks.filter(
     (net) =>
-      net.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      net.registeredId?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      net.address?.toLowerCase().includes(searchQuery.toLowerCase())
+      net.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      net.registeredId.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      net.address.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   const filteredUsers = users.filter(
     (user) =>
-      user.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      user.email?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      user.phone?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      user.sahakari?.toLowerCase().includes(searchQuery.toLowerCase())
+      user.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      user.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      user.phone.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      user.sahakari.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   // UI helpers
-  const getButtonClass = (viewName) =>
+  const getButtonClass = (viewName: "networks" | "users") =>
     activeView === viewName
       ? "bg-[#21ab87] text-white shadow-sm"
       : "bg-gray-100 text-gray-700 hover:bg-gray-200";
 
   // Handlers
-  const handleViewClick = (item) => setViewModalItem(item);
-  const handleCloseViewModal = () => setViewModalItem(null);
+  const handleCloseViewModal = () => { setViewModalItem(null); };
 
-  const handleAddSuccess = (saved) => {
+  const handleAddSuccess = (saved: NetworkSummary) => {
     setNetworks((prev) => [...prev, saved]);
   };
 
-  const handleUserAddSuccess = (saved) => {
+  const handleUserAddSuccess = (saved: ManagedUser) => {
     setUsers((prev) => [...prev, saved]);
   };
 
-  const openEdit = (net) => {
+  const openEdit = (net: NetworkSummary) => {
     setEditingNetwork(net);
     setIsEditNetworkModalOpen(true);
   };
 
-  const openEditUser = (user) => {
+  const openEditUser = (user: ManagedUser) => {
     setEditingUser(user);
     setIsEditUserModalOpen(true);
   };
 
-  const handleUserEditSuccess = (saved) => {
+  const handleUserEditSuccess = (saved: ManagedUser) => {
     setUsers((prev) => prev.map((u) => (u.id === saved.id ? saved : u)));
   };
 
-  const handleEditSuccess = (saved) => {
+  const handleEditSuccess = (saved: NetworkSummary) => {
     setNetworks((prev) => prev.map((n) => (n.id === saved.id ? saved : n)));
   };
 
-  const deleteNetwork = (id) => {
+  const deleteNetwork = (id: string) => {
     setDeleteData({ id, type: "network" });
     setIsDeleteModalOpen(true);
   };
 
-  const deleteUser = (id) => {
+  const deleteUser = (id: string | number) => {
     setDeleteData({ id, type: "user" });
     setIsDeleteModalOpen(true);
   };
@@ -318,14 +263,14 @@ function Networks() {
 
     try {
       if (type === "network") {
-        await apiFetch(`${API_BASE}/networks/${id}`, { method: "DELETE" });
+        await apiFetch(`${API_BASE}/networks/${encodeURIComponent(String(id))}`, { method: "DELETE" });
         setNetworks((prev) => prev.filter((n) => n.id !== id));
       } else {
-        await apiFetch(`${API_BASE}/users/${id}`, { method: "DELETE" });
+        await apiFetch(`${API_BASE}/users/${encodeURIComponent(String(id))}`, { method: "DELETE" });
         setUsers((prev) => prev.filter((u) => u.id !== id));
       }
-    } catch (e) {
-      console.error("Delete failed:", e);
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Delete failed");
     } finally {
       setLoading(false);
       setDeleteData(null);
@@ -336,6 +281,7 @@ function Networks() {
     <>
       <div className="min-h-screen bg-white">
         <div className="px-3 md:px-10 py-6 md:py-10 space-y-6 md:space-y-8 max-w-[1400px] mx-auto">
+          {error && <p className="text-red-600" role="alert">{error}</p>}
           {/* Header */}
           <header className="space-y-6">
             {/* Controls */}
@@ -349,7 +295,7 @@ function Networks() {
                   type="text"
                   placeholder="Search..."
                   value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
+                  onChange={(e) => { setSearchQuery(e.target.value); }}
                   className="w-full bg-gray-50 text-gray-900 border border-gray-200 rounded-lg py-2.5 pl-10 pr-4 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent"
                 />
               </div>
@@ -357,7 +303,7 @@ function Networks() {
               {/* View Toggle */}
               <div className="flex items-center gap-2 p-1 bg-gray-100 rounded-lg">
                 <button
-                  onClick={() => setActiveView("networks")}
+                  onClick={() => { setActiveView("networks"); }}
                   className={`font-medium py-2 px-4 rounded-md transition-colors text-sm ${getButtonClass(
                     "networks"
                   )}`}
@@ -365,7 +311,7 @@ function Networks() {
                   Networks
                 </button>
                 <button
-                  onClick={() => setActiveView("users")}
+                  onClick={() => { setActiveView("users"); }}
                   className={`font-medium py-2 px-4 rounded-md transition-colors text-sm ${getButtonClass(
                     "users"
                   )}`}
@@ -421,7 +367,7 @@ function Networks() {
                       {loading && (
                         <tr>
                           <td
-                            colSpan="6"
+                            colSpan={6}
                             className="px-6 py-8 text-center text-sm text-gray-400"
                           >
                             Loading networks…
@@ -432,7 +378,7 @@ function Networks() {
                       {!loading && filteredNetworks.length === 0 && (
                         <tr>
                           <td
-                            colSpan="6"
+                            colSpan={6}
                             className="px-6 py-8 text-center text-sm text-gray-400"
                           >
                             {searchQuery
@@ -466,21 +412,21 @@ function Networks() {
                             <td className="px-6 py-4">
                               <div className="flex items-center justify-end gap-2">
                                 <button
-                                  onClick={() => handleViewClick(network)}
+                                  onClick={() => { setViewModalItem({ kind: "network", item: network }); }}
                                   className="p-1.5 text-blue-600 hover:bg-blue-50 rounded transition"
                                   title="View"
                                 >
                                   <EyeIcon className="w-4 h-4" />
                                 </button>
                                 <button
-                                  onClick={() => openEdit(network)}
+                                  onClick={() => { openEdit(network); }}
                                   className="p-1.5 text-amber-600 hover:bg-amber-50 rounded transition"
                                   title="Edit"
                                 >
                                   <PencilIcon className="w-4 h-4" />
                                 </button>
                                 <button
-                                  onClick={() => deleteNetwork(network.id)}
+                                  onClick={() => { deleteNetwork(network.id); }}
                                   className="p-1.5 text-red-600 hover:bg-red-50 rounded transition"
                                   title="Delete"
                                 >
@@ -543,7 +489,7 @@ function Networks() {
                       {loading && (
                         <tr>
                           <td
-                            colSpan="7"
+                            colSpan={7}
                             className="px-6 py-8 text-center text-sm text-gray-400"
                           >
                             Loading users…
@@ -554,7 +500,7 @@ function Networks() {
                       {!loading && filteredUsers.length === 0 && (
                         <tr>
                           <td
-                            colSpan="7"
+                            colSpan={7}
                             className="px-6 py-8 text-center text-sm text-gray-400"
                           >
                             {searchQuery
@@ -591,21 +537,21 @@ function Networks() {
                             <td className="px-6 py-4">
                               <div className="flex items-center justify-end gap-2">
                                 <button
-                                  onClick={() => handleViewClick(user)}
+                                  onClick={() => { setViewModalItem({ kind: "user", item: user }); }}
                                   className="p-1.5 text-blue-600 hover:bg-blue-50 rounded transition"
                                   title="View"
                                 >
                                   <EyeIcon className="w-4 h-4" />
                                 </button>
                                 <button
-                                  onClick={() => openEditUser(user)}
+                                  onClick={() => { openEditUser(user); }}
                                   className="p-1.5 text-amber-600 hover:bg-amber-50 rounded transition"
                                   title="Edit"
                                 >
                                   <PencilIcon className="w-4 h-4" />
                                 </button>
                                 <button
-                                  onClick={() => deleteUser(user.id)}
+                                  onClick={() => { deleteUser(user.id); }}
                                   className="p-1.5 text-red-600 hover:bg-red-50 rounded transition"
                                   title="Delete"
                                 >
@@ -627,7 +573,7 @@ function Networks() {
       {/* Floating Action Button */}
       <div className="fixed bottom-20 right-6 md:bottom-6 md:right-6 flex flex-col items-end gap-3 z-50">
         <button
-          onClick={() => setIsAddNetworkModalOpen(true)}
+          onClick={() => { setIsAddNetworkModalOpen(true); }}
           className="flex items-center gap-2 px-4 py-2.5 bg-[#21ab87] text-white rounded-lg shadow-lg hover:bg-[#1e9e7c] active:scale-95 transition text-sm font-medium"
           title="Add Network"
         >
@@ -635,7 +581,7 @@ function Networks() {
           <span>Add Network</span>
         </button>
         <button
-          onClick={() => setIsAddUserModalOpen(true)}
+          onClick={() => { setIsAddUserModalOpen(true); }}
           className="flex items-center gap-2 px-4 py-2.5 bg-[#21ab87] text-white rounded-lg shadow-lg hover:bg-[#1e9e7c] active:scale-95 transition text-sm font-medium"
           title="Add User"
         >
@@ -650,26 +596,26 @@ function Networks() {
       <Modal
         isOpen={!!viewModalItem}
         onClose={handleCloseViewModal}
-        title={activeView === "networks" ? "Network Details" : "User Details"}
+        title={viewModalItem?.kind === "network" ? "Network Details" : "User Details"}
         size="3xl"
       >
         {viewModalItem &&
-          (activeView === "networks" ? (
-            <NetworkDetails item={viewModalItem} />
+          (viewModalItem.kind === "network" ? (
+            <NetworkDetails item={viewModalItem.item} />
           ) : (
-            <UserDetails item={viewModalItem} />
+            <UserDetails item={viewModalItem.item} />
           ))}
       </Modal>
 
       {/* Add Network */}
       <Modal
         isOpen={isAddNetworkModalOpen}
-        onClose={() => setIsAddNetworkModalOpen(false)}
+        onClose={() => { setIsAddNetworkModalOpen(false); }}
         title="Add New Sahakari"
         size="2xl"
       >
         <AddNetworkForm
-          onClose={() => setIsAddNetworkModalOpen(false)}
+          onClose={() => { setIsAddNetworkModalOpen(false); }}
           onNetworkAdded={handleAddSuccess}
           apiBase={API_BASE}
         />
@@ -678,14 +624,14 @@ function Networks() {
       {/* Edit Network */}
       <Modal
         isOpen={isEditNetworkModalOpen}
-        onClose={() => setIsEditNetworkModalOpen(false)}
+        onClose={() => { setIsEditNetworkModalOpen(false); }}
         title="Edit Sahakari"
         size="2xl"
       >
         {editingNetwork && (
           <EditNetworkForm
             initialData={editingNetwork}
-            onClose={() => setIsEditNetworkModalOpen(false)}
+            onClose={() => { setIsEditNetworkModalOpen(false); }}
             onNetworkUpdated={handleEditSuccess}
             apiBase={API_BASE}
           />
@@ -695,12 +641,12 @@ function Networks() {
       {/* Add User Modal */}
       <Modal
         isOpen={isAddUserModalOpen}
-        onClose={() => setIsAddUserModalOpen(false)}
+        onClose={() => { setIsAddUserModalOpen(false); }}
         title="Add New Admin"
         size="2xl"
       >
         <AddUserForm
-          onClose={() => setIsAddUserModalOpen(false)}
+          onClose={() => { setIsAddUserModalOpen(false); }}
           onUserAdded={handleUserAddSuccess}
           apiBase={API_BASE}
         />
@@ -709,14 +655,14 @@ function Networks() {
       {/* Edit User Modal */}
       <Modal
         isOpen={isEditUserModalOpen}
-        onClose={() => setIsEditUserModalOpen(false)}
+        onClose={() => { setIsEditUserModalOpen(false); }}
         title="Edit User"
         size="2xl"
       >
         {editingUser && (
           <EditUserForm
             initialData={editingUser}
-            onClose={() => setIsEditUserModalOpen(false)}
+            onClose={() => { setIsEditUserModalOpen(false); }}
             onUserUpdated={handleUserEditSuccess}
             apiBase={API_BASE}
           />
@@ -729,9 +675,9 @@ function Networks() {
           setIsDeleteModalOpen(false);
           setDeleteData(null);
         }}
-        onConfirm={confirmDelete}
+        onConfirm={() => { void confirmDelete(); }}
         title={deleteData?.type === "network" ? "Delete Sahakari" : "Delete User"}
-        message={`Are you sure you want to delete this ${deleteData?.type}? This action cannot be undone.`}
+        message={`Are you sure you want to delete this ${deleteData?.type ?? "record"}? This action cannot be undone.`}
         confirmText="Delete"
         type="danger"
       />
