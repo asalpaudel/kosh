@@ -1,8 +1,10 @@
-import { API_BASE } from "../../lib/apiClient";
-import React, { useState, useEffect } from "react";
+import { useEffect, useState, type ChangeEvent } from "react";
+import { API_BASE, ApiError, apiFetch } from "../../lib/apiClient";
+import { parseNetworks, type NetworkSummary } from "../../lib/networks";
+import { parseManagedUser, type ManagedUser } from "../../lib/users";
 import { UserCircleIcon } from "../icons";
 
-const Stepper = ({ currentStep }) => (
+const Stepper = ({ currentStep }: { currentStep: number }) => (
   <div className="flex items-center justify-center w-full mb-4">
     <div
       className={`flex flex-col items-center ${currentStep >= 1 ? "text-teal-500" : "text-gray-400"
@@ -41,9 +43,16 @@ export default function AddUserForm({
   onClose,
   onUserAdded,
   apiBase = API_BASE,
+}: {
+  onClose: () => void;
+  onUserAdded: (user: ManagedUser) => void;
+  apiBase?: string;
 }) {
   const [step, setStep] = useState(1);
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<{
+    name: string; email: string; phone: string; dob: string; address: string;
+    sahakari: string; password: string; photo: File | null;
+  }>({
     name: "",
     email: "",
     phone: "",
@@ -54,7 +63,7 @@ export default function AddUserForm({
     photo: null,
   });
 
-  const [sahakariList, setSahakariList] = useState([]);
+  const [sahakariList, setSahakariList] = useState<NetworkSummary[]>([]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
@@ -63,39 +72,45 @@ export default function AddUserForm({
   useEffect(() => {
     const fetchSahakaris = async () => {
       try {
-        const res = await fetch(`${apiBase}/networks`, {
-          credentials: "include",
-        });
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const data = await res.json();
-        setSahakariList(data);
-      } catch (err) {
-        console.error("Failed to load sahakari:", err);
+        const res = await apiFetch(`${apiBase}/networks`);
+        setSahakariList(parseNetworks(await res.json()));
+      } catch {
         setError("Could not load sahakari list.");
       } finally {
         setLoading(false);
       }
     };
 
-    fetchSahakaris();
+    void fetchSahakaris();
   }, [apiBase]);
 
-  const handleChange = (e) => {
-    const { name, value, files } = e.target;
-    setFormData((prev) => ({
-      ...prev,
-      [name]: files ? files[0] : value,
-    }));
+  const handleChange = (e: ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+    const { name, value } = e.target;
+    if (e.target instanceof HTMLInputElement && e.target.type === "file") {
+      const file = e.target.files?.item(0) ?? null;
+      if (file && (!file.type.startsWith("image/") || file.size > 2 * 1024 * 1024)) {
+        setError("Photo must be a JPG or PNG no larger than 2MB.");
+        return;
+      }
+      setFormData((previous) => ({ ...previous, photo: file }));
+      return;
+    }
+    if (name === "name" || name === "email" || name === "phone" || name === "dob" || name === "address" || name === "sahakari" || name === "password") {
+      setFormData((previous) => ({ ...previous, [name]: value }));
+    }
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+  const handleSubmit = async () => {
 
     // Final validation
     const { name, email, phone, dob, address, sahakari, password, photo } = formData;
 
     if (!name || !email || !phone || !dob || !address || !sahakari || !password) {
       setError("Please fill in all required fields in Step 1.");
+      return;
+    }
+    if (password.length < 12) {
+      setError("Temporary password must contain at least 12 characters.");
       return;
     }
 
@@ -124,68 +139,21 @@ export default function AddUserForm({
         form.append("photo", formData.photo);
       }
 
-      // Debug logging
-      console.log("=== SENDING ADMIN DATA ===");
-      console.log("API Base:", apiBase);
-      console.log("FormData contents:");
-      for (let [key, value] of form.entries()) {
-        if (value instanceof File) {
-          console.log(`  ${key}: [File] ${value.name} (${value.type}, ${value.size} bytes)`);
-        } else {
-          console.log(`  ${key}: ${value}`);
-        }
-      }
-      console.log("========================");
-
       // Clean the apiBase to ensure no trailing slashes or extra characters
       const cleanApiBase = apiBase.replace(/\/+$/, '');
       const endpoint = `${cleanApiBase}/users`;
 
-      console.log("Full endpoint URL:", endpoint);
-
-      const res = await fetch(endpoint, {
+      const res = await apiFetch(endpoint, {
         method: "POST",
-        credentials: "include",
         body: form,
       });
-
-      if (!res.ok) {
-        let errorMessage;
-        const contentType = res.headers.get("content-type");
-
-        console.error("Response status:", res.status);
-        console.error("Response headers:", [...res.headers.entries()]);
-
-        if (contentType && contentType.includes("application/json")) {
-          const errorData = await res.json();
-          console.error("Error data:", errorData);
-          errorMessage = errorData.error || errorData.message || `HTTP ${res.status}: Unknown error`;
-        } else {
-          const text = await res.text();
-          console.error("Error text:", text);
-          errorMessage = `HTTP ${res.status}: ${text || 'Bad Request'}`;
-        }
-
-        throw new Error(errorMessage);
-      }
-
-      const saved = await res.json();
-      console.log("=== RECEIVED RESPONSE ===");
-      console.log("Saved admin:", saved);
-      console.log("Admin status:", saved.status);
-      console.log("========================");
-
-      onUserAdded?.(saved);
-      alert(`Admin "${saved.name}" added successfully to ${formData.sahakari}!\n\nThe account is now active and the admin can log in immediately.`);
-      onClose?.();
-    } catch (err) {
-      console.error("Error adding admin:", err);
-
-      let displayError = err.message;
-
-      if (err.message.includes("admin limit")) {
-        displayError = err.message;
-      } else if (err.message.includes("Network not found")) {
+      const saved = parseManagedUser(await res.json());
+      onUserAdded(saved);
+      window.alert(`Admin "${saved.name}" added successfully to ${formData.sahakari}.`);
+      onClose();
+    } catch (caught) {
+      let displayError = caught instanceof ApiError || caught instanceof Error ? caught.message : "Unable to add admin";
+      if (displayError.includes("Network not found")) {
         displayError = "The selected sahakari network was not found.";
       }
 
@@ -354,6 +322,7 @@ export default function AddUserForm({
               name="password"
               value={formData.password}
               onChange={handleChange}
+              minLength={12}
               placeholder="Enter a temporary password"
               className="w-full px-4 py-3 border border-gray-300 rounded-full focus:outline-none focus:border-black"
             />
@@ -436,7 +405,7 @@ export default function AddUserForm({
         {step === 2 ? (
           <button
             type="button"
-            onClick={handleSubmit}
+            onClick={() => { void handleSubmit(); }}
             disabled={saving}
             className="w-full bg-teal-500 text-white font-semibold py-3 rounded-full hover:bg-teal-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
