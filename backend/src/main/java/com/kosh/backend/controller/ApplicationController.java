@@ -44,6 +44,9 @@ import com.kosh.backend.repository.TransactionRepository;
 import com.kosh.backend.repository.UserRepository;
 import com.kosh.backend.repository.RepaymentScheduleRepository;
 import com.kosh.backend.service.LoanService;
+import com.kosh.backend.service.LoanSecurityService;
+import com.kosh.backend.service.LoanSecurityService.CollateralInput;
+import com.kosh.backend.service.LoanSecurityService.GuarantorInput;
 import com.kosh.backend.ledger.LedgerPostings;
 import com.kosh.backend.ledger.LedgerReports;
 import com.kosh.backend.ledger.LedgerService;
@@ -95,6 +98,9 @@ public class ApplicationController {
     // Inject LoanService for Schedule Generation
     @Autowired
     private LoanService loanService;
+
+    @Autowired
+    private LoanSecurityService loanSecurity;
 
     @Autowired
     private NetworkAccessService access;
@@ -536,6 +542,7 @@ public class ApplicationController {
     // ============================================================================
     
     @PostMapping("/loan")
+    @Transactional
     public ResponseEntity<?> applyForLoan(
             @RequestBody Map<String, Object> request,
             HttpSession session) {
@@ -574,11 +581,22 @@ public class ApplicationController {
             application.setNetwork(network);
             application.setRequestedAmount(requestedAmount);
             application.setPurpose(purpose);
+            if (request.containsKey("duration")) {
+                int duration = Integer.parseInt(request.get("duration").toString());
+                if (duration <= 0 || duration > loanPackage.getMaxDuration()) {
+                    return rejected(HttpStatus.BAD_REQUEST, Map.of("error", "Requested duration is invalid"));
+                }
+                application.setDurationInMonths(duration);
+            }
             application.setApplicationDate(Instant.now());
             application.setStatus(ApplicationStatus.PENDING);
 
             LoanApplication saved = loanAppRepo.save(application);
+            loanSecurity.register(saved, collateralInputs(request.get("collaterals")),
+                    guarantorInputs(request.get("guarantors")));
             return ResponseEntity.ok(saved);
+        } catch (IllegalArgumentException e) {
+            return rejected(HttpStatus.BAD_REQUEST, Map.of("error", e.getMessage()));
         } catch (Exception e) {
             LOGGER.error("Unable to create loan application");
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
@@ -639,6 +657,7 @@ public class ApplicationController {
                         || approvedAmt.compareTo(application.getLoanPackage().getMaxAmount()) > 0) {
                     return rejected(HttpStatus.BAD_REQUEST, Map.of("error", "Approved loan amount is invalid"));
                 }
+                loanSecurity.assertApprovalAllowed(application, approvedAmt);
                 
                 application.setApprovedAmount(approvedAmt);
 
@@ -667,7 +686,8 @@ public class ApplicationController {
                 // Allow admin override for duration, else default to package max
                 int duration = request.containsKey("duration") 
                     ? Integer.parseInt(request.get("duration").toString()) 
-                    : application.getLoanPackage().getMaxDuration();
+                    : application.getDurationInMonths() == null
+                        ? application.getLoanPackage().getMaxDuration() : application.getDurationInMonths();
                 if (duration <= 0 || duration > application.getLoanPackage().getMaxDuration()) {
                     return rejected(HttpStatus.BAD_REQUEST, Map.of("error", "Approved loan duration is invalid"));
                 }
@@ -750,7 +770,7 @@ public class ApplicationController {
 
             return ResponseEntity.ok(loanAppRepo.save(application));
         } catch (IllegalArgumentException e) {
-            return rejected(HttpStatus.BAD_REQUEST, Map.of("error", "Invalid review decision or terms"));
+            return rejected(HttpStatus.BAD_REQUEST, Map.of("error", e.getMessage()));
         } catch (Exception e) {
             return rejected(HttpStatus.INTERNAL_SERVER_ERROR, Map.of("error", "Unable to review application"));
         }
@@ -763,5 +783,31 @@ public class ApplicationController {
             throw new IllegalArgumentException("Unsupported review decision");
         }
         return status;
+    }
+
+    private List<CollateralInput> collateralInputs(Object raw) {
+        if (!(raw instanceof List<?> values)) throw new IllegalArgumentException("Collateral details are required");
+        return values.stream().map(value -> {
+            if (!(value instanceof Map<?, ?> item)) throw new IllegalArgumentException("Collateral details are invalid");
+            return new CollateralInput(text(item, "type"), Money.of(item.get("valuation")),
+                    text(item, "valuer"), LocalDate.parse(text(item, "valuationDate")),
+                    text(item, "documentReference"), text(item, "plotNumber"), text(item, "area"),
+                    text(item, "location"), text(item, "ownershipDocumentReference"));
+        }).toList();
+    }
+
+    private List<GuarantorInput> guarantorInputs(Object raw) {
+        if (raw == null) return List.of();
+        if (!(raw instanceof List<?> values)) throw new IllegalArgumentException("Guarantor details are invalid");
+        return values.stream().map(value -> {
+            if (!(value instanceof Map<?, ?> item)) throw new IllegalArgumentException("Guarantor details are invalid");
+            return new GuarantorInput(text(item, "memberEmail"), Money.of(item.get("liabilityAmount")),
+                    text(item, "consentReference"));
+        }).toList();
+    }
+
+    private String text(Map<?, ?> item, String key) {
+        Object value = item.get(key);
+        return value == null ? null : value.toString();
     }
 }

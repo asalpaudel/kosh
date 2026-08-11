@@ -267,6 +267,8 @@ public class FinanceController {
             @RequestParam("interestRate") BigDecimal interestRate,
             @RequestParam("maxAmount") BigDecimal maxAmount,
             @RequestParam("maxDuration") Integer maxDuration,
+            @RequestParam(value = "maxLoanToValuePercent", required = false, defaultValue = "70.00") BigDecimal maxLoanToValuePercent,
+            @RequestParam(value = "guarantorExposureLimit", required = false, defaultValue = "1000000.00") BigDecimal guarantorExposureLimit,
             @RequestParam(value = "description", required = false) String description,
             @RequestParam(value = "banner", required = false) MultipartFile banner,
             HttpSession session) {
@@ -281,6 +283,7 @@ public class FinanceController {
             lp.setInterestRate(interestRate);
             lp.setMaxAmount(maxAmount);
             lp.setMaxDuration(maxDuration);
+            applyLoanSecurityConfiguration(lp, maxLoanToValuePercent, guarantorExposureLimit);
             lp.setDescription(description);
             applyBanner(lp::setBannerData, lp::setBannerName, lp::setBannerType, banner);
 
@@ -308,6 +311,8 @@ public class FinanceController {
             @RequestParam("interestRate") BigDecimal interestRate,
             @RequestParam("maxAmount") BigDecimal maxAmount,
             @RequestParam("maxDuration") Integer maxDuration,
+            @RequestParam(value = "maxLoanToValuePercent", required = false) BigDecimal maxLoanToValuePercent,
+            @RequestParam(value = "guarantorExposureLimit", required = false) BigDecimal guarantorExposureLimit,
             @RequestParam(value = "description", required = false) String description,
             @RequestParam(value = "removeBanner", required = false, defaultValue = "false") Boolean removeBanner,
             @RequestParam(value = "banner", required = false) MultipartFile banner,
@@ -322,6 +327,9 @@ public class FinanceController {
             lp.setInterestRate(interestRate);
             lp.setMaxAmount(maxAmount);
             lp.setMaxDuration(maxDuration);
+            applyLoanSecurityConfiguration(lp,
+                    maxLoanToValuePercent == null ? lp.getMaxLoanToValuePercent() : maxLoanToValuePercent,
+                    guarantorExposureLimit == null ? lp.getGuarantorExposureLimit() : guarantorExposureLimit);
             lp.setDescription(description);
             if (Boolean.TRUE.equals(removeBanner)) {
                 lp.setBannerData(null);
@@ -365,6 +373,15 @@ public class FinanceController {
             case "ACTUAL_365", "ACTUAL_366", "THIRTY_360" -> dayCount;
             default -> throw new IllegalArgumentException("Unsupported day-count convention");
         });
+    }
+
+    private void applyLoanSecurityConfiguration(LoanPackage product, BigDecimal ltv, BigDecimal exposureLimit) {
+        if (ltv == null || ltv.signum() <= 0 || ltv.compareTo(new BigDecimal("100")) > 0
+                || exposureLimit == null || exposureLimit.signum() <= 0) {
+            throw new IllegalArgumentException("Invalid loan security configuration");
+        }
+        product.setMaxLoanToValuePercent(ltv);
+        product.setGuarantorExposureLimit(exposureLimit);
     }
 
     private interface BytesSetter { void accept(byte[] value); }

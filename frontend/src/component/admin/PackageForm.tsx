@@ -20,7 +20,9 @@ type FieldName =
   | "maxAmount"
   | "interestBasis"
   | "capitalizationFrequency"
-  | "dayCountConvention";
+  | "dayCountConvention"
+  | "maxLoanToValuePercent"
+  | "guarantorExposureLimit";
 
 interface FieldDefinition {
   name: FieldName;
@@ -128,6 +130,8 @@ const CONFIG: Record<PackageKind, PackageConfiguration> = {
         step: "0.01",
         required: true,
       },
+      { name: "maxLoanToValuePercent", label: "Maximum Loan-to-Value (%)", placeholder: "e.g., 70", type: "number", step: "0.01", required: true },
+      { name: "guarantorExposureLimit", label: "Guarantor Exposure Limit (Rs.)", placeholder: "e.g., 1000000", type: "number", step: "0.01", required: true },
     ],
   },
 };
@@ -146,6 +150,8 @@ const EMPTY_VALUES: PackageValues = {
   interestBasis: "DAILY_PRODUCT",
   capitalizationFrequency: "MONTHLY",
   dayCountConvention: "ACTUAL_365",
+  maxLoanToValuePercent: "70.00",
+  guarantorExposureLimit: "1000000.00",
 };
 
 export interface PackageInitialData {
@@ -162,6 +168,8 @@ export interface PackageInitialData {
   interestBasis?: string | null;
   capitalizationFrequency?: string | null;
   dayCountConvention?: string | null;
+  maxLoanToValuePercent?: string | number | null;
+  guarantorExposureLimit?: string | number | null;
 }
 
 interface CreatePackageFormProps {
@@ -196,6 +204,8 @@ function initialValues(data?: PackageInitialData): PackageValues {
     interestBasis: data.interestBasis ?? "DAILY_PRODUCT",
     capitalizationFrequency: data.capitalizationFrequency ?? "MONTHLY",
     dayCountConvention: data.dayCountConvention ?? "ACTUAL_365",
+    maxLoanToValuePercent: toValue(data.maxLoanToValuePercent ?? "70.00"),
+    guarantorExposureLimit: toValue(data.guarantorExposureLimit ?? "1000000.00"),
   };
 }
 

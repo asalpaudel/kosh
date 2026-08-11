@@ -20,6 +20,10 @@ public class LoanPackage {
     @Column(precision = 18, scale = 2)
     private BigDecimal maxAmount;
     private Integer maxDuration;
+    @Column(precision = 5, scale = 2)
+    private BigDecimal maxLoanToValuePercent = new BigDecimal("70.00");
+    @Column(precision = 18, scale = 2)
+    private BigDecimal guarantorExposureLimit = new BigDecimal("1000000.00");
 
     @Column(length = 1000)
     private String description;
@@ -51,6 +55,11 @@ public class LoanPackage {
 
     public Integer getMaxDuration() { return maxDuration; }
     public void setMaxDuration(Integer maxDuration) { this.maxDuration = maxDuration; }
+
+    public BigDecimal getMaxLoanToValuePercent() { return maxLoanToValuePercent; }
+    public void setMaxLoanToValuePercent(BigDecimal value) { this.maxLoanToValuePercent = value; }
+    public BigDecimal getGuarantorExposureLimit() { return guarantorExposureLimit; }
+    public void setGuarantorExposureLimit(BigDecimal value) { this.guarantorExposureLimit = value; }
 
     public String getDescription() { return description; }
     public void setDescription(String description) { this.description = description; }

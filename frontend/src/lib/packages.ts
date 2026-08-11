@@ -15,6 +15,8 @@ export interface FinancePackage {
   interestBasis: string | null;
   capitalizationFrequency: string | null;
   dayCountConvention: string | null;
+  maxLoanToValuePercent: number | null;
+  guarantorExposureLimit: number | null;
 }
 
 function finiteNumber(value: unknown): number | null {
@@ -43,6 +45,8 @@ export function parseFinancePackages(value: unknown): FinancePackage[] {
       interestBasis: typeof item.interestBasis === "string" ? item.interestBasis : null,
       capitalizationFrequency: typeof item.capitalizationFrequency === "string" ? item.capitalizationFrequency : null,
       dayCountConvention: typeof item.dayCountConvention === "string" ? item.dayCountConvention : null,
+      maxLoanToValuePercent: finiteNumber(item.maxLoanToValuePercent),
+      guarantorExposureLimit: finiteNumber(item.guarantorExposureLimit),
     };
   });
 }

@@ -194,6 +194,11 @@ const ViewPackageModal = ({ isOpen, onClose, packageData, packageType }: { isOpe
               </div>
             </div>
 
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              <div><label className="mb-2 block font-semibold">Maximum LTV</label><div className="rounded-full border border-gray-200 bg-gray-50 px-4 py-3">{packageData.maxLoanToValuePercent ?? 70}%</div></div>
+              <div><label className="mb-2 block font-semibold">Guarantor exposure cap</label><div className="rounded-full border border-gray-200 bg-gray-50 px-4 py-3">Rs. {(packageData.guarantorExposureLimit ?? 1000000).toLocaleString()}</div></div>
+            </div>
+
             {/* Description */}
             {packageData.description && (
               <div>

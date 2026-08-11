@@ -44,6 +44,7 @@ class LedgerDatabaseInvariantTest {
             statement.execute(migration("V4__double_entry_ledger.sql"));
             statement.execute(migration("V10__accounting_close.sql"));
             statement.execute(migration("V11__savings_interest_accrual.sql"));
+            statement.execute(migration("V12__loan_security.sql"));
 
             statement.execute("""
                     INSERT INTO networks (id, registered_id, name, package_type, package_price)

@@ -101,6 +101,16 @@ class PostgresqlMigrationTest {
                 "savings_interest_accrual_uq UNIQUE (saving_account_id, member_id, accrual_date)");
     }
 
+    @Test
+    void loanSecurityEnforcesLtvLandEvidenceAndUniqueGuarantors() throws IOException {
+        String migration = resource("/db/migration/V12__loan_security.sql");
+        assertThat(migration).contains(
+                "max_loan_to_value_percent", "guarantor_exposure_limit",
+                "CREATE TABLE loan_collaterals", "CREATE TABLE loan_guarantors",
+                "loan_collateral_land_ck", "loan_guarantor_member_uq",
+                "ownership_document_reference", "consent_reference");
+    }
+
     private String resource(String path) throws IOException {
         try (var stream = getClass().getResourceAsStream(path)) {
             assertThat(stream).as("resource %s", path).isNotNull();

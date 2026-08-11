@@ -55,6 +55,7 @@ import com.kosh.backend.ledger.LedgerService;
 import com.kosh.backend.service.Money;
 import com.kosh.backend.service.RepaymentAllocation;
 import com.kosh.backend.service.NetworkAccessService;
+import com.kosh.backend.service.LoanSecurityService;
 
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.interceptor.TransactionAspectSupport;
@@ -88,6 +89,7 @@ public class TransactionController {
     private final LedgerService ledger;
     private final LedgerReports reports;
     private final RepaymentScheduleRepository scheduleRepo;
+    private final LoanSecurityService loanSecurity;
 
     public TransactionController(
             TransactionRepository transactionRepo, 
@@ -104,12 +106,14 @@ public class TransactionController {
             NetworkAccessService access,
             LedgerService ledger,
             LedgerReports reports,
-            RepaymentScheduleRepository scheduleRepo) {
+            RepaymentScheduleRepository scheduleRepo,
+            LoanSecurityService loanSecurity) {
 
         this.access = access;
         this.ledger = ledger;
         this.reports = reports;
         this.scheduleRepo = scheduleRepo;
+        this.loanSecurity = loanSecurity;
 
         this.transactionRepo = transactionRepo;
         this.userRepo = userRepo;
@@ -449,6 +453,8 @@ public class TransactionController {
             if (!schedule.isEmpty()) {
                 RepaymentAllocation.Result allocation = RepaymentAllocation.allocate(schedule, tx.getAmount());
                 scheduleRepo.saveAll(allocation.touched());
+                loanSecurity.releaseIfClosed(schedule.get(0).getLoanApplication(),
+                        tx.getReceivedBy() == null ? "System repayment" : tx.getReceivedBy());
                 return LedgerPostings.loanRepayment(member, allocation.principal(), allocation.interest(),
                         allocation.unallocated(), tx.getPaymentMethod(), tx.getType());
             }

@@ -24,6 +24,28 @@ const STATUS_STYLES: Record<string, string> = {
   WITHDRAWN: "bg-gray-50 text-gray-600 border-gray-200",
 };
 
+interface CollateralRegisterRow {
+  id: number; loanApplicationId: number; memberName: string; productName: string;
+  collateralType: string; valuation: number; valuer: string; valuationDate: string;
+  documentReference: string; location: string; status: string; guarantorNames: string[];
+}
+
+function parseCollateralRegister(value: unknown): CollateralRegisterRow[] {
+  if (!Array.isArray(value)) throw new Error("Invalid collateral register response");
+  return value.map((item) => {
+    if (!isRecord(item)) throw new Error("Invalid collateral register response");
+    const id = Number(item.id); const loanApplicationId = Number(item.loanApplicationId);
+    const valuation = Number(item.valuation);
+    if (![id, loanApplicationId, valuation].every(Number.isFinite)) throw new Error("Invalid collateral register response");
+    const text = (key: string) => typeof item[key] === "string" ? item[key] : "";
+    const guarantorNames = Array.isArray(item.guarantors) ? item.guarantors.map((guarantor) =>
+      isRecord(guarantor) && typeof guarantor.memberName === "string" ? guarantor.memberName : "Member") : [];
+    return { id, loanApplicationId, valuation, memberName: text("memberName"), productName: text("productName"),
+      collateralType: text("collateralType"), valuer: text("valuer"), valuationDate: text("valuationDate"),
+      documentReference: text("documentReference"), location: text("location"), status: text("status"), guarantorNames };
+  });
+}
+
 // --- Helper: Modern Review Modal ---
 interface ApprovalForm { approvedAmount: string; duration: string; reviewNotes: string }
 const ReviewModal = ({ application, type, onClose, onConfirm }: { application: UserApplication; type: ApplicationType; onClose: () => void; onConfirm: (data: ApprovalForm) => void }) => {
@@ -284,6 +306,7 @@ const ApplicationCard = ({ application, type, onReview }: { application: UserApp
 export default function AdminApplications() {
   const [networkId, setNetworkId] = useState<string | null>(null);
   const [applications, setApplications] = useState<{ fd: UserApplication[]; sa: UserApplication[]; loan: UserApplication[] }>({ fd: [], sa: [], loan: [] });
+  const [collateralRegister, setCollateralRegister] = useState<CollateralRegisterRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<"ALL" | ReviewStatus>("ALL");
   const [reviewModal, setReviewModal] = useState<{ app: UserApplication; type: ApplicationType } | null>(null);
@@ -311,16 +334,18 @@ export default function AdminApplications() {
   const fetchApplications = useCallback(async (selectedNetworkId: string) => {
     setLoading(true);
     try {
-      const [fdRes, saRes, loanRes] = await Promise.all([
+      const [fdRes, saRes, loanRes, collateralRes] = await Promise.all([
         apiFetch(`${apiBase}/applications/fixed-deposit/network/${encodeURIComponent(selectedNetworkId)}`),
         apiFetch(`${apiBase}/applications/saving-account/network/${encodeURIComponent(selectedNetworkId)}`),
         apiFetch(`${apiBase}/applications/loan/network/${encodeURIComponent(selectedNetworkId)}`),
+        apiFetch(`${apiBase}/loan-security/network/${encodeURIComponent(selectedNetworkId)}/collateral-register`),
       ]);
       setApplications({
         fd: parseUserApplications(await fdRes.json(), "fixed-deposit"),
         sa: parseUserApplications(await saRes.json(), "saving-account"),
         loan: parseUserApplications(await loanRes.json(), "loan"),
       });
+      setCollateralRegister(parseCollateralRegister(await collateralRes.json()));
     } catch (caught) { setError(caught instanceof Error ? caught.message : "Applications failed to load"); }
     finally { setLoading(false); }
   }, []);
@@ -493,6 +518,10 @@ export default function AdminApplications() {
             );
           })}
         </div>
+        <section className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
+          <div className="border-b border-gray-100 p-5"><p className="text-xs font-bold uppercase tracking-wider text-teal-700">Secured lending</p><h2 className="mt-1 text-lg font-bold text-gray-900">Collateral register</h2></div>
+          <div className="overflow-x-auto"><table className="w-full text-left text-sm"><thead className="bg-gray-50 text-xs uppercase tracking-wider text-gray-400"><tr><th className="px-5 py-3">Loan / member</th><th className="px-5 py-3">Security</th><th className="px-5 py-3">Valuation</th><th className="px-5 py-3">Evidence</th><th className="px-5 py-3">Guarantors</th><th className="px-5 py-3">Status</th></tr></thead><tbody className="divide-y divide-gray-100">{collateralRegister.map((row) => <tr key={row.id}><td className="px-5 py-4"><p className="font-bold text-gray-900">#{row.loanApplicationId} · {row.memberName}</p><p className="text-xs text-gray-500">{row.productName}</p></td><td className="px-5 py-4"><p className="font-semibold">{row.collateralType}</p><p className="text-xs text-gray-500">{row.location || "—"}</p></td><td className="px-5 py-4"><p className="font-mono font-bold">Rs. {row.valuation.toLocaleString()}</p><p className="text-xs text-gray-500">{row.valuer} · {formatDualDate(row.valuationDate)}</p></td><td className="px-5 py-4 font-mono text-xs">{row.documentReference}</td><td className="px-5 py-4 text-xs">{row.guarantorNames.join(", ") || "—"}</td><td className="px-5 py-4"><span className={`rounded-full px-2 py-1 text-xs font-bold ${row.status === "PLEDGED" ? "bg-amber-100 text-amber-800" : "bg-emerald-100 text-emerald-800"}`}>{row.status}</span></td></tr>)}</tbody></table>{collateralRegister.length === 0 && <p className="p-8 text-center text-sm text-gray-400">No collateral has been registered.</p>}</div>
+        </section>
       </div>
 
       {reviewModal && (

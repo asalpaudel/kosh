@@ -45,6 +45,7 @@ import com.kosh.backend.service.EmailService;
 import com.kosh.backend.ledger.LedgerReports;
 import com.kosh.backend.ledger.LedgerService;
 import com.kosh.backend.service.LoanService;
+import com.kosh.backend.service.LoanSecurityService;
 import com.kosh.backend.service.NetworkAccessService;
 
 /**
@@ -71,6 +72,7 @@ class TenantIsolationTest {
     @Mock ActivityLogRepository logRepo;
     @Mock EmailService emailService;
     @Mock LoanService loanService;
+    @Mock LoanSecurityService loanSecurityService;
     @Mock LedgerService ledger;
     @Mock LedgerReports ledgerReports;
 
@@ -85,7 +87,7 @@ class TenantIsolationTest {
     private TransactionController transactionController() {
         return new TransactionController(transactionRepo, userRepo, networkRepo, logRepo, emailService,
                 fdAppRepo, fixedDepositRepo, loanAppRepo, loanPackageRepo, saAppRepo, savingAccountRepo,
-                access, ledger, ledgerReports, repaymentScheduleRepo);
+                access, ledger, ledgerReports, repaymentScheduleRepo, loanSecurityService);
     }
 
     // ------------------------------------------------------------------ finance
@@ -117,7 +119,8 @@ class TenantIsolationTest {
         assertThat(controller.addSavingAccount(OTHER_NETWORK, "SA", money("5.00"), money("500.00"),
                 "DAILY_PRODUCT", "MONTHLY", "ACTUAL_365", null, null, session)
                 .getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
-        assertThat(controller.addLoanPackage(OTHER_NETWORK, "LP", money("12.00"), money("50000.00"), 24, null, null, session)
+        assertThat(controller.addLoanPackage(OTHER_NETWORK, "LP", money("12.00"), money("50000.00"), 24,
+                money("70.00"), money("100000.00"), null, null, session)
                 .getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
 
         verify(fixedDepositRepo, never()).save(any());
