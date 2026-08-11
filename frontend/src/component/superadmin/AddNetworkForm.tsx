@@ -1,6 +1,14 @@
-import { API_BASE } from "../../lib/apiClient";
-import React, { useState } from "react";
-import { apiFetch } from "../../lib/apiClient";
+import { useState, type ChangeEvent } from "react";
+import { API_BASE, ApiError, apiFetch } from "../../lib/apiClient";
+import { parseNetwork, type NetworkSummary } from "../../lib/networks";
+
+type PackageType = "basic" | "premium" | "custom";
+
+interface AddNetworkFormProps {
+  onClose: () => void;
+  onNetworkAdded: (network: NetworkSummary) => void;
+  apiBase?: string;
+}
 
 // Package definitions
 const PACKAGES = {
@@ -10,6 +18,8 @@ const PACKAGES = {
     maxAdmins: 1,
     maxMembers: 15,
     description: "Perfect for small sahakaris",
+    pricePerAdmin: 0,
+    pricePerMember: 0,
   },
   premium: {
     name: "Professional Package",
@@ -17,6 +27,8 @@ const PACKAGES = {
     maxAdmins: 2,
     maxMembers: 30,
     description: "Ideal for growing sahakaris",
+    pricePerAdmin: 0,
+    pricePerMember: 0,
   },
   custom: {
     name: "Custom Package",
@@ -33,7 +45,7 @@ export default function AddNetworkForm({
   onClose,
   onNetworkAdded,
   apiBase = API_BASE,
-}) {
+}: AddNetworkFormProps) {
   const [formData, setFormData] = useState({
     registeredId: "",
     name: "",
@@ -41,16 +53,16 @@ export default function AddNetworkForm({
     createdAt: "",
     phone: "",
     panNumber: "",
-    packageType: "",
+    packageType: "" as PackageType | "",
     staffCount: "",
     userCount: "",
   });
 
-  const [document, setDocument] = useState(null);
-  const [documentBase64, setDocumentBase64] = useState(null);
-  const [logo, setLogo] = useState(null);
-  const [logoBase64, setLogoBase64] = useState(null);
-  const [logoPreview, setLogoPreview] = useState(null);
+  const [document, setDocument] = useState<File | null>(null);
+  const [documentBase64, setDocumentBase64] = useState<string | null>(null);
+  const [logo, setLogo] = useState<File | null>(null);
+  const [logoBase64, setLogoBase64] = useState<string | null>(null);
+  const [logoPreview, setLogoPreview] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
@@ -62,38 +74,43 @@ export default function AddNetworkForm({
     if (!selectedPackage) return 0;
 
     if (formData.packageType === "custom") {
-      const admins = parseInt(formData.staffCount) || 0;
-      const members = parseInt(formData.userCount) || 0;
+      const admins = Number.parseInt(formData.staffCount, 10) || 0;
+      const members = Number.parseInt(formData.userCount, 10) || 0;
       return (
         admins * selectedPackage.pricePerAdmin +
         members * selectedPackage.pricePerMember
       );
     }
 
-    return selectedPackage.price;
+    return selectedPackage.price ?? 0;
   };
 
   // Convert file to Base64
-  const fileToBase64 = (file) => {
+  const fileToBase64 = (file: File): Promise<string> => {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
       reader.onloadend = () => {
         // Remove the data URL prefix (e.g., "data:image/png;base64,")
-        const base64String = reader.result.split(',')[1];
-        resolve(base64String);
+        if (typeof reader.result !== "string") {
+          reject(new Error("Unable to read file"));
+          return;
+        }
+        const base64String = reader.result.split(",")[1];
+        if (!base64String) reject(new Error("Unable to encode file"));
+        else resolve(base64String);
       };
       reader.onerror = reject;
       reader.readAsDataURL(file);
     });
   };
 
-  const onChange = (e) => {
+  const onChange = (e: ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
 
     if (name === "packageType") {
       setFormData((prev) => ({
         ...prev,
-        packageType: value,
+        packageType: value === "basic" || value === "premium" || value === "custom" ? value : "",
         staffCount: value === "basic" ? "1" : value === "premium" ? "2" : "",
         userCount: value === "basic" ? "15" : value === "premium" ? "30" : "",
       }));
@@ -110,8 +127,8 @@ export default function AddNetworkForm({
     }
   };
 
-  const onFileChange = async (e) => {
-    const file = e.target.files[0];
+  const onFileChange = async (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.item(0);
     if (file) {
       const validTypes = [
         "application/pdf",
@@ -140,8 +157,8 @@ export default function AddNetworkForm({
     }
   };
 
-  const onLogoChange = async (e) => {
-    const file = e.target.files[0];
+  const onLogoChange = async (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.item(0);
     if (file) {
       const validTypes = ["image/jpeg", "image/jpg", "image/png"];
       if (!validTypes.includes(file.type)) {
@@ -162,7 +179,7 @@ export default function AddNetworkForm({
 
         const reader = new FileReader();
         reader.onloadend = () => {
-          setLogoPreview(reader.result);
+          setLogoPreview(typeof reader.result === "string" ? reader.result : null);
         };
         reader.readAsDataURL(file);
       } catch {
@@ -171,7 +188,7 @@ export default function AddNetworkForm({
     }
   };
 
-  const validatePAN = (pan) => {
+  const validatePAN = (pan: string) => {
     const panRegex = /^[0-9]{1,9}$/;
     return panRegex.test(pan);
   };
@@ -182,19 +199,19 @@ export default function AddNetworkForm({
       return false;
     }
 
-    const staffCount = parseInt(formData.staffCount) || 0;
-    const userCount = parseInt(formData.userCount) || 0;
+    const staffCount = Number.parseInt(formData.staffCount, 10) || 0;
+    const userCount = Number.parseInt(formData.userCount, 10) || 0;
 
     if (formData.packageType !== "custom") {
-      if (staffCount > selectedPackage.maxAdmins) {
+      if (staffCount > (selectedPackage.maxAdmins ?? 0)) {
         setError(
-          `Staff count cannot exceed ${selectedPackage.maxAdmins} for this package`
+          `Staff count cannot exceed ${String(selectedPackage.maxAdmins ?? 0)} for this package`
         );
         return false;
       }
-      if (userCount > selectedPackage.maxMembers) {
+      if (userCount > (selectedPackage.maxMembers ?? 0)) {
         setError(
-          `User count cannot exceed ${selectedPackage.maxMembers} for this package`
+          `User count cannot exceed ${String(selectedPackage.maxMembers ?? 0)} for this package`
         );
         return false;
       }
@@ -222,13 +239,13 @@ export default function AddNetworkForm({
       return;
     }
 
-    if (!documentBase64) {
+    if (!documentBase64 || !document) {
       setError("Registration document is required");
       setSaving(false);
       return;
     }
 
-    if (!logoBase64) {
+    if (!logoBase64 || !logo) {
       setError("Organization logo is required");
       setSaving(false);
       return;
@@ -240,7 +257,8 @@ export default function AddNetworkForm({
     }
 
     try {
-      let adminLimit, userLimit;
+      let adminLimit = 0;
+      let userLimit = 0;
       if (formData.packageType === "basic") {
         adminLimit = 1;
         userLimit = 15;
@@ -248,8 +266,8 @@ export default function AddNetworkForm({
         adminLimit = 2;
         userLimit = 30;
       } else if (formData.packageType === "custom") {
-        adminLimit = parseInt(formData.staffCount) || 0;
-        userLimit = parseInt(formData.userCount) || 0;
+        adminLimit = Number.parseInt(formData.staffCount, 10) || 0;
+        userLimit = Number.parseInt(formData.userCount, 10) || 0;
       }
 
       // Create JSON payload with Base64 encoded files
@@ -262,8 +280,8 @@ export default function AddNetworkForm({
         panNumber: formData.panNumber,
         packageType: formData.packageType,
         packagePrice: calculatePrice(),
-        staffCount: parseInt(formData.staffCount),
-        userCount: parseInt(formData.userCount),
+        staffCount: Number.parseInt(formData.staffCount, 10),
+        userCount: Number.parseInt(formData.userCount, 10),
         adminLimit: adminLimit,
         userLimit: userLimit,
         document: {
@@ -288,16 +306,11 @@ export default function AddNetworkForm({
         body: JSON.stringify(payload),
       });
 
-      if (!res.ok) {
-        const text = await res.text();
-        throw new Error(`HTTP ${res.status}: ${text}`);
-      }
-
-      const saved = await res.json();
-      onNetworkAdded?.(saved);
-      onClose?.();
-    } catch (err) {
-      setError(`Failed to save: ${err.message}`);
+      const saved = parseNetwork(await res.json());
+      onNetworkAdded(saved);
+      onClose();
+    } catch (caught) {
+      setError(caught instanceof ApiError || caught instanceof Error ? caught.message : "Save failed");
     } finally {
       setSaving(false);
     }
@@ -445,7 +458,7 @@ export default function AddNetworkForm({
                 </label>
                 <input
                   type="file"
-                  onChange={onLogoChange}
+                  onChange={(event) => { void onLogoChange(event); }}
                   accept=".jpg,.jpeg,.png"
                   className="w-full bg-white rounded-lg px-4 py-2 outline-none border border-gray-300 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-teal-50 file:text-teal-700 hover:file:bg-teal-100"
                   required
@@ -472,7 +485,7 @@ export default function AddNetworkForm({
                             d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
                           />
                         </svg>
-                        {logo.name}
+                        {logo?.name}
                       </p>
                       <button
                         onClick={() => {
@@ -588,7 +601,7 @@ export default function AddNetworkForm({
                       className="w-full bg-white rounded-lg px-4 py-2 outline-none border border-gray-300 focus:ring-2 focus:ring-teal-500"
                       min={isCustomPackage ? "2" : "1"}
                       max={
-                        !isCustomPackage ? selectedPackage.maxAdmins : undefined
+                        !isCustomPackage ? selectedPackage.maxAdmins ?? undefined : undefined
                       }
                       disabled={!isCustomPackage}
                       required
@@ -621,7 +634,7 @@ export default function AddNetworkForm({
                       min={isCustomPackage ? "30" : "1"}
                       max={
                         !isCustomPackage
-                          ? selectedPackage.maxMembers
+                          ? selectedPackage.maxMembers ?? undefined
                           : undefined
                       }
                       disabled={!isCustomPackage}
@@ -688,7 +701,7 @@ export default function AddNetworkForm({
                 </label>
                 <input
                   type="file"
-                  onChange={onFileChange}
+                  onChange={(event) => { void onFileChange(event); }}
                   accept=".pdf,.jpg,.jpeg,.png"
                   className="w-full bg-white rounded-lg px-4 py-2 outline-none border border-gray-300 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-teal-50 file:text-teal-700 hover:file:bg-teal-100"
                   required
@@ -755,7 +768,7 @@ export default function AddNetworkForm({
             Cancel
           </button>
           <button
-            onClick={handleSubmit}
+            onClick={() => { void handleSubmit(); }}
             disabled={saving || !formData.packageType}
             className="px-6 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 disabled:opacity-60 disabled:cursor-not-allowed transition-colors font-medium"
           >
