@@ -15,6 +15,16 @@ interface InterestAccrual {
   interestBasis: string; basisAmount: number; annualRate: number; accruedAmount: number;
 }
 
+interface RiskSettings {
+  watchlistDays: number; substandardDays: number; doubtfulDays: number; lossDays: number;
+  passRate: number; watchlistRate: number; substandardRate: number; doubtfulRate: number; lossRate: number;
+}
+
+interface RiskRow { loanId: number; memberName: string; productName: string; oldestOverdueDate: string | null; daysPastDue: number; classification: string; outstandingPrincipal: number; provisionRate: number; requiredProvision: number }
+interface RiskReport { asOf: string; totalOutstanding: number; requiredProvision: number; npaRatio: number; par30: number; par60: number; par90: number; rows: RiskRow[] }
+
+const DEFAULT_RISK_SETTINGS: RiskSettings = { watchlistDays: 1, substandardDays: 30, doubtfulDays: 90, lossDays: 180, passRate: 1, watchlistRate: 5, substandardRate: 25, doubtfulRate: 50, lossRate: 100 };
+
 function parsePeriod(value: unknown): Period {
   if (!isRecord(value)) throw new Error("Invalid accounting period response");
   const numberValue = Number(value.id);
@@ -46,10 +56,30 @@ function parseAccruals(value: unknown): InterestAccrual[] {
   });
 }
 
+function parseRiskSettings(value: unknown): RiskSettings {
+  if (!isRecord(value)) throw new Error("Invalid loan risk settings response");
+  const result = { ...DEFAULT_RISK_SETTINGS };
+  for (const key of Object.keys(result) as Array<keyof RiskSettings>) {
+    const parsed = Number(value[key]); if (!Number.isFinite(parsed)) throw new Error("Invalid loan risk settings response"); result[key] = parsed;
+  }
+  return result;
+}
+
+function parseRiskReport(value: unknown): RiskReport {
+  if (!isRecord(value) || !Array.isArray(value.rows)) throw new Error("Invalid loan risk report response");
+  const metric = (key: string) => { const parsed = Number(value[key]); if (!Number.isFinite(parsed)) throw new Error("Invalid loan risk report response"); return parsed; };
+  const rows = value.rows.map((item) => { if (!isRecord(item)) throw new Error("Invalid loan risk report response");
+    const text = (key: string) => typeof item[key] === "string" ? item[key] : ""; const number = (key: string) => { const parsed = Number(item[key]); if (!Number.isFinite(parsed)) throw new Error("Invalid loan risk report response"); return parsed; };
+    return { loanId: number("loanId"), memberName: text("memberName"), productName: text("productName"), oldestOverdueDate: item.oldestOverdueDate == null ? null : text("oldestOverdueDate"), daysPastDue: number("daysPastDue"), classification: text("classification"), outstandingPrincipal: number("outstandingPrincipal"), provisionRate: number("provisionRate"), requiredProvision: number("requiredProvision") }; });
+  return { asOf: typeof value.asOf === "string" ? value.asOf : "", totalOutstanding: metric("totalOutstanding"), requiredProvision: metric("requiredProvision"), npaRatio: metric("npaRatio"), par30: metric("par30"), par60: metric("par60"), par90: metric("par90"), rows };
+}
+
 export default function AdminClose() {
   const [networkId, setNetworkId] = useState<number | null>(null);
   const [periods, setPeriods] = useState<Period[]>([]);
   const [accruals, setAccruals] = useState<InterestAccrual[]>([]);
+  const [riskSettings, setRiskSettings] = useState<RiskSettings>(DEFAULT_RISK_SETTINGS);
+  const [riskReport, setRiskReport] = useState<RiskReport | null>(null);
   const [date, setDate] = useState(todayInNepal());
   const [closeType, setCloseType] = useState<"DAY_END" | "MONTH_END">("DAY_END");
   const [reopenId, setReopenId] = useState<number | null>(null);
@@ -58,14 +88,18 @@ export default function AdminClose() {
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
 
-  const load = useCallback(async (id: number) => {
+  const load = useCallback(async (id: number, asOf = todayInNepal()) => {
     const encoded = encodeURIComponent(String(id));
-    const [periodResponse, accrualResponse] = await Promise.all([
+    const [periodResponse, accrualResponse, settingsResponse, riskResponse] = await Promise.all([
       apiFetch(`${API_BASE}/close/network/${encoded}/periods`),
       apiFetch(`${API_BASE}/interest/network/${encoded}/accruals`),
+      apiFetch(`${API_BASE}/loan-risk/network/${encoded}/settings`),
+      apiFetch(`${API_BASE}/loan-risk/network/${encoded}/report?asOf=${encodeURIComponent(asOf)}`),
     ]);
     setPeriods(parsePeriods(await periodResponse.json()));
     setAccruals(parseAccruals(await accrualResponse.json()));
+    setRiskSettings(parseRiskSettings(await settingsResponse.json()));
+    setRiskReport(parseRiskReport(await riskResponse.json()));
   }, []);
 
   useEffect(() => {
@@ -76,7 +110,7 @@ export default function AdminClose() {
         if (!isRecord(session)) throw new Error("Invalid session");
         const id = Number(session.sahakariId);
         if (!Number.isFinite(id)) throw new Error("Missing cooperative context");
-        setNetworkId(id); await load(id);
+        setNetworkId(id); await load(id, todayInNepal());
       } catch (caught) { setError(caught instanceof Error ? caught.message : "Close history failed to load"); }
     };
     void init();
@@ -93,7 +127,7 @@ export default function AdminClose() {
       const body: unknown = await response.json();
       const alreadyProcessed = isRecord(body) && body.alreadyProcessed === true;
       setMessage(alreadyProcessed ? "This close was already processed; no entries were duplicated." : `${closeType.replace("_", "-")} completed and period locked.`);
-      await load(networkId);
+      await load(networkId, date);
     } catch (caught) { setError(caught instanceof Error ? caught.message : "Close failed"); }
     finally { setBusy(false); }
   };
@@ -106,8 +140,21 @@ export default function AdminClose() {
         method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ reason }),
       });
       setMessage("Period reopened. The reason is preserved in the append-only activity trail.");
-      setReopenId(null); setReason(""); await load(networkId);
+      setReopenId(null); setReason(""); await load(networkId, date);
     } catch (caught) { setError(caught instanceof Error ? caught.message : "Reopen failed"); }
+    finally { setBusy(false); }
+  };
+
+  const saveRiskSettings = async () => {
+    if (networkId == null) return;
+    setBusy(true); setError("");
+    try {
+      await apiFetch(`${API_BASE}/loan-risk/network/${encodeURIComponent(String(networkId))}/settings`, {
+        method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(riskSettings),
+      });
+      setMessage("Loan aging thresholds and provision rates updated for future closes.");
+      await load(networkId, date);
+    } catch (caught) { setError(caught instanceof Error ? caught.message : "Risk settings failed to save"); }
     finally { setBusy(false); }
   };
 
@@ -123,6 +170,12 @@ export default function AdminClose() {
         </section>
         <section className="mt-7 overflow-hidden rounded-2xl border border-slate-200 bg-white"><div className="border-b border-slate-100 p-5"><h2 className="text-lg font-black text-slate-900">Period history</h2></div><div className="overflow-x-auto"><table className="w-full text-left text-sm"><thead className="bg-slate-50 text-xs uppercase tracking-wider text-slate-400"><tr><th className="px-5 py-3">Type</th><th className="px-5 py-3">Period</th><th className="px-5 py-3">Status</th><th className="px-5 py-3">Operator</th><th className="px-5 py-3 text-right">Control</th></tr></thead><tbody className="divide-y divide-slate-100">{periods.map((period) => <tr key={period.id}><td className="px-5 py-4 font-bold text-slate-900">{period.periodType.replace("_", "-")}</td><td className="px-5 py-4"><p>{formatDualDate(period.periodStart)}</p>{period.periodStart !== period.periodEnd && <p className="text-xs text-slate-400">through {formatDualDate(period.periodEnd)}</p>}</td><td className="px-5 py-4"><span className={`rounded-full px-2 py-1 text-xs font-black ${period.status === 'CLOSED' ? 'bg-slate-900 text-white' : 'bg-amber-100 text-amber-800'}`}>{period.status}</span></td><td className="px-5 py-4 text-slate-500">{period.status === 'CLOSED' ? period.closedBy : period.reopenedBy}</td><td className="px-5 py-4 text-right">{period.status === 'CLOSED' && <button type="button" onClick={() => { setReopenId(period.id); }} className="text-xs font-black text-red-600 hover:text-red-800">Reopen</button>}</td></tr>)}</tbody></table>{periods.length === 0 && <p className="p-8 text-center text-sm text-slate-400">No periods have been closed.</p>}</div></section>
         <section className="mt-7 overflow-hidden rounded-2xl border border-slate-200 bg-white"><div className="border-b border-slate-100 p-5"><p className="text-xs font-bold uppercase tracking-widest text-teal-700">Daily evidence</p><h2 className="mt-1 text-lg font-black text-slate-900">Savings interest accruals</h2></div><div className="overflow-x-auto"><table className="w-full text-left text-sm"><thead className="bg-slate-50 text-xs uppercase tracking-wider text-slate-400"><tr><th className="px-5 py-3">Date</th><th className="px-5 py-3">Member</th><th className="px-5 py-3">Product / basis</th><th className="px-5 py-3 text-right">Eligible balance</th><th className="px-5 py-3 text-right">Rate</th><th className="px-5 py-3 text-right">Accrued</th></tr></thead><tbody className="divide-y divide-slate-100">{accruals.slice(0, 25).map((accrual) => <tr key={accrual.id}><td className="whitespace-nowrap px-5 py-4">{formatDualDate(accrual.accrualDate)}</td><td className="px-5 py-4 font-bold text-slate-900">{accrual.memberName}</td><td className="px-5 py-4"><p>{accrual.productName}</p><p className="text-xs text-slate-400">{accrual.interestBasis.replace(/_/g, " ")}</p></td><td className="px-5 py-4 text-right font-mono">Rs. {accrual.basisAmount.toLocaleString()}</td><td className="px-5 py-4 text-right font-mono">{accrual.annualRate}%</td><td className="px-5 py-4 text-right font-mono font-black text-teal-700">Rs. {accrual.accruedAmount.toLocaleString()}</td></tr>)}</tbody></table>{accruals.length === 0 && <p className="p-8 text-center text-sm text-slate-400">No savings interest has accrued yet.</p>}</div></section>
+        <section className="mt-7 rounded-3xl bg-slate-950 p-6 text-white shadow-xl"><div className="flex flex-col justify-between gap-4 md:flex-row md:items-end"><div><p className="text-xs font-bold uppercase tracking-[0.2em] text-teal-300">Portfolio health</p><h2 className="mt-1 text-2xl font-black">Loan aging & provisioning</h2><p className="mt-1 text-sm text-slate-400">As of {riskReport ? formatDualDate(riskReport.asOf) : "—"}</p></div><button type="button" disabled={busy} onClick={() => { void saveRiskSettings(); }} className="rounded-xl bg-teal-400 px-5 py-3 text-sm font-black text-slate-950 disabled:opacity-50">Save risk policy</button></div>
+          <div className="mt-6 grid grid-cols-2 gap-3 md:grid-cols-5">{[{ label: "NPA", value: riskReport?.npaRatio ?? 0 }, { label: "PAR 30", value: riskReport?.par30 ?? 0 }, { label: "PAR 60", value: riskReport?.par60 ?? 0 }, { label: "PAR 90", value: riskReport?.par90 ?? 0 }, { label: "Provision", value: null }].map((metric) => <div key={metric.label} className="rounded-2xl border border-white/10 bg-white/5 p-4"><p className="text-xs font-bold uppercase tracking-wider text-slate-400">{metric.label}</p><p className="mt-2 text-xl font-black">{metric.value == null ? `Rs. ${(riskReport?.requiredProvision ?? 0).toLocaleString()}` : `${String(metric.value)}%`}</p></div>)}</div>
+          <div className="mt-6 grid gap-3 md:grid-cols-4">{(["watchlistDays","substandardDays","doubtfulDays","lossDays"] as const).map((key) => <label key={key} className="text-xs font-bold text-slate-300">{key.replace("Days", " days").replace(/^./, (value) => value.toUpperCase())}<input type="number" min="0" value={riskSettings[key]} onChange={(event) => { setRiskSettings((previous) => ({ ...previous, [key]: Number(event.target.value) })); }} className="mt-2 w-full rounded-xl border border-white/10 bg-white/10 px-3 py-2 text-white" /></label>)}</div>
+          <div className="mt-3 grid gap-3 md:grid-cols-5">{(["passRate","watchlistRate","substandardRate","doubtfulRate","lossRate"] as const).map((key) => <label key={key} className="text-xs font-bold text-slate-300">{key.replace("Rate", " rate").replace(/^./, (value) => value.toUpperCase())} (%)<input type="number" min="0" max="100" step="0.01" value={riskSettings[key]} onChange={(event) => { setRiskSettings((previous) => ({ ...previous, [key]: Number(event.target.value) })); }} className="mt-2 w-full rounded-xl border border-white/10 bg-white/10 px-3 py-2 text-white" /></label>)}</div>
+        </section>
+        <section className="mt-7 overflow-hidden rounded-2xl border border-slate-200 bg-white"><div className="border-b border-slate-100 p-5"><h2 className="text-lg font-black text-slate-900">Loan aging report</h2></div><div className="overflow-x-auto"><table className="w-full text-left text-sm"><thead className="bg-slate-50 text-xs uppercase tracking-wider text-slate-400"><tr><th className="px-5 py-3">Loan / member</th><th className="px-5 py-3">Oldest overdue</th><th className="px-5 py-3">Class</th><th className="px-5 py-3 text-right">Outstanding</th><th className="px-5 py-3 text-right">Provision</th></tr></thead><tbody className="divide-y divide-slate-100">{riskReport?.rows.map((row) => <tr key={row.loanId}><td className="px-5 py-4"><p className="font-bold text-slate-900">#{row.loanId} · {row.memberName}</p><p className="text-xs text-slate-400">{row.productName}</p></td><td className="px-5 py-4">{row.oldestOverdueDate ? <><p>{formatDualDate(row.oldestOverdueDate)}</p><p className="text-xs text-slate-400">{row.daysPastDue} days past due</p></> : "Current"}</td><td className="px-5 py-4"><span className={`rounded-full px-2 py-1 text-xs font-black ${row.classification === "PASS" ? "bg-emerald-100 text-emerald-800" : row.classification === "WATCHLIST" ? "bg-amber-100 text-amber-800" : "bg-red-100 text-red-800"}`}>{row.classification}</span></td><td className="px-5 py-4 text-right font-mono">Rs. {row.outstandingPrincipal.toLocaleString()}</td><td className="px-5 py-4 text-right"><p className="font-mono font-black">Rs. {row.requiredProvision.toLocaleString()}</p><p className="text-xs text-slate-400">{row.provisionRate}%</p></td></tr>)}</tbody></table>{(!riskReport || riskReport.rows.length === 0) && <p className="p-8 text-center text-sm text-slate-400">No approved loan exposure.</p>}</div></section>
       </div>
       {reopenId != null && <div className="fixed inset-0 z-[90] flex items-center justify-center bg-slate-950/50 p-4 backdrop-blur-sm"><div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl"><h2 className="text-xl font-black text-slate-950">Authorised period reopen</h2><p className="mt-2 text-sm text-slate-500">This action is logged. Explain the correction that requires back-dated posting.</p><textarea value={reason} onChange={(event) => { setReason(event.target.value); }} rows={4} className="mt-4 w-full rounded-xl border border-slate-200 p-3 text-sm" placeholder="Reason (minimum 8 characters)" /><div className="mt-4 flex justify-end gap-2"><button type="button" onClick={() => { setReopenId(null); setReason(""); }} className="rounded-xl border border-slate-200 px-4 py-2 text-sm font-bold">Cancel</button><button type="button" disabled={busy || reason.trim().length < 8} onClick={() => { void reopen(); }} className="rounded-xl bg-red-600 px-4 py-2 text-sm font-bold text-white disabled:opacity-50">Reopen period</button></div></div></div>}
     </div>

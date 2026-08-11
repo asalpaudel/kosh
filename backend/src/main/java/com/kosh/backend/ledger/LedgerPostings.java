@@ -202,4 +202,16 @@ public final class LedgerPostings {
         return List.of(LedgerLine.debit(Accounts.INTEREST_EXPENSE, amount, memo),
                 LedgerLine.memberCredit(Accounts.MEMBER_SAVINGS, member, amount, memo));
     }
+
+    public static List<LedgerLine> loanProvision(BigDecimal change, String memo) {
+        if (change == null || change.signum() == 0) {
+            throw new IllegalArgumentException("Loan provision change cannot be zero");
+        }
+        BigDecimal amount = change.abs();
+        return change.signum() > 0
+                ? List.of(LedgerLine.debit(Accounts.PROVISION_EXPENSE, amount, memo),
+                        LedgerLine.credit(Accounts.LOAN_LOSS_PROVISION, amount, memo))
+                : List.of(LedgerLine.debit(Accounts.LOAN_LOSS_PROVISION, amount, memo),
+                        LedgerLine.credit(Accounts.PROVISION_EXPENSE, amount, memo));
+    }
 }

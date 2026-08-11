@@ -33,6 +33,8 @@ public final class Accounts {
     public static final String INTEREST_INCOME = "4000";
     public static final String FEE_INCOME = "4100";
     public static final String INTEREST_EXPENSE = "5000";
+    public static final String LOAN_LOSS_PROVISION = "1190";
+    public static final String PROVISION_EXPENSE = "5200";
     public static final String OPERATING_EXPENSE = "5100";
 
     public record Definition(String code, String name, AccountType type) {
@@ -51,6 +53,8 @@ public final class Accounts {
             new Definition(INTEREST_INCOME, "Interest Income on Loans", AccountType.INCOME),
             new Definition(FEE_INCOME, "Fees and Charges", AccountType.INCOME),
             new Definition(INTEREST_EXPENSE, "Interest Expense", AccountType.EXPENSE),
+            new Definition(LOAN_LOSS_PROVISION, "Loan Loss Provision", AccountType.ASSET),
+            new Definition(PROVISION_EXPENSE, "Provision Expense", AccountType.EXPENSE),
             new Definition(OPERATING_EXPENSE, "Operating Expenses", AccountType.EXPENSE));
 
     private Accounts() {

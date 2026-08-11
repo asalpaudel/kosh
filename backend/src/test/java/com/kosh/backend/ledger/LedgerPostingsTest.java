@@ -105,6 +105,22 @@ class LedgerPostingsTest {
     }
 
     @Test
+    void provisionIncreaseDebitsExpenseAndCreditsContraAsset() {
+        var lines = LedgerPostings.loanProvision(amount("25.00"), "provision");
+        assertThat(lines.get(0).accountCode()).isEqualTo(Accounts.PROVISION_EXPENSE);
+        assertThat(lines.get(0).debit()).isEqualByComparingTo("25.00");
+        assertThat(lines.get(1).accountCode()).isEqualTo(Accounts.LOAN_LOSS_PROVISION);
+        assertThat(lines.get(1).credit()).isEqualByComparingTo("25.00");
+    }
+
+    @Test
+    void provisionReleaseReversesExpenseAndContraAsset() {
+        var lines = LedgerPostings.loanProvision(amount("-10.00"), "release");
+        assertThat(lines.get(0).accountCode()).isEqualTo(Accounts.LOAN_LOSS_PROVISION);
+        assertThat(lines.get(1).accountCode()).isEqualTo(Accounts.PROVISION_EXPENSE);
+    }
+
+    @Test
     void unrecognisedInputIsRefusedRatherThanMisPosted() {
         assertThatThrownBy(() -> memberPosting("Office Rent", "Credit", "Cash"))
                 .isInstanceOf(IllegalArgumentException.class)

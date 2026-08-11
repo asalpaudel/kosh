@@ -111,6 +111,16 @@ class PostgresqlMigrationTest {
                 "ownership_document_reference", "consent_reference");
     }
 
+    @Test
+    void loanRiskMigrationHasConfigurableBucketsDailyClassificationAndProvisionAccounts() throws IOException {
+        String migration = resource("/db/migration/V13__loan_classification_and_provisioning.sql");
+        assertThat(migration).contains(
+                "CREATE TABLE loan_risk_settings", "watchlist_days", "substandard_days",
+                "doubtful_days", "loss_days", "CREATE TABLE loan_classifications",
+                "loan_classification_daily_uq", "1190", "Loan Loss Provision",
+                "5200", "Provision Expense", "numeric(18,2)");
+    }
+
     private String resource(String path) throws IOException {
         try (var stream = getClass().getResourceAsStream(path)) {
             assertThat(stream).as("resource %s", path).isNotNull();

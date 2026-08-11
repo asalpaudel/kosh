@@ -14,6 +14,7 @@ public interface LoanApplicationRepository extends JpaRepository<LoanApplication
     List<LoanApplication> findByNetworkId(Long networkId);
     List<LoanApplication> findByUserId(Long userId);
     List<LoanApplication> findByNetworkIdAndStatus(Long networkId, ApplicationStatus status);
+    List<LoanApplication> findByNetworkIdAndStatusOrderByIdAsc(Long networkId, ApplicationStatus status);
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select application from LoanApplication application where application.id = :id")
     Optional<LoanApplication> findByIdForReview(@Param("id") Long id);

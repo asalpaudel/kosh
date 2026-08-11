@@ -66,6 +66,9 @@ public class LoanApplication {
 
     @Column(length = 1000)
     private String reviewNotes;
+    private String riskClassification = "PASS";
+    @Column(precision = 18, scale = 2)
+    private BigDecimal provisionBalance = BigDecimal.ZERO;
 
     // Getters & Setters
     public Long getId() { return id; }
@@ -118,4 +121,8 @@ public class LoanApplication {
 
     public String getReviewNotes() { return reviewNotes; }
     public void setReviewNotes(String reviewNotes) { this.reviewNotes = reviewNotes; }
+    public String getRiskClassification() { return riskClassification; }
+    public void setRiskClassification(String value) { this.riskClassification = value; }
+    public BigDecimal getProvisionBalance() { return provisionBalance == null ? BigDecimal.ZERO : provisionBalance; }
+    public void setProvisionBalance(BigDecimal value) { this.provisionBalance = value == null ? BigDecimal.ZERO : value; }
 }
