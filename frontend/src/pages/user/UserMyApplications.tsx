@@ -1,5 +1,7 @@
-import { API_BASE as apiBase } from "../../lib/apiClient";
-import React, { useState, useEffect } from "react";
+import { useCallback, useEffect, useState } from "react";
+import { API_BASE as apiBase, ApiError, apiFetch } from "../../lib/apiClient";
+import { parseUserApplications, type UserApplication } from "../../lib/applications";
+import { isRecord } from "../../lib/validation";
 import { useNavigate } from "react-router-dom";
 import {
   DocumentTextIcon,
@@ -8,10 +10,10 @@ import {
   ClockIcon,
   CheckCircleIcon,
   XCircleIcon,
-} from "../../component/icons.jsx";
+} from "../../component/icons";
 
 
-const StatusIcon = ({ status }) => {
+const StatusIcon = ({ status }: { status: string }) => {
   switch (status) {
     case "PENDING":
       return <ClockIcon className="w-5 h-5 text-yellow-500" />;
@@ -24,8 +26,9 @@ const StatusIcon = ({ status }) => {
   }
 };
 
-const ApplicationCard = ({ application, type }) => {
-  const getStatusColor = (status) => {
+const ApplicationCard = ({ application }: { application: UserApplication }) => {
+  const { type } = application;
+  const getStatusColor = (status: string) => {
     switch (status) {
       case "PENDING":
         return "bg-yellow-100 text-yellow-800 border-yellow-300";
@@ -37,19 +40,6 @@ const ApplicationCard = ({ application, type }) => {
         return "bg-gray-100 text-gray-800 border-gray-300";
       default:
         return "bg-gray-100 text-gray-800 border-gray-300";
-    }
-  };
-
-  const getPackageName = () => {
-    switch (type) {
-      case "fixed-deposit":
-        return application.fixedDeposit?.name;
-      case "saving-account":
-        return application.savingAccount?.name;
-      case "loan":
-        return application.loanPackage?.name;
-      default:
-        return "N/A";
     }
   };
 
@@ -82,7 +72,7 @@ const ApplicationCard = ({ application, type }) => {
             <div className="flex justify-between">
               <span className="text-gray-600">Interest Rate:</span>
               <span className="font-semibold">
-                {application.interestRate || application.fixedDeposit?.interestRate}%
+                {application.interestRate ?? 0}%
               </span>
             </div>
             {/* ⭐ NEW: Maturity Info */}
@@ -109,7 +99,7 @@ const ApplicationCard = ({ application, type }) => {
             </div>
             <div className="flex justify-between">
               <span className="text-gray-600">Interest Rate:</span>
-              <span className="font-semibold">{application.savingAccount?.interestRate}%</span>
+              <span className="font-semibold">{application.interestRate ?? 0}%</span>
             </div>
           </div>
         );
@@ -130,7 +120,7 @@ const ApplicationCard = ({ application, type }) => {
             <div className="flex justify-between">
               <span className="text-gray-600">Interest Rate:</span>
               <span className="font-semibold">
-                {application.interestRate || application.loanPackage?.interestRate}%
+                {application.interestRate ?? 0}%
               </span>
             </div>
             {/* ⭐ NEW: Next Payment Date */}
@@ -157,7 +147,7 @@ const ApplicationCard = ({ application, type }) => {
         <div className="flex items-center gap-3">
           {getIcon()}
           <div>
-            <h4 className="font-semibold text-gray-900 text-lg">{getPackageName()}</h4>
+            <h4 className="font-semibold text-gray-900 text-lg">{application.packageName}</h4>
             <p className="text-sm text-gray-500">
               Applied on {new Date(application.applicationDate).toLocaleDateString()}
             </p>
@@ -191,90 +181,65 @@ const ApplicationCard = ({ application, type }) => {
 
 function UserMyApplications() {
   const navigate = useNavigate();
-  const [sessionData, setSessionData] = useState(null);
-  const [fdApplications, setFdApplications] = useState([]);
-  const [saApplications, setSaApplications] = useState([]);
-  const [loanApplications, setLoanApplications] = useState([]);
+  const [authorized, setAuthorized] = useState(false);
+  const [fdApplications, setFdApplications] = useState<UserApplication[]>([]);
+  const [saApplications, setSaApplications] = useState<UserApplication[]>([]);
+  const [loanApplications, setLoanApplications] = useState<UserApplication[]>([]);
   const [loading, setLoading] = useState(false);
   const [sessionLoading, setSessionLoading] = useState(true);
   const [filterStatus, setFilterStatus] = useState("ALL");
+  const [error, setError] = useState<string | null>(null);
+
+  const fetchApplications = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const [fdRes, saRes, loanRes] = await Promise.all([
+        apiFetch(`${apiBase}/applications/fixed-deposit/user`),
+        apiFetch(`${apiBase}/applications/saving-account/user`),
+        apiFetch(`${apiBase}/applications/loan/user`),
+      ]);
+      const fdBody: unknown = await fdRes.json();
+      const saBody: unknown = await saRes.json();
+      const loanBody: unknown = await loanRes.json();
+      setFdApplications(parseUserApplications(fdBody, "fixed-deposit"));
+      setSaApplications(parseUserApplications(saBody, "saving-account"));
+      setLoanApplications(parseUserApplications(loanBody, "loan"));
+    } catch (caught) {
+      setError(caught instanceof ApiError || caught instanceof Error ? caught.message : "Failed to load applications");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
     const fetchSession = async () => {
       try {
-        const response = await fetch(`${apiBase}/session`, {
-          method: "GET",
-          credentials: "include",
-        });
-
-        if (response.ok) {
-          const data = await response.json();
-          // Check if session has error (no userEmail)
-          if (data.error) {
-            navigate('/');
-            return;
-          }
-
-          setSessionData(data);
-
-          // If user doesn't have sahakariId, redirect to login
-          if (!data.sahakariId && data.userRole !== "superadmin") {
-            navigate('/');
-            return;
-          }
-
-          // Fetch applications after session is validated
-          fetchApplications();
-        } else if (response.status === 401) {
-          navigate('/');
-        } else {
-          navigate('/');
-        }
-      } catch (error) {
-        navigate('/');
+        const response = await apiFetch(`${apiBase}/session`);
+        const data: unknown = await response.json();
+        if (!isRecord(data) || typeof data.userEmail !== "string") throw new Error("Invalid session");
+        setAuthorized(true);
+        await fetchApplications();
+      } catch {
+        void navigate("/");
       } finally {
         setSessionLoading(false);
       }
     };
 
-    fetchSession();
-  }, [navigate]);
+    void fetchSession();
+  }, [fetchApplications, navigate]);
 
-  const fetchApplications = async () => {
-    setLoading(true);
-    try {
-      const [fdRes, saRes, loanRes] = await Promise.all([
-        fetch(`${apiBase}/applications/fixed-deposit/user`, {
-          credentials: "include",
-        }),
-        fetch(`${apiBase}/applications/saving-account/user`, {
-          credentials: "include",
-        }),
-        fetch(`${apiBase}/applications/loan/user`, {
-          credentials: "include",
-        }),
-      ]);
-
-      if (fdRes.ok) setFdApplications(await fdRes.json());
-      if (saRes.ok) setSaApplications(await saRes.json());
-      if (loanRes.ok) setLoanApplications(await loanRes.json());
-    } catch (error) {
-      console.error("Failed to fetch applications:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const filterApplications = (apps) => {
+  const filterApplications = (apps: UserApplication[]) => {
     if (filterStatus === "ALL") return apps;
     return apps.filter((app) => app.status === filterStatus);
   };
 
   const allApplications = [
-    ...filterApplications(fdApplications).map((app) => ({ ...app, type: "fixed-deposit" })),
-    ...filterApplications(saApplications).map((app) => ({ ...app, type: "saving-account" })),
-    ...filterApplications(loanApplications).map((app) => ({ ...app, type: "loan" })),
-  ].sort((a, b) => new Date(b.applicationDate) - new Date(a.applicationDate));
+    ...filterApplications(fdApplications),
+    ...filterApplications(saApplications),
+    ...filterApplications(loanApplications),
+  ].sort((a, b) => Date.parse(b.applicationDate) - Date.parse(a.applicationDate));
 
   if (sessionLoading) {
     return (
@@ -287,25 +252,9 @@ function UserMyApplications() {
     );
   }
 
-  if (!sessionData?.userEmail) {
+  if (!authorized) {
     return null; // Will redirect via useEffect
   }
-
-  const stats = {
-    total: fdApplications.length + saApplications.length + loanApplications.length,
-    pending:
-      fdApplications.filter((a) => a.status === "PENDING").length +
-      saApplications.filter((a) => a.status === "PENDING").length +
-      loanApplications.filter((a) => a.status === "PENDING").length,
-    approved:
-      fdApplications.filter((a) => a.status === "APPROVED").length +
-      saApplications.filter((a) => a.status === "APPROVED").length +
-      loanApplications.filter((a) => a.status === "APPROVED").length,
-    rejected:
-      fdApplications.filter((a) => a.status === "REJECTED").length +
-      saApplications.filter((a) => a.status === "REJECTED").length +
-      loanApplications.filter((a) => a.status === "REJECTED").length,
-  };
 
   return (
     <div className="bg-white p-6 min-h-[calc(100vh-8.5rem)] rounded-lg shadow-md">
@@ -313,7 +262,7 @@ function UserMyApplications() {
         {/* Filter Buttons */}
         <div className="flex gap-2 flex-wrap">
           <button
-            onClick={() => setFilterStatus("ALL")}
+            onClick={() => { setFilterStatus("ALL"); }}
             className={`px-4 py-2 rounded-full font-semibold text-sm transition-colors ${filterStatus === "ALL"
                 ? "bg-teal-500 text-white"
                 : "bg-gray-200 text-gray-700 hover:bg-gray-300"
@@ -322,7 +271,7 @@ function UserMyApplications() {
             All Applications
           </button>
           <button
-            onClick={() => setFilterStatus("PENDING")}
+            onClick={() => { setFilterStatus("PENDING"); }}
             className={`px-4 py-2 rounded-full font-semibold text-sm transition-colors ${filterStatus === "PENDING"
                 ? "bg-teal-500 text-white"
                 : "bg-gray-200 text-gray-700 hover:bg-gray-300"
@@ -331,7 +280,7 @@ function UserMyApplications() {
             Pending
           </button>
           <button
-            onClick={() => setFilterStatus("APPROVED")}
+            onClick={() => { setFilterStatus("APPROVED"); }}
             className={`px-4 py-2 rounded-full font-semibold text-sm transition-colors ${filterStatus === "APPROVED"
                 ? "bg-teal-500 text-white"
                 : "bg-gray-200 text-gray-700 hover:bg-gray-300"
@@ -340,7 +289,7 @@ function UserMyApplications() {
             Approved
           </button>
           <button
-            onClick={() => setFilterStatus("REJECTED")}
+            onClick={() => { setFilterStatus("REJECTED"); }}
             className={`px-4 py-2 rounded-full font-semibold text-sm transition-colors ${filterStatus === "REJECTED"
                 ? "bg-teal-500 text-white"
                 : "bg-gray-200 text-gray-700 hover:bg-gray-300"
@@ -351,7 +300,9 @@ function UserMyApplications() {
         </div>
       </div>
 
-      {loading ? (
+      {error ? (
+        <p className="text-center text-red-600 py-12" role="alert">{error}</p>
+      ) : loading ? (
         <p className="text-center text-gray-500 py-12">Loading your applications...</p>
       ) : allApplications.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -359,7 +310,6 @@ function UserMyApplications() {
             <ApplicationCard
               key={`${app.type}-${app.id}`}
               application={app}
-              type={app.type}
             />
           ))}
         </div>

@@ -3,11 +3,17 @@ import { isRecord } from "./validation";
 export interface TransactionRecord {
   id: string;
   userId: string | null;
+  voucherId: string;
+  userName: string;
+  narration: string;
   amount: number;
   date: string;
   type: string;
   accountHead: string;
   direction: string;
+  paymentMethod: string;
+  chequeNo: string;
+  bankName: string;
 }
 
 function finiteAmount(value: unknown): number {
@@ -33,6 +39,9 @@ export function parseTransactions(value: unknown): TransactionRecord[] {
     return {
       id: identifier(record.id) ?? identifier(record.transactionId) ?? `transaction-${String(index)}`,
       userId: identifier(record.userId),
+      voucherId: typeof record.voucherId === "string" ? record.voucherId : "",
+      userName: typeof record.userName === "string" ? record.userName : "",
+      narration: typeof record.narration === "string" ? record.narration : "",
       amount: finiteAmount(record.amount ?? record.amountValue),
       date,
       type,
@@ -43,6 +52,9 @@ export function parseTransactions(value: unknown): TransactionRecord[] {
             ? record.accountHead
             : type,
       direction: typeof details.direction === "string" ? details.direction : "",
+      paymentMethod: typeof details.paymentMethod === "string" ? details.paymentMethod : "",
+      chequeNo: typeof details.chequeNo === "string" ? details.chequeNo : "",
+      bankName: typeof details.bankName === "string" ? details.bankName : "",
     };
   });
 }
