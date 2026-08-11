@@ -1,5 +1,7 @@
-import { API_BASE as apiBase } from "../../lib/apiClient";
-import React, { useState, useEffect } from "react";
+import { useCallback, useEffect, useState, type ChangeEvent, type ComponentType, type FormEvent } from "react";
+import { API_BASE as apiBase, apiFetch } from "../../lib/apiClient";
+import { parseUserApplications, type ApplicationType, type UserApplication } from "../../lib/applications";
+import { isRecord } from "../../lib/validation";
 import {
   DocumentTextIcon,
   CurrencyDollarIcon,
@@ -9,11 +11,12 @@ import {
   CheckCircleIcon,
   XCircleIcon,
   ClockIcon
-} from "../../component/icons.jsx";
-import ConfirmationModal from "../../component/ConfirmationModal.jsx";
+} from "../../component/icons";
+import ConfirmationModal from "../../component/ConfirmationModal";
 
 
-const STATUS_STYLES = {
+type ReviewStatus = "PENDING" | "APPROVED" | "REJECTED" | "WITHDRAWN";
+const STATUS_STYLES: Record<string, string> = {
   PENDING: "bg-amber-50 text-amber-700 border-amber-200",
   APPROVED: "bg-emerald-50 text-emerald-700 border-emerald-200",
   REJECTED: "bg-rose-50 text-rose-700 border-rose-200",
@@ -21,29 +24,30 @@ const STATUS_STYLES = {
 };
 
 // --- Helper: Modern Review Modal ---
-const ReviewModal = ({ application, type, onClose, onConfirm }) => {
+interface ApprovalForm { approvedAmount: string; duration: string; reviewNotes: string }
+const ReviewModal = ({ application, type, onClose, onConfirm }: { application: UserApplication; type: ApplicationType; onClose: () => void; onConfirm: (data: ApprovalForm) => void }) => {
   const isLoan = type === "loan";
   const isFD = type === "fixed-deposit";
 
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<ApprovalForm>({
     approvedAmount:
       type === "loan"
-        ? application.requestedAmount
+        ? String(application.requestedAmount ?? "")
         : type === "fixed-deposit"
-          ? application.depositAmount
-          : application.initialDeposit,
+          ? String(application.depositAmount ?? "")
+          : String(application.initialDeposit ?? ""),
     duration:
       type === "loan"
-        ? application.loanPackage?.maxDuration || 12
-        : application.depositTerm || 0,
+        ? String(application.maxDuration ?? 12)
+        : String(application.depositTerm ?? 0),
     reviewNotes: "",
   });
 
-  const handleChange = (e) => {
+  const handleChange = (e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     onConfirm(formData);
   };
@@ -76,17 +80,17 @@ const ReviewModal = ({ application, type, onClose, onConfirm }) => {
           <div className="rounded-xl bg-gray-50 border border-gray-100 p-4 text-sm space-y-2">
             <div className="flex justify-between">
               <span className="text-gray-500">Applicant</span>
-              <span className="font-semibold text-gray-900">{application.user?.name}</span>
+              <span className="font-semibold text-gray-900">{application.userName}</span>
             </div>
             <div className="flex justify-between">
               <span className="text-gray-500">Package</span>
               <span className="font-semibold text-gray-900">
-                {isLoan ? application.loanPackage?.name : application.fixedDeposit?.name || application.savingAccount?.name}
+                {application.packageName}
               </span>
             </div>
             <div className="flex justify-between border-t border-gray-200 pt-2 mt-2">
               <span className="text-gray-500">Requested Amount</span>
-              <span className="font-bold text-gray-900">Rs. {formData.approvedAmount?.toLocaleString()}</span>
+              <span className="font-bold text-gray-900">Rs. {Number(formData.approvedAmount).toLocaleString()}</span>
             </div>
           </div>
 
@@ -144,7 +148,7 @@ const ReviewModal = ({ application, type, onClose, onConfirm }) => {
               name="reviewNotes"
               value={formData.reviewNotes}
               onChange={handleChange}
-              rows="3"
+              rows={3}
               className="block w-full rounded-lg border-gray-300 focus:border-teal-500 focus:ring-teal-500 sm:text-sm px-3 py-2 shadow-sm border resize-none"
               placeholder="Add internal remarks..."
             ></textarea>
@@ -171,17 +175,8 @@ const ReviewModal = ({ application, type, onClose, onConfirm }) => {
   );
 };
 
-const ApplicationCard = ({ application, type, onReview }) => {
+const ApplicationCard = ({ application, type, onReview }: { application: UserApplication; type: ApplicationType; onReview: (application: UserApplication, status: "APPROVED" | "REJECTED", type: ApplicationType) => void }) => {
   const isPending = application.status === "PENDING";
-
-  const getPackageName = () => {
-    switch (type) {
-      case "fixed-deposit": return application.fixedDeposit?.name || "N/A";
-      case "saving-account": return application.savingAccount?.name || "N/A";
-      case "loan": return application.loanPackage?.name || "N/A";
-      default: return "N/A";
-    }
-  };
 
   const renderDetails = () => {
     switch (type) {
@@ -216,7 +211,7 @@ const ApplicationCard = ({ application, type, onReview }) => {
               {application.approvedAmount ? (
                 <div className="bg-emerald-50 p-2 rounded-lg border border-emerald-100">
                   <p className="text-xs text-emerald-600">Approved</p>
-                  <p className="font-semibold text-emerald-700">Rs. {application.approvedAmount?.toLocaleString()}</p>
+                  <p className="font-semibold text-emerald-700">Rs. {application.approvedAmount.toLocaleString()}</p>
                 </div>
               ) : (
                 <div className="bg-gray-50 p-2 rounded-lg">
@@ -237,14 +232,14 @@ const ApplicationCard = ({ application, type, onReview }) => {
         <div className="flex items-start justify-between mb-2">
           <div className="flex items-center gap-3">
             <div className="h-10 w-10 rounded-full bg-gray-100 flex items-center justify-center text-lg font-bold text-gray-600 uppercase">
-              {application.user?.name?.charAt(0)}
+              {application.userName.charAt(0)}
             </div>
             <div>
-              <h4 className="text-sm font-bold text-gray-900">{application.user?.name}</h4>
-              <p className="text-xs text-gray-500">{getPackageName()}</p>
+              <h4 className="text-sm font-bold text-gray-900">{application.userName}</h4>
+              <p className="text-xs text-gray-500">{application.packageName}</p>
             </div>
           </div>
-          <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium border ${STATUS_STYLES[application.status]}`}>
+          <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium border ${STATUS_STYLES[application.status] ?? STATUS_STYLES.WITHDRAWN ?? "bg-gray-50"}`}>
             {application.status}
           </span>
         </div>
@@ -261,13 +256,13 @@ const ApplicationCard = ({ application, type, onReview }) => {
       {isPending && (
         <div className="mt-4 flex gap-2">
           <button
-            onClick={() => onReview(application, "APPROVED", type)}
+            onClick={() => { onReview(application, "APPROVED", type); }}
             className="flex-1 flex items-center justify-center gap-1 rounded-lg bg-teal-600 py-2 text-xs font-semibold text-white shadow-sm hover:bg-teal-700 transition-colors"
           >
             <CheckCircleIcon className="w-4 h-4" /> Approve
           </button>
           <button
-            onClick={() => onReview(application, "REJECTED", type)}
+            onClick={() => { onReview(application, "REJECTED", type); }}
             className="flex-1 flex items-center justify-center gap-1 rounded-lg border border-gray-200 bg-white py-2 text-xs font-semibold text-gray-700 shadow-sm hover:bg-gray-50 hover:text-red-600 transition-colors"
           >
             <XCircleIcon className="w-4 h-4" /> Reject
@@ -286,56 +281,55 @@ const ApplicationCard = ({ application, type, onReview }) => {
 };
 
 export default function AdminApplications() {
-  const [networkId, setNetworkId] = useState(null);
-  const [applications, setApplications] = useState({ fd: [], sa: [], loan: [] });
+  const [networkId, setNetworkId] = useState<string | null>(null);
+  const [applications, setApplications] = useState<{ fd: UserApplication[]; sa: UserApplication[]; loan: UserApplication[] }>({ fd: [], sa: [], loan: [] });
   const [loading, setLoading] = useState(true);
-  const [filter, setFilter] = useState("ALL");
-  const [reviewModal, setReviewModal] = useState(null);
+  const [filter, setFilter] = useState<"ALL" | ReviewStatus>("ALL");
+  const [reviewModal, setReviewModal] = useState<{ app: UserApplication; type: ApplicationType } | null>(null);
   const [collapseState, setCollapseState] = useState({ fd: false, sa: false, loan: false });
 
   // Rejection confirmation
   const [isRejectModalOpen, setIsRejectModalOpen] = useState(false);
-  const [appToReject, setAppToReject] = useState(null);
+  const [appToReject, setAppToReject] = useState<{ app: UserApplication; type: ApplicationType } | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   // Fetch Session
   useEffect(() => {
     const fetchSession = async () => {
       try {
-        const res = await fetch(`${apiBase}/session`, { credentials: "include" });
-        if (res.ok) {
-          const data = await res.json();
-          setNetworkId(data.sahakariId);
-        }
-      } catch (err) { console.error(err); }
+        const res = await apiFetch(`${apiBase}/session`);
+        const data: unknown = await res.json();
+        if (!isRecord(data) || (typeof data.sahakariId !== "string" && typeof data.sahakariId !== "number")) throw new Error("Invalid session response");
+        setNetworkId(String(data.sahakariId));
+      } catch (caught) { setError(caught instanceof Error ? caught.message : "Session failed to load"); }
     };
-    fetchSession();
+    void fetchSession();
   }, []);
 
   // Fetch Data
-  const fetchApplications = async () => {
-    if (!networkId) return;
+  const fetchApplications = useCallback(async (selectedNetworkId: string) => {
     setLoading(true);
     try {
       const [fdRes, saRes, loanRes] = await Promise.all([
-        fetch(`${apiBase}/applications/fixed-deposit/network/${networkId}`, { credentials: "include" }),
-        fetch(`${apiBase}/applications/saving-account/network/${networkId}`, { credentials: "include" }),
-        fetch(`${apiBase}/applications/loan/network/${networkId}`, { credentials: "include" }),
+        apiFetch(`${apiBase}/applications/fixed-deposit/network/${encodeURIComponent(selectedNetworkId)}`),
+        apiFetch(`${apiBase}/applications/saving-account/network/${encodeURIComponent(selectedNetworkId)}`),
+        apiFetch(`${apiBase}/applications/loan/network/${encodeURIComponent(selectedNetworkId)}`),
       ]);
       setApplications({
-        fd: await fdRes.json(),
-        sa: await saRes.json(),
-        loan: await loanRes.json(),
+        fd: parseUserApplications(await fdRes.json(), "fixed-deposit"),
+        sa: parseUserApplications(await saRes.json(), "saving-account"),
+        loan: parseUserApplications(await loanRes.json(), "loan"),
       });
-    } catch (err) { console.error(err); }
+    } catch (caught) { setError(caught instanceof Error ? caught.message : "Applications failed to load"); }
     finally { setLoading(false); }
-  };
+  }, []);
 
   useEffect(() => {
-    if (networkId) fetchApplications();
-  }, [networkId]);
+    if (networkId) void fetchApplications(networkId);
+  }, [fetchApplications, networkId]);
 
   // Handlers
-  const initiateReview = (app, status, type) => {
+  const initiateReview = (app: UserApplication, status: "APPROVED" | "REJECTED", type: ApplicationType) => {
     if (status === "APPROVED") {
       setReviewModal({ app, type });
     } else {
@@ -348,41 +342,34 @@ export default function AdminApplications() {
     if (!appToReject) return;
     const { app, type } = appToReject;
     setIsRejectModalOpen(false);
-    submitReview(app, type, { status: "REJECTED", reviewNotes: "Rejected by Admin" });
+    void submitReview(app, type, { status: "REJECTED", reviewNotes: "Rejected by Admin" });
     setAppToReject(null);
   };
 
-  const submitReview = async (app, type, payload) => {
+  const submitReview = async (app: UserApplication, type: ApplicationType, payload: Record<string, string | number>) => {
     try {
-      const res = await fetch(`${apiBase}/applications/${type}/${app.id}/review`, {
+      await apiFetch(`${apiBase}/applications/${type}/${encodeURIComponent(app.id)}/review`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        credentials: "include",
         body: JSON.stringify(payload),
       });
 
-      if (res.ok) {
-        setReviewModal(null);
-        fetchApplications();
-      } else {
-        const err = await res.text();
-        alert("Failed: " + err);
-      }
-    } catch (err) {
-      console.error(err);
-      alert("Error updating application");
+      setReviewModal(null);
+      if (networkId) await fetchApplications(networkId);
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Application review failed");
     }
   };
 
-  const handleModalConfirm = (data) => {
+  const handleModalConfirm = (data: ApprovalForm) => {
     if (!reviewModal) return;
-    submitReview(reviewModal.app, reviewModal.type, {
+    void submitReview(reviewModal.app, reviewModal.type, {
       status: "APPROVED",
-      ...data
+      approvedAmount: Number(data.approvedAmount), duration: Number(data.duration), reviewNotes: data.reviewNotes,
     });
   };
 
-  const filterApps = (apps) => filter === "ALL" ? apps : apps.filter((a) => a.status === filter);
+  const filterApps = (apps: UserApplication[]) => filter === "ALL" ? apps : apps.filter((a) => a.status === filter);
 
   if (!networkId) return (
     <div className="flex h-[80vh] items-center justify-center">
@@ -393,15 +380,15 @@ export default function AdminApplications() {
     </div>
   );
 
-  const stats = ["PENDING", "APPROVED", "REJECTED"];
-  const statCounts = {
+  const stats = ["PENDING", "APPROVED", "REJECTED"] as const;
+  const statCounts: Record<(typeof stats)[number], number> = {
     PENDING: applications.fd.filter(a => a.status === "PENDING").length + applications.sa.filter(a => a.status === "PENDING").length + applications.loan.filter(a => a.status === "PENDING").length,
     APPROVED: applications.fd.filter(a => a.status === "APPROVED").length + applications.sa.filter(a => a.status === "APPROVED").length + applications.loan.filter(a => a.status === "APPROVED").length,
     REJECTED: applications.fd.filter(a => a.status === "REJECTED").length + applications.sa.filter(a => a.status === "REJECTED").length + applications.loan.filter(a => a.status === "REJECTED").length,
   };
   const totalApplications = applications.fd.length + applications.sa.length + applications.loan.length;
 
-  const sections = [
+  const sections: Array<{ key: "fd" | "sa" | "loan"; label: string; icon: ComponentType<{ className?: string }>; type: ApplicationType; apps: UserApplication[] }> = [
     { key: "fd", label: "Fixed Deposits", icon: DocumentTextIcon, type: "fixed-deposit", apps: applications.fd },
     { key: "sa", label: "Saving Accounts", icon: CurrencyDollarIcon, type: "saving-account", apps: applications.sa },
     { key: "loan", label: "Loans", icon: BanknotesIcon, type: "loan", apps: applications.loan },
@@ -410,6 +397,8 @@ export default function AdminApplications() {
   return (
     <div className="min-h-screen bg-gray-50/50 p-3 md:p-6 lg:p-8">
       <div className="mx-auto max-w-7xl space-y-8">
+        {error && <p className="text-red-600" role="alert">{error}</p>}
+        {loading && <p className="text-gray-500">Loading applications...</p>}
 
         {/* Header Stats */}
         <div>
@@ -434,10 +423,10 @@ export default function AdminApplications() {
         {/* Filters */}
         <div className="flex items-center gap-2 overflow-x-auto pb-2">
           <FunnelIcon className="w-5 h-5 text-gray-400 mr-2" />
-          {["ALL", "PENDING", "APPROVED", "REJECTED"].map((st) => (
+          {(["ALL", "PENDING", "APPROVED", "REJECTED"] as const).map((st) => (
             <button
               key={st}
-              onClick={() => setFilter(st)}
+              onClick={() => { setFilter(st); }}
               className={`px-4 py-2 rounded-full text-sm font-semibold transition-all whitespace-nowrap ${filter === st
                 ? "bg-teal-600 text-white shadow-md ring-2 ring-teal-600 ring-offset-2"
                 : "bg-white text-gray-600 border border-gray-200 hover:bg-gray-50 hover:border-gray-300"
@@ -459,7 +448,7 @@ export default function AdminApplications() {
               <div key={section.key} className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
                 <button
                   className="flex w-full items-center justify-between bg-white p-5 hover:bg-gray-50 transition-colors"
-                  onClick={() => setCollapseState((prev) => ({ ...prev, [section.key]: !prev[section.key] }))}
+                  onClick={() => { setCollapseState((prev) => ({ ...prev, [section.key]: !prev[section.key] })); }}
                 >
                   <div className="flex items-center gap-4">
                     <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-teal-50 text-teal-600">
@@ -509,7 +498,7 @@ export default function AdminApplications() {
         <ReviewModal
           application={reviewModal.app}
           type={reviewModal.type}
-          onClose={() => setReviewModal(null)}
+          onClose={() => { setReviewModal(null); }}
           onConfirm={handleModalConfirm}
         />
       )}

@@ -6,6 +6,7 @@ export interface UserApplication {
   id: string;
   type: ApplicationType;
   packageName: string;
+  userName: string;
   status: string;
   applicationDate: string;
   reviewDate: string;
@@ -20,6 +21,7 @@ export interface UserApplication {
   maturityAmount: number | null;
   nextPaymentDate: string;
   purpose: string;
+  maxDuration: number | null;
 }
 
 function finiteNumber(value: unknown): number | null {
@@ -38,12 +40,14 @@ export function parseUserApplications(value: unknown, type: ApplicationType): Us
     if (!isRecord(item)) throw new Error("Applications response contains an invalid item");
     const relatedKey = type === "fixed-deposit" ? "fixedDeposit" : type === "saving-account" ? "savingAccount" : "loanPackage";
     const related = isRecord(item[relatedKey]) ? item[relatedKey] : {};
+    const user = isRecord(item.user) ? item.user : {};
     const rawId = item.id;
 
     return {
       id: typeof rawId === "string" || typeof rawId === "number" ? String(rawId) : `${type}-${String(index)}`,
       type,
       packageName: text(related.name) || "Financial package",
+      userName: text(user.name) || "Member",
       status: text(item.status) || "UNKNOWN",
       applicationDate: text(item.applicationDate),
       reviewDate: text(item.reviewDate),
@@ -58,6 +62,7 @@ export function parseUserApplications(value: unknown, type: ApplicationType): Us
       maturityAmount: finiteNumber(item.maturityAmount),
       nextPaymentDate: text(item.nextPaymentDate),
       purpose: text(item.purpose),
+      maxDuration: finiteNumber(related.maxDuration),
     };
   });
 }
