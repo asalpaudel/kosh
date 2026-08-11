@@ -42,7 +42,6 @@ export default function SuperLogin() {
             }
 
             if (stringField(data, "status") === "LOGIN_SUCCESS") {
-                localStorage.setItem("superadminRole", "superadmin");
                 void nav("/superadmin");
                 return;
             }
@@ -82,8 +81,6 @@ export default function SuperLogin() {
                 return;
             }
 
-            // Success - Navigate to superadmin dashboard
-            localStorage.setItem("superadminRole", "superadmin");
             void nav("/superadmin");
         } catch {
             setErrorMessage("Verification failed.");

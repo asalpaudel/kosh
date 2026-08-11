@@ -26,15 +26,15 @@ function Sidebar() {
   const handleLogout = async (): Promise<void> => {
     setIsLogoutModalOpen(false);
     try {
-      await fetch(`${API_BASE}/auth/logout`, {
+      const response = await fetch(`${API_BASE}/auth/logout`, {
         method: "POST",
         credentials: "include",
       });
+      if (!response.ok) throw new Error("Logout rejected");
     } catch {
-      // Local session state is still cleared when the backend is unavailable.
+      setIsLogoutModalOpen(true);
+      return;
     }
-    localStorage.clear();
-    sessionStorage.clear();
     void navigate("/");
   };
 

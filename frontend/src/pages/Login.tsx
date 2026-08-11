@@ -41,11 +41,6 @@ export default function Login() {
   };
 
   const finishLogin = (data: AuthenticatedLogin): void => {
-    localStorage.setItem("userRole", data.role);
-    localStorage.setItem("userId", data.userId);
-    localStorage.setItem("userName", data.name);
-    localStorage.setItem("userSahakari", data.sahakari);
-
     if (data.role === "member") void nav("/home");
     else if (data.role === "admin") void nav("/admin");
     else void nav("/superadmin");
