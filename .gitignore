@@ -58,6 +58,7 @@ Thumbs.db
 # Keep only the canonical root README as Markdown documentation
 *.md
 !/README.md
+!/secure.md
 
 # Scratch text files
 *.txt

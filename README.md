@@ -44,7 +44,7 @@ flowchart LR
 - Authentication is session-based. Frontend requests that need authentication send the session cookie with `credentials: "include"`.
 - Uploaded network documents, logos, user identity files, signatures, and product banners are stored as PostgreSQL `bytea` values.
 - Flyway owns the PostgreSQL schema. Hibernate runs with `spring.jpa.hibernate.ddl-auto=validate` and never creates or updates production tables.
-- Frontend API URLs are currently hardcoded to `http://localhost:8080/api` in many components. Vite also defines an `/api` development proxy, but most calls do not use it yet.
+- Frontend requests use one configured API boundary: localhost in development and same-origin `/api` by default in production. A configured production API origin must use HTTPS.
 
 ## Technology stack
 
@@ -200,7 +200,7 @@ If Maven is installed globally, `npm run dev` from `frontend/` starts both Vite 
 
 ## First-use bootstrap
 
-There is no database seed script. A new installation must be bootstrapped through the UI in this order:
+Production has no seed data. A new production installation must be bootstrapped through the UI in this order:
 
 1. Configure working SMTP credentials and `SUPERADMIN_EMAIL`.
 2. Open `/super-login` and complete the email OTP challenge.
@@ -240,10 +240,8 @@ All backend routes are under `/api`.
 
 Requests that depend on a logged-in user must include the session cookie. For a browser `fetch` call:
 
-```js
-fetch("http://localhost:8080/api/session", {
-  credentials: "include",
-});
+```ts
+apiFetch(`${API_BASE}/session`);
 ```
 
 ## Financial behavior
@@ -257,7 +255,7 @@ Transactions distinguish a member ledger from the cooperative's own ledger throu
 - The stored reserve snapshot is calculated as `(savings + fixed deposits) - outstanding loans + network balance`.
 - Loan approval generates equal-payment schedule rows from the approved principal, annual rate, duration, and start date.
 
-This is application-level bookkeeping, not double-entry accounting. Financial calculations use Java `Double`, so the code should be migrated to `BigDecimal` with explicit rounding rules before handling real money.
+Transactions also post balanced debit/credit lines into an append-only journal. Financial request values use `BigDecimal`, PostgreSQL stores `numeric(18,2)`, retries use cooperative-scoped idempotency keys, and corrections use reversing entries rather than edits.
 
 ## Available commands
 
@@ -279,36 +277,29 @@ Run backend commands from `backend/`:
 ./mvnw package
 ```
 
-The backend includes isolated authorization, registration-policy, session-authentication, and sensitive-serialization tests. These tests do not connect to the configured development database.
+The backend includes authorization, tenant-isolation, authentication, upload, serialization, ledger, loan, migration, and production-configuration tests. Five database-trigger invariant tests run only when `KOSH_TEST_DB` points to a disposable PostgreSQL database.
 
 ## Current limitations and security notes
 
-Do not expose the current backend directly to the internet. The most important issues found in the present code are:
+The code is hardened but is not, by itself, approval to process real money or identity documents. Read [`secure.md`](secure.md) for the full before/after report, authorization matrix, ASVS mapping, test evidence, and findings register. Important remaining requirements are:
 
-- Spring Security now denies unmatched requests and applies member/admin/super-admin route authorization from server session state. User-management commands enforce cooperative ownership, and network registration documents have a service-level super-admin check. CSRF is still disabled, and ownership checks are not yet consistently enforced across every finance/application/transaction path.
-- The previously exposed SMTP credential was rotated and purged from Git history. Secret scanning must remain a required CI check.
-- Emergency serialization guards exclude passwords, OTPs, trusted-device tokens, and identity-document bytes from raw entities. Purpose-specific DTOs are still required to prevent unnecessary personal-data exposure.
-- CORS origins and frontend API URLs are hardcoded for local development.
-- OTPs are generated with `java.util.Random` and stored only in application memory. Password-reset OTPs have no expiry, and all OTP state disappears after a restart.
-- PostgreSQL schema and development seed migrations now exist and were verified against PostgreSQL 18. RLS, production database-role provisioning, backup restoration, and continuous database integration tests remain incomplete.
-- The frontend dependency audit currently reports 19 known vulnerabilities: 1 low, 2 moderate, 11 high, and 5 critical.
-- Money is represented by floating-point `Double` values.
-- Uploaded files are stored in the database without an evident size/type policy.
-- Multi-step approval and transaction operations are not consistently wrapped in database transactions, so partial writes are possible if a later step fails.
-- The UI calls three routes that are not implemented by the backend: `GET /api/networks/recent`, `GET /api/analytics/network-snapshot`, and `PUT /api/transactions/{id}/status`.
-- Only the super-admin area has an explicit frontend protected-route wrapper; member and admin route protection relies mainly on individual API/session behavior.
-
-Before production use, complete service-level tenant authorization, PostgreSQL RLS, CSRF support, database-role separation, externalized URLs, purpose-specific DTOs, transactional service boundaries, upload/money validation, backup restoration, and automated coverage.
+- run the five PostgreSQL invariant tests against a disposable real PostgreSQL database;
+- verify all roles, cross-cooperative denial, SMTP/OTP, session, CSRF, and recovery flows end to end;
+- review edge TLS/CSP, database privileges, secrets, backups/restores, monitoring, and incident response;
+- add shared authentication throttling/session state before horizontal scaling;
+- add upload malware scanning and an approved identity-document encryption/retention policy;
+- add maker-checker/high-value transaction controls, CI security gates, and an independent penetration/accounting review.
 
 ## Build verification status
 
-The following checks were run while creating this README:
+The following checks were run on 2026-08-11 for the `makeitsecure` branch:
 
 | Check | Result |
 | --- | --- |
-| `mvn -DskipTests package` | Passes |
-| `mvn test` | Passes 25 isolated tests; the Flyway and Hibernate startup path was also verified against an isolated PostgreSQL 18 database |
-| `npm run build` | Passes; Vite warns that the main minified JavaScript chunk is about 2.34 MB and should be code-split |
-| `npm run lint` | Fails with 27 errors and 10 warnings, mostly unused variables and React hook dependencies; `frontend/src/pages/user/Statement.jsx` also references undefined `todayStr` |
+| `./mvnw clean verify` | Passes; 105 tests, 0 failures/errors, 5 PostgreSQL-only tests skipped; 0 unsuppressed dependency findings |
+| `npm run typecheck` | Passes with strict TypeScript |
+| `npm run lint` | Passes |
+| `npm run build` | Passes; Vite warns that the main minified chunk is about 2.33 MB and should be code-split |
+| `npm audit --audit-level=low` | Passes with 0 vulnerabilities |
 
-The PostgreSQL 18 verification applied both Flyway locations, loaded the complete development seed, validated every Hibernate mapping, started the API, and shut down cleanly. A repeatable Testcontainers-based CI test is still required.
+The frontend source contains 85 TypeScript/TSX files and no JavaScript/JSX files. See [`secure.md`](secure.md) for caveats and production blockers.
