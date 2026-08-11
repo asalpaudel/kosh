@@ -21,6 +21,7 @@ import com.kosh.backend.model.AccountType;
 import com.kosh.backend.model.JournalEntry;
 import com.kosh.backend.model.Network;
 import com.kosh.backend.repository.AccountRepository;
+import com.kosh.backend.repository.AccountingPeriodRepository;
 import com.kosh.backend.repository.JournalEntryRepository;
 import com.kosh.backend.repository.NetworkRepository;
 
@@ -29,8 +30,9 @@ class LedgerServiceTest {
     private final AccountRepository accountRepo = mock(AccountRepository.class);
     private final JournalEntryRepository entryRepo = mock(JournalEntryRepository.class);
     private final NetworkRepository networkRepo = mock(NetworkRepository.class);
+    private final AccountingPeriodRepository periodRepo = mock(AccountingPeriodRepository.class);
 
-    private final LedgerService ledger = new LedgerService(accountRepo, entryRepo, networkRepo);
+    private final LedgerService ledger = new LedgerService(accountRepo, entryRepo, networkRepo, periodRepo);
 
     private final Network network = new Network();
 
@@ -71,6 +73,17 @@ class LedgerServiceTest {
                 LedgerLine.credit(Accounts.MEMBER_SAVINGS, amount("-500.00"), "out"))))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("negative");
+    }
+
+    @Test
+    void postingInsideClosedPeriodIsRejectedBeforeLedgerWrite() {
+        when(periodRepo.isDateClosed(1L, LocalDate.of(2026, 8, 10))).thenReturn(true);
+
+        assertThatThrownBy(() -> ledger.post(network, LocalDate.of(2026, 8, 10), "deposit", "V-1",
+                "TEST", 1L, "Admin", balancedDeposit()))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("closed accounting period");
+        verify(entryRepo, never()).save(any());
     }
 
     @Test

@@ -10,6 +10,7 @@ import {
   UsersIcon,
   PiggyBankIcon,
   ClipboardListIcon,
+  CalendarIcon,
 } from "../icons";
 import ConfirmationModal from "../ConfirmationModal";
 
@@ -72,6 +73,10 @@ function Sidebar() {
 
           <NavLink to="/admin/shares" className={navLinkClass} title="Share capital">
             <PiggyBankIcon className="h-6 w-6 transition-transform group-hover:scale-110" />
+          </NavLink>
+
+          <NavLink to="/admin/close" className={navLinkClass} title="Accounting close">
+            <CalendarIcon className="h-6 w-6 transition-transform group-hover:scale-110" />
           </NavLink>
 
           <NavLink to="/admin/applications" className={navLinkClass} title="Applications">
@@ -156,6 +161,15 @@ function Sidebar() {
         {isMobileMenuOpen && (
           <div className="absolute bottom-full left-0 right-0 bg-black">
             <div className="p-4 space-y-2">
+              <NavLink
+                to="/admin/close"
+                className={mobileNavLinkClass}
+                onClick={() => { setIsMobileMenuOpen(false); }}
+              >
+                <CalendarIcon className="h-5 w-5" />
+                <span>Accounting close</span>
+              </NavLink>
+
               <NavLink
                 to="/admin/shares"
                 className={mobileNavLinkClass}

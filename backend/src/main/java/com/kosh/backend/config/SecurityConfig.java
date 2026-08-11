@@ -131,6 +131,7 @@ public class SecurityConfig {
 
                 .requestMatchers(HttpMethod.GET, "/api/shares/me/**").hasRole("MEMBER")
                 .requestMatchers("/api/shares/network/**").hasRole("ADMIN")
+                .requestMatchers("/api/close/network/**").hasRole("ADMIN")
 
                 // The books are readable by the cooperative's own admin; a posted entry can
                 // only ever be reversed, never edited, so that is the single write allowed.

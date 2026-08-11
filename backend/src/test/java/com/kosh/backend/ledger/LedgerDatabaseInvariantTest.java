@@ -42,6 +42,7 @@ class LedgerDatabaseInvariantTest {
             statement.execute(migration("V2__user_balance_optimistic_locking.sql"));
             statement.execute(migration("V3__money_as_numeric.sql"));
             statement.execute(migration("V4__double_entry_ledger.sql"));
+            statement.execute(migration("V10__accounting_close.sql"));
 
             statement.execute("""
                     INSERT INTO networks (id, registered_id, name, package_type, package_price)
@@ -132,6 +133,32 @@ class LedgerDatabaseInvariantTest {
                 .hasMessageContaining("append-only");
 
         assertThat(countLines(entryId)).isEqualTo(2);
+    }
+
+    @Test
+    void processingDateLockCanOnlyBeAcquiredOnce() throws SQLException {
+        execute("""
+                INSERT INTO processing_date_locks (network_id, process_type, processing_date, scope_key)
+                VALUES (1, 'DAY_END', DATE '2026-08-10', 'NETWORK')
+                """);
+
+        assertThatThrownBy(() -> execute("""
+                INSERT INTO processing_date_locks (network_id, process_type, processing_date, scope_key)
+                VALUES (1, 'DAY_END', DATE '2026-08-10', 'NETWORK')
+                """))
+                .isInstanceOf(SQLException.class)
+                .hasMessageContaining("processing_date_lock_uq");
+    }
+
+    @Test
+    void accountingPeriodCannotEndBeforeItStarts() {
+        assertThatThrownBy(() -> execute("""
+                INSERT INTO accounting_periods
+                    (network_id, period_type, period_start, period_end, closed_at, closed_by)
+                VALUES (1, 'MONTH_END', DATE '2026-08-10', DATE '2026-08-01', CURRENT_TIMESTAMP, 'Admin')
+                """))
+                .isInstanceOf(SQLException.class)
+                .hasMessageContaining("accounting_period_dates_ck");
     }
 
     /** Writes a complete balanced entry in one transaction, the way the application does. */

@@ -29,6 +29,7 @@ import AdminSettings from "./pages/admin/Settings";
 import Landing from "./pages/Landing2";
 import AdminShares from "./pages/admin/Shares";
 import UserShares from "./pages/user/Shares";
+import AdminClose from "./pages/admin/Close";
 
 export default function App() {
   return (
@@ -58,6 +59,7 @@ export default function App() {
           <Route path="transactions" element={<AdminTransactions />} />
           <Route path="settings" element={<AdminSettings />} />
           <Route path="shares" element={<AdminShares />} />
+          <Route path="close" element={<AdminClose />} />
         </Route>
         <Route path="/super-login" element={<SuperLogin />} />
         <Route path="/superadmin" element={<SuperadminProtectedRoute><SuperadminLayout /></SuperadminProtectedRoute>}>

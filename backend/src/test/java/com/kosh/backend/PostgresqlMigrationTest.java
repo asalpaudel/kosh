@@ -84,6 +84,14 @@ class PostgresqlMigrationTest {
                         "share_transactions_append_only", "ON CONFLICT (network_id, code) DO NOTHING");
     }
 
+    @Test
+    void closeFrameworkHasUniqueProcessingLocksAndPeriodReopenAuditFields() throws IOException {
+        String migration = resource("/db/migration/V10__accounting_close.sql");
+        assertThat(migration).contains(
+                "CREATE TABLE processing_date_locks", "processing_date_lock_uq",
+                "CREATE TABLE accounting_periods", "reopened_at", "reopen_reason");
+    }
+
     private String resource(String path) throws IOException {
         try (var stream = getClass().getResourceAsStream(path)) {
             assertThat(stream).as("resource %s", path).isNotNull();

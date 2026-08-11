@@ -6,6 +6,7 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.time.LocalDate;
 import java.time.Instant;
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -19,6 +20,7 @@ import com.kosh.backend.model.JournalEntry;
 import com.kosh.backend.model.JournalLine;
 import com.kosh.backend.model.Network;
 import com.kosh.backend.repository.AccountRepository;
+import com.kosh.backend.repository.AccountingPeriodRepository;
 import com.kosh.backend.repository.JournalEntryRepository;
 import com.kosh.backend.repository.NetworkRepository;
 import com.kosh.backend.service.Money;
@@ -34,19 +36,24 @@ import com.kosh.backend.service.Money;
 @Service
 public class LedgerService {
 
+    private static final ZoneId NEPAL_TIME = ZoneId.of("Asia/Kathmandu");
+
     /** Seed of a cooperative's chain: the "previous hash" of its first entry. */
     static final String GENESIS_HASH = "0".repeat(64);
 
     private final AccountRepository accountRepo;
     private final JournalEntryRepository entryRepo;
     private final NetworkRepository networkRepo;
+    private final AccountingPeriodRepository periodRepo;
 
     public LedgerService(AccountRepository accountRepo,
                          JournalEntryRepository entryRepo,
-                         NetworkRepository networkRepo) {
+                         NetworkRepository networkRepo,
+                         AccountingPeriodRepository periodRepo) {
         this.accountRepo = accountRepo;
         this.entryRepo = entryRepo;
         this.networkRepo = networkRepo;
+        this.periodRepo = periodRepo;
     }
 
     /**
@@ -80,7 +87,7 @@ public class LedgerService {
                         line.getCredit(), line.getDebit(), line.getLineMemo()))
                 .toList();
 
-        return write(original.getNetwork(), LocalDate.now(),
+        return write(original.getNetwork(), LocalDate.now(NEPAL_TIME),
                 reason != null ? reason : "Reversal of entry #" + original.getSequenceNo(),
                 original.getVoucherRef(), original.getSourceType(), original.getSourceId(),
                 postedBy, mirrored, original);
@@ -99,6 +106,11 @@ public class LedgerService {
             throw new IllegalArgumentException("A journal entry needs at least two lines");
         }
         requireBalanced(lines);
+        LocalDate effectiveDate = entryDate != null ? entryDate : LocalDate.now(NEPAL_TIME);
+        if (periodRepo.isDateClosed(network.getId(), effectiveDate)) {
+            throw new IllegalStateException("Posting date " + effectiveDate
+                    + " is inside a closed accounting period; an authorised reopen is required");
+        }
         ensureChartOfAccounts(network);
 
         // Serialise posting per cooperative: the sequence number and the previous hash are
@@ -112,7 +124,7 @@ public class LedgerService {
         JournalEntry entry = new JournalEntry();
         entry.setNetwork(network);
         entry.setSequenceNo(sequenceNo);
-        entry.setEntryDate(entryDate != null ? entryDate : LocalDate.now());
+        entry.setEntryDate(effectiveDate);
         entry.setNarration(narration);
         entry.setVoucherRef(voucherRef);
         entry.setSourceType(sourceType);
