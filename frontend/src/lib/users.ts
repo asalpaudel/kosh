@@ -8,6 +8,8 @@ export interface ManagedUser {
   role: string;
   sahakari: string;
   status: string;
+  dob: string;
+  hasPhoto: boolean;
 }
 
 function text(value: unknown): string {
@@ -26,6 +28,8 @@ export function parseManagedUser(value: unknown): ManagedUser {
     role: text(value.role),
     sahakari: text(value.sahakari),
     status: text(value.status) || "Pending",
+    dob: text(value.dob),
+    hasPhoto: value.hasPhoto === true,
   };
 }
 

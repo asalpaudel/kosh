@@ -1,24 +1,20 @@
-import { API_BASE } from "../../lib/apiClient";
-import React, { useState, useMemo, useEffect } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { useLocation } from "react-router-dom";
+import { API_BASE, apiFetch } from "../../lib/apiClient";
+import { parseManagedUsers, type ManagedUser } from "../../lib/users";
+import { isRecord } from "../../lib/validation";
 import {
   SearchIcon,
-  PencilIcon,
-  TrashIcon,
   PlusCircleIcon,
   UserCircleIcon,
-  DocumentIcon,
-  XIcon,
-} from "../../component/icons.jsx";
+} from "../../component/icons";
 
-import Modal from "../../component/superadmin/Modal.jsx";
-import AddUserForm from "../../component/admin/AddUserForm.jsx";
-import EditUserForm from "../../component/admin/EditUserForm.jsx";
-import ConfirmationModal from "../../component/ConfirmationModal.jsx";
-import { apiFetch } from "../../lib/apiClient";
+import Modal from "../../component/superadmin/Modal";
+import AddUserForm from "../../component/admin/AddUserForm";
+import EditUserForm from "../../component/admin/EditUserForm";
 
 
-const DetailItem = ({ label, value }) => (
+const DetailItem = ({ label, value }: { label: string; value: ReactNode }) => (
   <div>
     <span className="text-sm font-semibold text-gray-500 block">{label}</span>
     <span className="text-lg text-gray-800">{value ?? "-"}</span>
@@ -26,30 +22,33 @@ const DetailItem = ({ label, value }) => (
 );
 
 // ⭐ Updated Component: Document Viewer Modal (Fixed for PDF viewing)
-const UserDocumentsModal = ({ userId, onClose, API_BASE }) => {
+interface DocumentMetadata { hasCitizenship: boolean; citizenshipName: string; citizenshipType: string; hasPhoto: boolean; photoName: string; photoType: string; hasSignature: boolean; signatureName: string; signatureType: string }
+const EMPTY_DOCUMENTS: DocumentMetadata = { hasCitizenship: false, citizenshipName: "", citizenshipType: "", hasPhoto: false, photoName: "", photoType: "", hasSignature: false, signatureName: "", signatureType: "" };
+const UserDocumentsModal = ({ userId, onClose, apiBase }: { userId: string | number; onClose: () => void; apiBase: string }) => {
   const [loading, setLoading] = useState(true);
-  const [documents, setDocuments] = useState({});
+  const [documents, setDocuments] = useState<DocumentMetadata>(EMPTY_DOCUMENTS);
+  const [loadError, setLoadError] = useState(false);
 
   useEffect(() => {
     const loadDocuments = async () => {
       try {
-        const res = await apiFetch(`${API_BASE}/users/${userId}`, {
-          credentials: "include",
+        const res = await apiFetch(`${apiBase}/users/${encodeURIComponent(String(userId))}`);
+        const data: unknown = await res.json();
+        if (!isRecord(data)) throw new Error("Invalid document response");
+        setDocuments({
+          hasCitizenship: data.hasCitizenship === true, citizenshipName: typeof data.citizenshipName === "string" ? data.citizenshipName : "", citizenshipType: typeof data.citizenshipType === "string" ? data.citizenshipType : "",
+          hasPhoto: data.hasPhoto === true, photoName: typeof data.photoName === "string" ? data.photoName : "", photoType: typeof data.photoType === "string" ? data.photoType : "",
+          hasSignature: data.hasSignature === true, signatureName: typeof data.signatureName === "string" ? data.signatureName : "", signatureType: typeof data.signatureType === "string" ? data.signatureType : "",
         });
-
-        if (res.ok) {
-          const data = await res.json();
-          setDocuments(data);
-        }
-      } catch (e) {
-        console.error(e);
+      } catch {
+        setLoadError(true);
       } finally {
         setLoading(false);
       }
     };
 
-    loadDocuments();
-  }, [userId, API_BASE]);
+    void loadDocuments();
+  }, [userId, apiBase]);
 
   if (loading) {
     return (
@@ -57,10 +56,14 @@ const UserDocumentsModal = ({ userId, onClose, API_BASE }) => {
     );
   }
 
-  const isPDF = (type, name) =>
-    type?.includes("pdf") || name?.toLowerCase().endsWith(".pdf");
+  if (loadError) {
+    return <div className="py-16 text-center text-red-600">Unable to load documents.</div>;
+  }
 
-  const Row = ({ title, hasFile, url, name, type }) => {
+  const isPDF = (type: string, name: string) =>
+    type.includes("pdf") || name.toLowerCase().endsWith(".pdf");
+
+  const Row = ({ title, hasFile, url, name, type }: { title: string; hasFile: boolean; url: string; name: string; type: string }) => {
     if (!hasFile) return null;
 
     return (
@@ -95,7 +98,7 @@ const UserDocumentsModal = ({ userId, onClose, API_BASE }) => {
       <Row
         title="Citizenship / NID"
         hasFile={documents.hasCitizenship}
-        url={`${API_BASE}/users/${userId}/citizenship`}
+        url={`${apiBase}/users/${encodeURIComponent(String(userId))}/citizenship`}
         name={documents.citizenshipName}
         type={documents.citizenshipType}
       />
@@ -103,7 +106,7 @@ const UserDocumentsModal = ({ userId, onClose, API_BASE }) => {
       <Row
         title="Passport Photo"
         hasFile={documents.hasPhoto}
-        url={`${API_BASE}/users/${userId}/photo`}
+        url={`${apiBase}/users/${encodeURIComponent(String(userId))}/photo`}
         name={documents.photoName}
         type={documents.photoType}
       />
@@ -111,7 +114,7 @@ const UserDocumentsModal = ({ userId, onClose, API_BASE }) => {
       <Row
         title="Signature"
         hasFile={documents.hasSignature}
-        url={`${API_BASE}/users/${userId}/signature`}
+        url={`${apiBase}/users/${encodeURIComponent(String(userId))}/signature`}
         name={documents.signatureName}
         type={documents.signatureType}
       />
@@ -140,14 +143,14 @@ const UserDetails = ({
   item,
   handleEdit,
   handleViewDocuments,
-}) => (
+}: { item: ManagedUser; handleEdit: (user: ManagedUser) => void; handleViewDocuments: (id: string | number) => void }) => (
   <div className="space-y-8">
     {/* Header */}
     <div className="flex items-center gap-6">
       <div className="w-24 h-24 rounded-full bg-gray-100 overflow-hidden flex items-center justify-center">
         {item.hasPhoto ? (
           <img
-            src={`${API_BASE}/users/${item.id}/photo`}
+            src={`${API_BASE}/users/${encodeURIComponent(String(item.id))}/photo`}
             alt={item.name}
             className="w-full h-full object-cover"
           />
@@ -160,11 +163,15 @@ const UserDetails = ({
         <h2 className="text-2xl font-semibold text-gray-900">{item.name}</h2>
         <p className="text-sm text-gray-500 capitalize mt-1">{item.role}</p>
         <span
-          className={`inline-block mt-2 text-sm font-medium
-            ${item.status === "Active" && "text-green-600"}
-            ${item.status === "Pending" && "text-yellow-600"}
-            ${item.status === "Suspended" && "text-red-600"}
-          `}
+          className={`inline-block mt-2 text-sm font-medium ${
+            item.status === "Active"
+              ? "text-green-600"
+              : item.status === "Pending"
+                ? "text-yellow-600"
+                : item.status === "Suspended"
+                  ? "text-red-600"
+                  : "text-gray-600"
+          }`}
         >
           {item.status}
         </span>
@@ -186,14 +193,14 @@ const UserDetails = ({
     {item.role !== "admin" && (
       <div className="flex justify-end gap-3 pt-6 border-t border-gray-100">
         <button
-          onClick={() => handleViewDocuments(item.id)}
+          onClick={() => { handleViewDocuments(item.id); }}
           className="px-5 py-2.5 text-sm rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 transition"
         >
           View documents
         </button>
 
         <button
-          onClick={() => handleEdit(item)}
+          onClick={() => { handleEdit(item); }}
           className="px-5 py-2.5 text-sm rounded-lg bg-green-400 text-black hover:bg-green-500 transition"
         >
           Edit
@@ -204,32 +211,28 @@ const UserDetails = ({
 );
 
 function AdminUsers() {
-  const [allUsers, setAllUsers] = useState([]);
+  const [allUsers, setAllUsers] = useState<ManagedUser[]>([]);
   const [loading, setLoading] = useState(false);
   const [sessionLoading, setSessionLoading] = useState(true);
-  const [adminSahakari, setAdminSahakari] = useState(null);
+  const [authorized, setAuthorized] = useState(false);
 
-  const [viewModalItem, setViewModalItem] = useState(null);
+  const [viewModalItem, setViewModalItem] = useState<ManagedUser | null>(null);
   const [isAddUserModalOpen, setIsAddUserModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const [currentUserToEdit, setCurrentUserToEdit] = useState(null);
+  const [currentUserToEdit, setCurrentUserToEdit] = useState<ManagedUser | null>(null);
 
   // ⭐ New state for documents modal
-  const [documentsModalUserId, setDocumentsModalUserId] = useState(null);
+  const [documentsModalUserId, setDocumentsModalUserId] = useState<string | number | null>(null);
 
-  // Deletion confirmation
-  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
-  const [userToDelete, setUserToDelete] = useState(null);
-
-  const [activeFilter, setActiveFilter] = useState("All");
+  const [activeFilter, setActiveFilter] = useState<"All" | "Pending" | "Admin" | "Members">("All");
   const [searchQuery, setSearchQuery] = useState("");
 
   const location = useLocation();
 
   useEffect(() => {
-    if (location.state) {
+    if (isRecord(location.state)) {
       if (location.state.searchQuery) {
-        setSearchQuery(location.state.searchQuery);
+        if (typeof location.state.searchQuery === "string") setSearchQuery(location.state.searchQuery);
       }
 
       if (location.state.action === "openAddUser") {
@@ -243,67 +246,26 @@ function AdminUsers() {
   useEffect(() => {
     const fetchSession = async () => {
       try {
-        const res = await apiFetch(`${API_BASE}/session`, {
-          method: "GET",
-          credentials: "include",
-        });
-
-        if (res.ok) {
-          const data = await res.json();
-
-          if (!data.sahakariId) {
-            setSessionLoading(false);
-            return;
-          }
-
-          let cleanId = String(data.sahakariId).replace(/[^0-9]/g, "");
-
-          const networkRes = await apiFetch(`${API_BASE}/networks/${cleanId}`, {
-            credentials: "include",
-          });
-
-          if (networkRes.ok) {
-            const networkData = await networkRes.json();
-            if (networkData && networkData.name) {
-              setAdminSahakari(networkData.name);
-            }
-          }
-        }
-      } catch (e) {
-        console.error("Error fetching session:", e);
+        const res = await apiFetch(`${API_BASE}/session`);
+        const data: unknown = await res.json();
+        if (!isRecord(data) || (typeof data.sahakariId !== "string" && typeof data.sahakariId !== "number")) throw new Error("Invalid session response");
+        setAuthorized(true);
+      } catch {
+        setAuthorized(false);
       } finally {
         setSessionLoading(false);
       }
     };
 
-    fetchSession();
+    void fetchSession();
   }, []);
 
   const loadUsers = async () => {
-    if (!adminSahakari) return;
-
     try {
       setLoading(true);
-      const res = await apiFetch(`${API_BASE}/users`, {
-        credentials: "include",
-      });
-
-      if (!res.ok) {
-        throw new Error(`Failed to fetch: ${res.status}`);
-      }
-
-      const data = await res.json();
-
-      if (Array.isArray(data)) {
-        const filteredBySahakari = data.filter(
-          (user) => user.sahakari === adminSahakari
-        );
-        setAllUsers(filteredBySahakari);
-      } else {
-        setAllUsers([]);
-      }
-    } catch (e) {
-      console.error("Error fetching users:", e);
+      const res = await apiFetch(`${API_BASE}/users`);
+      setAllUsers(parseManagedUsers(await res.json()));
+    } catch {
       setAllUsers([]);
     } finally {
       setLoading(false);
@@ -311,12 +273,12 @@ function AdminUsers() {
   };
 
   useEffect(() => {
-    if (adminSahakari) {
-      loadUsers();
+    if (authorized) {
+      void loadUsers();
     }
-  }, [adminSahakari]);
+  }, [authorized]);
 
-  const handleRowClick = (user) => {
+  const handleRowClick = (user: ManagedUser) => {
     setViewModalItem(user);
   };
 
@@ -324,90 +286,23 @@ function AdminUsers() {
     setViewModalItem(null);
   };
 
-  const handleApprove = async (userId) => {
-    try {
-      const res = await apiFetch(`${API_BASE}/users/${userId}/approve`, {
-        method: "PATCH",
-        credentials: "include",
-      });
-
-      if (res.ok) {
-        alert("User approved successfully!");
-        handleCloseViewModal();
-        await loadUsers();
-      } else {
-        alert("Failed to approve user");
-      }
-    } catch (e) {
-      console.error("Error approving user:", e);
-      alert("Error approving user");
-    }
-  };
-
-  const handleDeny = async (userId) => {
-    try {
-      const res = await apiFetch(`${API_BASE}/users/${userId}/reject`, {
-        method: "PATCH",
-        credentials: "include",
-      });
-
-      if (res.ok) {
-        alert("User rejected successfully!");
-        handleCloseViewModal();
-        await loadUsers();
-      } else {
-        alert("Failed to reject user");
-      }
-    } catch (e) {
-      console.error("Error rejecting user:", e);
-      alert("Error rejecting user");
-    }
-  };
-
-  const handleEdit = (user) => {
+  const handleEdit = (user: ManagedUser) => {
     setCurrentUserToEdit(user);
     setViewModalItem(null);
     setIsEditModalOpen(true);
   };
 
-  const handleDelete = (userId) => {
-    setUserToDelete(userId);
-    setIsDeleteModalOpen(true);
-  };
-
-  const confirmDelete = async () => {
-    if (!userToDelete) return;
-    setIsDeleteModalOpen(false);
-    setLoading(true);
-
-    try {
-      await apiFetch(`${API_BASE}/users/${userToDelete}`, {
-        method: "DELETE",
-        credentials: "include",
-      });
-      setAllUsers((prev) => prev.filter((u) => u.id !== userToDelete));
-      handleCloseViewModal();
-      // alert("User deleted successfully!"); // Optional: replace with toast later
-    } catch (e) {
-      console.error("Delete failed:", e);
-      alert("Failed to delete user");
-    } finally {
-      setLoading(false);
-      setUserToDelete(null);
-    }
-  };
-
   // ⭐ New handler for viewing documents
-  const handleViewDocuments = (userId) => {
+  const handleViewDocuments = (userId: string | number) => {
     setDocumentsModalUserId(userId);
     setViewModalItem(null); // Close user details modal
   };
 
-  const handleUserAddSuccess = (savedUser) => {
+  const handleUserAddSuccess = (savedUser: ManagedUser) => {
     setAllUsers((prev) => [...prev, savedUser]);
   };
 
-  const handleUserEditSuccess = (savedUser) => {
+  const handleUserEditSuccess = (savedUser: ManagedUser) => {
     setAllUsers((prev) =>
       prev.map((u) => (u.id === savedUser.id ? savedUser : u))
     );
@@ -419,21 +314,20 @@ function AdminUsers() {
         if (activeFilter === "All") return true;
         if (activeFilter === "Pending") return user.status === "Pending";
         if (activeFilter === "Admin") return user.role === "admin";
-        if (activeFilter === "Members") return user.role === "member";
-        return true;
+        return user.role === "member";
       })
       .filter((user) => {
         const query = searchQuery.toLowerCase();
         return (
-          user.name?.toLowerCase().includes(query) ||
-          user.email?.toLowerCase().includes(query) ||
-          user.role?.toLowerCase().includes(query) ||
+          user.name.toLowerCase().includes(query) ||
+          user.email.toLowerCase().includes(query) ||
+          user.role.toLowerCase().includes(query) ||
           String(user.id).includes(query)
         );
       });
   }, [allUsers, activeFilter, searchQuery]);
 
-  const getButtonClass = (filterName) => {
+  const getButtonClass = (filterName: "All" | "Pending" | "Admin" | "Members") => {
     return activeFilter === filterName
       ? "bg-teal-500 text-white"
       : "bg-gray-200 text-gray-700 hover:bg-gray-300";
@@ -447,7 +341,7 @@ function AdminUsers() {
     );
   }
 
-  if (!adminSahakari) {
+  if (!authorized) {
     return (
       <div className="bg-white p-6 min-h-[calc(100vh-8.5rem)] flex items-center justify-center">
         <p className="text-red-500">
@@ -472,14 +366,14 @@ function AdminUsers() {
               placeholder="Search by ID, name, email, role..."
               className="w-full bg-gray-100 text-gray-700 border border-transparent rounded-full py-2.5 md:py-3 pl-12 pr-4 text-sm md:text-base focus:outline-none focus:bg-white focus:border-gray-300 transition-all"
               value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
+              onChange={(e) => { setSearchQuery(e.target.value); }}
             />
           </div>
 
           {/* Row 2: Filter Buttons */}
           <div className="flex flex-wrap items-center justify-end gap-2">
             <button
-              onClick={() => setActiveFilter("All")}
+              onClick={() => { setActiveFilter("All"); }}
               className={`font-medium py-1.5 px-3 md:py-2 md:px-5 rounded-full transition-colors text-xs md:text-sm ${getButtonClass(
                 "All"
               )}`}
@@ -487,7 +381,7 @@ function AdminUsers() {
               All
             </button>
             <button
-              onClick={() => setActiveFilter("Pending")}
+              onClick={() => { setActiveFilter("Pending"); }}
               className={`font-medium py-1.5 px-3 md:py-2 md:px-5 rounded-full transition-colors text-xs md:text-sm ${getButtonClass(
                 "Pending"
               )}`}
@@ -495,7 +389,7 @@ function AdminUsers() {
               Pending
             </button>
             <button
-              onClick={() => setActiveFilter("Admin")}
+              onClick={() => { setActiveFilter("Admin"); }}
               className={`font-medium py-1.5 px-3 md:py-2 md:px-5 rounded-full transition-colors text-xs md:text-sm ${getButtonClass(
                 "Admin"
               )}`}
@@ -503,7 +397,7 @@ function AdminUsers() {
               Admin
             </button>
             <button
-              onClick={() => setActiveFilter("Members")}
+              onClick={() => { setActiveFilter("Members"); }}
               className={`font-medium py-1.5 px-3 md:py-2 md:px-5 rounded-full transition-colors text-xs md:text-sm ${getButtonClass(
                 "Members"
               )}`}
@@ -551,7 +445,7 @@ function AdminUsers() {
                 {filteredUsers.map((user, index) => (
                   <tr
                     key={user.id}
-                    onClick={() => handleRowClick(user)}
+                    onClick={() => { handleRowClick(user); }}
                     className="bg-white border-b border-gray-200 hover:bg-gray-50 transition-colors cursor-pointer"
                   >
                     <td className="py-3 md:py-4 px-2 md:px-3 text-gray-600 text-xs md:text-base font-medium">
@@ -575,7 +469,7 @@ function AdminUsers() {
                         ${user.status === "Suspended" ? "text-red-600" : ""}
                       `}
                       >
-                        {user.status ?? "Active"}
+                        {user.status}
                       </span>
                     </td>
                   </tr>
@@ -602,7 +496,7 @@ function AdminUsers() {
           <button
             title="Add User"
             className="relative flex items-center justify-center w-14 h-14 bg-white rounded-full text-teal-500 shadow-lg hover:bg-gray-100 hover:scale-105 transition-all"
-            onClick={() => setIsAddUserModalOpen(true)}
+            onClick={() => { setIsAddUserModalOpen(true); }}
           >
             <UserCircleIcon className="w-7 h-7" />
             <span className="absolute right-full mr-4 px-3 py-1.5 bg-black text-white text-xs font-semibold rounded-md whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity delay-150 pointer-events-none">
@@ -629,11 +523,7 @@ function AdminUsers() {
         {viewModalItem && (
           <UserDetails
             item={viewModalItem}
-            onCloseViewModal={handleCloseViewModal}
-            handleApprove={handleApprove}
-            handleDeny={handleDeny}
             handleEdit={handleEdit}
-            handleDelete={handleDelete}
             handleViewDocuments={handleViewDocuments}
           />
         )}
@@ -642,15 +532,15 @@ function AdminUsers() {
       {/* ⭐ Documents Modal */}
       <Modal
         isOpen={!!documentsModalUserId}
-        onClose={() => setDocumentsModalUserId(null)}
+        onClose={() => { setDocumentsModalUserId(null); }}
         title="User Documents"
         size="3xl"
       >
         {documentsModalUserId && (
           <UserDocumentsModal
             userId={documentsModalUserId}
-            onClose={() => setDocumentsModalUserId(null)}
-            API_BASE={API_BASE}
+            onClose={() => { setDocumentsModalUserId(null); }}
+            apiBase={API_BASE}
           />
         )}
       </Modal>
@@ -658,12 +548,12 @@ function AdminUsers() {
       {/* Add User Modal */}
       <Modal
         isOpen={isAddUserModalOpen}
-        onClose={() => setIsAddUserModalOpen(false)}
+        onClose={() => { setIsAddUserModalOpen(false); }}
         title="Add New User"
         size="2xl"
       >
         <AddUserForm
-          onClose={() => setIsAddUserModalOpen(false)}
+          onClose={() => { setIsAddUserModalOpen(false); }}
           onUserAdded={handleUserAddSuccess}
           apiBase={API_BASE}
         />
@@ -672,32 +562,20 @@ function AdminUsers() {
       {/* Edit User Modal */}
       <Modal
         isOpen={isEditModalOpen}
-        onClose={() => setIsEditModalOpen(false)}
+        onClose={() => { setIsEditModalOpen(false); }}
         title="Edit User"
         size="2xl"
       >
         {currentUserToEdit && (
           <EditUserForm
             user={currentUserToEdit}
-            onClose={() => setIsEditModalOpen(false)}
+            onClose={() => { setIsEditModalOpen(false); }}
             onUserUpdated={handleUserEditSuccess}
             apiBase={API_BASE}
           />
         )}
       </Modal>
 
-      <ConfirmationModal
-        isOpen={isDeleteModalOpen}
-        onClose={() => {
-          setIsDeleteModalOpen(false);
-          setUserToDelete(null);
-        }}
-        onConfirm={confirmDelete}
-        title="Confirm Delete User"
-        message="Are you sure you want to delete this user? This action cannot be undone and may affect related records."
-        confirmText="Delete User"
-        type="danger"
-      />
     </>
   );
 }
