@@ -1,5 +1,12 @@
-import { API_BASE as apiBase } from "../../lib/apiClient";
-import React, { useState, useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { API_BASE as apiBase, ApiError, apiFetch } from "../../lib/apiClient";
+import { isRecord } from "../../lib/validation";
+import {
+  packageBannerUrl,
+  parseFinancePackages,
+  type FinancePackage,
+  type PackageType,
+} from "../../lib/packages";
 import {
   ChevronLeft,
   ChevronRight,
@@ -12,33 +19,24 @@ import {
   Banknote,
   Briefcase,
 } from "lucide-react";
-import Modal from "../../component/superadmin/Modal.jsx";
-import ApplyPackageForm from "../../component/user/ApplyPackageForm.jsx";
+import Modal from "../../component/superadmin/Modal";
+import ApplyPackageForm from "../../component/user/ApplyPackageForm";
 import loanImage from "../../assets/image/loan.png";
 
-
-// Helper function to get banner URL
-const getBannerUrl = (pkg, type) => {
-  if (!pkg.id) return null;
-
-  switch (type) {
-    case "fixed-deposit":
-      return `${apiBase}/finance/fixed-deposits/${pkg.id}/banner`;
-    case "saving-account":
-      return `${apiBase}/finance/saving-accounts/${pkg.id}/banner`;
-    case "loan-package":
-      return `${apiBase}/finance/loan-packages/${pkg.id}/banner`;
-    default:
-      return null;
-  }
-};
 
 // --- Helper Components ---
 
 // 1. The Package Card (Thumbnail)
-const PackageCard = ({ pkg, type, onClick, isGrid }) => {
+interface PackageCardProps {
+  pkg: FinancePackage;
+  type: PackageType;
+  onClick: (pkg: FinancePackage) => void;
+  isGrid: boolean;
+}
+
+const PackageCard = ({ pkg, type, onClick, isGrid }: PackageCardProps) => {
   const [bannerError, setBannerError] = useState(false);
-  const bannerUrl = getBannerUrl(pkg, type);
+  const bannerUrl = packageBannerUrl(apiBase, pkg, type);
 
   const getGradient = () => {
     switch (type) {
@@ -68,7 +66,7 @@ const PackageCard = ({ pkg, type, onClick, isGrid }) => {
 
   return (
     <div
-      onClick={() => onClick(pkg)}
+      onClick={() => { onClick(pkg); }}
       className={`relative rounded-xl cursor-pointer transition-all duration-300 hover:scale-105 hover:shadow-2xl group overflow-hidden shadow-lg ${isGrid ? "w-full h-48" : "flex-shrink-0 w-72 h-48"
         }`}
     >
@@ -79,7 +77,7 @@ const PackageCard = ({ pkg, type, onClick, isGrid }) => {
             src={bannerUrl}
             alt={pkg.name}
             className="absolute inset-0 w-full h-full object-cover transition-transform duration-300 group-hover:scale-110"
-            onError={() => setBannerError(true)}
+            onError={() => { setBannerError(true); }}
           />
           {/* Dark overlay for text readability */}
           <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent" />
@@ -132,9 +130,16 @@ const PackageCard = ({ pkg, type, onClick, isGrid }) => {
 };
 
 // 2. Section Component (Carousel Logic) - Keep as is
-const PackageSection = ({ title, items, type, onItemClick }) => {
+interface PackageSectionProps {
+  title: string;
+  items: FinancePackage[];
+  type: PackageType;
+  onItemClick: (pkg: FinancePackage, type: PackageType) => void;
+}
+
+const PackageSection = ({ title, items, type, onItemClick }: PackageSectionProps) => {
   const [showGrid, setShowGrid] = useState(false);
-  const scrollRef = useRef(null);
+  const scrollRef = useRef<HTMLDivElement | null>(null);
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(true);
 
@@ -149,10 +154,10 @@ const PackageSection = ({ title, items, type, onItemClick }) => {
   useEffect(() => {
     checkScroll();
     window.addEventListener("resize", checkScroll);
-    return () => window.removeEventListener("resize", checkScroll);
+    return () => { window.removeEventListener("resize", checkScroll); };
   }, [items]);
 
-  const scroll = (direction) => {
+  const scroll = (direction: "left" | "right") => {
     if (scrollRef.current) {
       const { current } = scrollRef;
       const scrollAmount = direction === "left" ? -620 : 620;
@@ -161,7 +166,7 @@ const PackageSection = ({ title, items, type, onItemClick }) => {
     }
   };
 
-  if (!items || items.length === 0) return null;
+  if (items.length === 0) return null;
 
   if (showGrid) {
     return (
@@ -174,7 +179,7 @@ const PackageSection = ({ title, items, type, onItemClick }) => {
             </span>
           </h2>
           <button
-            onClick={() => setShowGrid(false)}
+            onClick={() => { setShowGrid(false); }}
             className="text-sm font-bold text-gray-500 hover:text-black flex items-center gap-1 transition-colors bg-gray-100 hover:bg-gray-200 px-3 py-1.5 rounded-full"
           >
             Show Less <X className="w-4 h-4" />
@@ -188,7 +193,7 @@ const PackageSection = ({ title, items, type, onItemClick }) => {
               pkg={item}
               type={type}
               isGrid={true}
-              onClick={() => onItemClick(item, type)}
+              onClick={() => { onItemClick(item, type); }}
             />
           ))}
         </div>
@@ -205,7 +210,7 @@ const PackageSection = ({ title, items, type, onItemClick }) => {
 
         {items.length > 6 && (
           <button
-            onClick={() => setShowGrid(true)}
+            onClick={() => { setShowGrid(true); }}
             className="text-xs font-bold text-teal-600 hover:text-teal-800 transition-colors uppercase tracking-wider flex items-center gap-1"
           >
             View All ({items.length}) <ChevronRight className="w-3 h-3" />
@@ -216,7 +221,7 @@ const PackageSection = ({ title, items, type, onItemClick }) => {
       <div className="relative">
         {canScrollLeft && (
           <button
-            onClick={() => scroll("left")}
+            onClick={() => { scroll("left"); }}
             className="absolute -left-4 top-1/2 -translate-y-1/2 z-20 bg-white shadow-lg border border-gray-100 text-gray-700 w-10 h-10 rounded-full flex items-center justify-center hover:scale-110 hover:bg-teal-50 hover:text-teal-700 transition-all"
           >
             <ChevronLeft className="w-6 h-6" />
@@ -235,14 +240,14 @@ const PackageSection = ({ title, items, type, onItemClick }) => {
               pkg={item}
               type={type}
               isGrid={false}
-              onClick={() => onItemClick(item, type)}
+              onClick={() => { onItemClick(item, type); }}
             />
           ))}
         </div>
 
         {canScrollRight && items.length > 4 && (
           <button
-            onClick={() => scroll("right")}
+            onClick={() => { scroll("right"); }}
             className="absolute -right-4 top-1/2 -translate-y-1/2 z-20 bg-white shadow-lg border border-gray-100 text-gray-700 w-10 h-10 rounded-full flex items-center justify-center hover:scale-110 hover:bg-teal-50 hover:text-teal-700 transition-all"
           >
             <ChevronRight className="w-6 h-6" />
@@ -258,12 +263,20 @@ const PackageSection = ({ title, items, type, onItemClick }) => {
 };
 
 // 3. Detail Modal (with Banner)
-const DetailModal = ({ isOpen, onClose, pkg, type, onApply }) => {
+interface DetailModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  pkg: FinancePackage | null;
+  type: PackageType | null;
+  onApply: () => void;
+}
+
+const DetailModal = ({ isOpen, onClose, pkg, type, onApply }: DetailModalProps) => {
   const [bannerError, setBannerError] = useState(false);
 
-  if (!isOpen || !pkg) return null;
+  if (!isOpen || !pkg || !type) return null;
 
-  const bannerUrl = getBannerUrl(pkg, type);
+  const bannerUrl = packageBannerUrl(apiBase, pkg, type);
 
   const getGradient = () => {
     switch (type) {
@@ -292,7 +305,7 @@ const DetailModal = ({ isOpen, onClose, pkg, type, onApply }) => {
                 src={bannerUrl}
                 alt={pkg.name}
                 className="absolute inset-0 w-full h-full object-cover"
-                onError={() => setBannerError(true)}
+                onError={() => { setBannerError(true); }}
               />
               <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent" />
             </>
@@ -329,31 +342,31 @@ const DetailModal = ({ isOpen, onClose, pkg, type, onApply }) => {
               </p>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {pkg.minAmount !== undefined && (
+                {pkg.minAmount !== null && (
                   <div className="p-4 bg-gray-50 rounded-xl border border-gray-100">
                     <p className="text-xs text-gray-500 uppercase font-bold tracking-wide mb-1">Min Amount</p>
                     <p className="text-xl font-bold text-gray-900">Rs. {pkg.minAmount.toLocaleString()}</p>
                   </div>
                 )}
-                {pkg.maxAmount !== undefined && (
+                {pkg.maxAmount !== null && (
                   <div className="p-4 bg-gray-50 rounded-xl border border-gray-100">
                     <p className="text-xs text-gray-500 uppercase font-bold tracking-wide mb-1">Max Amount</p>
                     <p className="text-xl font-bold text-gray-900">Rs. {pkg.maxAmount.toLocaleString()}</p>
                   </div>
                 )}
-                {pkg.minDuration !== undefined && (
+                {pkg.minDuration !== null && (
                   <div className="p-4 bg-gray-50 rounded-xl border border-gray-100">
                     <p className="text-xs text-gray-500 uppercase font-bold tracking-wide mb-1">Min Duration</p>
                     <p className="text-xl font-bold text-gray-900">{pkg.minDuration} Months</p>
                   </div>
                 )}
-                {pkg.maxDuration !== undefined && (
+                {pkg.maxDuration !== null && (
                   <div className="p-4 bg-gray-50 rounded-xl border border-gray-100">
                     <p className="text-xs text-gray-500 uppercase font-bold tracking-wide mb-1">Max Duration</p>
                     <p className="text-xl font-bold text-gray-900">{pkg.maxDuration} Months</p>
                   </div>
                 )}
-                {pkg.minBalance !== undefined && (
+                {pkg.minBalance !== null && (
                   <div className="p-4 bg-gray-50 rounded-xl border border-gray-100">
                     <p className="text-xs text-gray-500 uppercase font-bold tracking-wide mb-1">Min Balance</p>
                     <p className="text-xl font-bold text-gray-900">Rs. {pkg.minBalance.toLocaleString()}</p>
@@ -390,70 +403,68 @@ const DetailModal = ({ isOpen, onClose, pkg, type, onApply }) => {
 // --- Main Page Component (Keep rest as is) ---
 
 export default function UserPackages() {
-  const [selectedNetworkId, setSelectedNetworkId] = useState(null);
-  const [fixedDeposits, setFixedDeposits] = useState([]);
-  const [savingAccounts, setSavingAccounts] = useState([]);
-  const [loans, setLoans] = useState([]);
+  const [selectedNetworkId, setSelectedNetworkId] = useState<string | null>(null);
+  const [fixedDeposits, setFixedDeposits] = useState<FinancePackage[]>([]);
+  const [savingAccounts, setSavingAccounts] = useState<FinancePackage[]>([]);
+  const [loans, setLoans] = useState<FinancePackage[]>([]);
   const [loading, setLoading] = useState(false);
   const [sessionLoading, setSessionLoading] = useState(true);
 
-  const [detailModal, setDetailModal] = useState({ open: false, pkg: null, type: null });
-  const [applyModal, setApplyModal] = useState({ open: false, pkg: null, type: null });
+  const [error, setError] = useState<string | null>(null);
+  const [detailModal, setDetailModal] = useState<{ open: boolean; pkg: FinancePackage | null; type: PackageType | null }>({ open: false, pkg: null, type: null });
+  const [applyModal, setApplyModal] = useState<{ open: boolean; pkg: FinancePackage | null; type: PackageType | null }>({ open: false, pkg: null, type: null });
+
+  const fetchData = useCallback(async (networkId: string) => {
+    setLoading(true);
+    setError(null);
+    try {
+      const [fdRes, saRes, lpRes] = await Promise.all([
+        apiFetch(`${apiBase}/finance/fixed-deposits/${encodeURIComponent(networkId)}`),
+        apiFetch(`${apiBase}/finance/saving-accounts/${encodeURIComponent(networkId)}`),
+        apiFetch(`${apiBase}/finance/loan-packages/${encodeURIComponent(networkId)}`),
+      ]);
+      const fdBody: unknown = await fdRes.json();
+      const saBody: unknown = await saRes.json();
+      const lpBody: unknown = await lpRes.json();
+      setFixedDeposits(parseFinancePackages(fdBody));
+      setSavingAccounts(parseFinancePackages(saBody));
+      setLoans(parseFinancePackages(lpBody));
+    } catch (caught) {
+      setError(caught instanceof ApiError || caught instanceof Error ? caught.message : "Failed to load packages");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
     const fetchSession = async () => {
       try {
-        const response = await fetch(`${apiBase}/session`, {
-          method: "GET",
-          credentials: "include",
-        });
-
-        if (response.ok) {
-          const data = await response.json();
-          if (data.sahakariId) {
-            setSelectedNetworkId(data.sahakariId);
-          }
+        const response = await apiFetch(`${apiBase}/session`);
+        const data: unknown = await response.json();
+        if (isRecord(data) && (typeof data.sahakariId === "string" || typeof data.sahakariId === "number")) {
+          setSelectedNetworkId(String(data.sahakariId));
         }
-      } catch (error) {
-        console.error(error);
+      } catch (caught) {
+        setError(caught instanceof Error ? caught.message : "Unable to verify your session");
       } finally {
         setSessionLoading(false);
       }
     };
-    fetchSession();
+    void fetchSession();
   }, []);
 
   useEffect(() => {
     if (selectedNetworkId) {
-      fetchData();
+      void fetchData(selectedNetworkId);
     }
-  }, [selectedNetworkId]);
+  }, [fetchData, selectedNetworkId]);
 
-  const fetchData = async () => {
-    setLoading(true);
-    try {
-      const [fdRes, saRes, lpRes] = await Promise.all([
-        fetch(`${apiBase}/finance/fixed-deposits/${selectedNetworkId}`, { credentials: "include" }),
-        fetch(`${apiBase}/finance/saving-accounts/${selectedNetworkId}`, { credentials: "include" }),
-        fetch(`${apiBase}/finance/loan-packages/${selectedNetworkId}`, { credentials: "include" }),
-      ]);
-
-      if (fdRes.ok) setFixedDeposits(await fdRes.json());
-      if (saRes.ok) setSavingAccounts(await saRes.json());
-      if (lpRes.ok) setLoans(await lpRes.json());
-    } catch (error) {
-      console.error("Failed to fetch data", error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const openDetail = (pkg, type) => {
+  const openDetail = (pkg: FinancePackage, type: PackageType) => {
     setDetailModal({ open: true, pkg, type });
   };
 
   const closeDetail = () => {
-    setDetailModal({ ...detailModal, open: false });
+    setDetailModal((current) => ({ ...current, open: false }));
   };
 
   const openApply = () => {
@@ -501,7 +512,7 @@ export default function UserPackages() {
               Explore our curated selection of financial packages. Whether you want to grow your savings or fund your next big project, we have the right plan for you.
             </p>
             <button
-              onClick={() => document.getElementById('loans-section').scrollIntoView({ behavior: 'smooth' })}
+              onClick={() => document.getElementById("loans-section")?.scrollIntoView({ behavior: "smooth" })}
               className="bg-teal-500 hover:bg-teal-600 text-white font-bold py-3.5 px-8 rounded-full transition-all flex items-center gap-2 shadow-lg hover:shadow-xl active:scale-95"
             >
               <Info className="w-5 h-5" /> Browse Packages
@@ -511,7 +522,9 @@ export default function UserPackages() {
       </div>
 
       <div className="px-4 md:px-12 space-y-4 mt-12 relative z-0">
-        {loading ? (
+        {error ? (
+          <div className="text-center py-20 text-red-600" role="alert">{error}</div>
+        ) : loading ? (
           <div className="text-center py-20 text-gray-400">Loading Packages...</div>
         ) : (
           <>
@@ -555,7 +568,7 @@ export default function UserPackages() {
         title="Application Form"
         size="2xl"
       >
-        {applyModal.pkg && (
+        {applyModal.pkg && applyModal.type && (
           <ApplyPackageForm
             packageData={applyModal.pkg}
             packageType={applyModal.type}

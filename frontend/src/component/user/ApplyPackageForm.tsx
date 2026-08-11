@@ -1,5 +1,6 @@
-import { API_BASE as apiBase } from "../../lib/apiClient";
-import React, { useState } from 'react';
+import { useState, type Dispatch, type FormEvent, type SetStateAction } from "react";
+import { API_BASE as apiBase, ApiError, apiFetch } from "../../lib/apiClient";
+import { packageBannerUrl, type FinancePackage, type PackageType } from "../../lib/packages";
 import {
   DocumentTextIcon,
   CurrencyDollarIcon,
@@ -8,18 +9,33 @@ import {
 
 
 // Form for Fixed Deposits
-const FixedDepositForm = ({ packageData, formData, setFormData }) => (
+interface ApplicationFields {
+  depositAmount: string;
+  depositTerm: string;
+  initialDeposit: string;
+  requestedAmount: string;
+  duration: string;
+  purpose: string;
+}
+
+interface SubformProps {
+  packageData: FinancePackage;
+  formData: ApplicationFields;
+  setFormData: Dispatch<SetStateAction<ApplicationFields>>;
+}
+
+const FixedDepositForm = ({ packageData, formData, setFormData }: SubformProps) => (
   <div className="flex flex-col gap-5">
     <div>
       <label className="block font-semibold mb-2">Deposit Amount (Rs.) *</label>
       <input
         type="number"
         value={formData.depositAmount}
-        onChange={(e) => setFormData({ ...formData, depositAmount: e.target.value })}
-        placeholder={`Min: ${packageData.minAmount?.toLocaleString()}`}
+        onChange={(e) => { setFormData({ ...formData, depositAmount: e.target.value }); }}
+        placeholder={packageData.minAmount === null ? "Enter amount" : `Min: ${packageData.minAmount.toLocaleString()}`}
         className="w-full px-4 py-3 border border-gray-300 rounded-full focus:outline-none focus:border-teal-500"
         required
-        min={packageData.minAmount}
+        min={packageData.minAmount ?? undefined}
       />
     </div>
     <div>
@@ -27,11 +43,11 @@ const FixedDepositForm = ({ packageData, formData, setFormData }) => (
       <input
         type="number"
         value={formData.depositTerm}
-        onChange={(e) => setFormData({ ...formData, depositTerm: e.target.value })}
-        placeholder={`Min: ${packageData.minDuration} months`}
+        onChange={(e) => { setFormData({ ...formData, depositTerm: e.target.value }); }}
+        placeholder={packageData.minDuration === null ? "Enter duration" : `Min: ${packageData.minDuration.toString()} months`}
         className="w-full px-4 py-3 border border-gray-300 rounded-full focus:outline-none focus:border-teal-500"
         required
-        min={packageData.minDuration}
+        min={packageData.minDuration ?? undefined}
       />
     </div>
     <p className="text-sm text-gray-500">
@@ -41,18 +57,18 @@ const FixedDepositForm = ({ packageData, formData, setFormData }) => (
 );
 
 // Form for Savings Accounts
-const SavingAccountForm = ({ packageData, formData, setFormData }) => (
+const SavingAccountForm = ({ packageData, formData, setFormData }: SubformProps) => (
   <div className="flex flex-col gap-5">
     <div>
       <label className="block font-semibold mb-2">Initial Deposit Amount (Rs.) *</label>
       <input
         type="number"
         value={formData.initialDeposit}
-        onChange={(e) => setFormData({ ...formData, initialDeposit: e.target.value })}
-        placeholder={`Min Balance: ${packageData.minBalance?.toLocaleString()}`}
+        onChange={(e) => { setFormData({ ...formData, initialDeposit: e.target.value }); }}
+        placeholder={packageData.minBalance === null ? "Enter initial deposit" : `Min Balance: ${packageData.minBalance.toLocaleString()}`}
         className="w-full px-4 py-3 border border-gray-300 rounded-full focus:outline-none focus:border-teal-500"
         required
-        min={packageData.minBalance}
+        min={packageData.minBalance ?? undefined}
       />
     </div>
     <p className="text-sm text-gray-500">
@@ -62,18 +78,18 @@ const SavingAccountForm = ({ packageData, formData, setFormData }) => (
 );
 
 // Form for Loan Packages
-const LoanForm = ({ packageData, formData, setFormData }) => (
+const LoanForm = ({ packageData, formData, setFormData }: SubformProps) => (
   <div className="flex flex-col gap-5">
     <div>
       <label className="block font-semibold mb-2">Requested Loan Amount (Rs.) *</label>
       <input
         type="number"
         value={formData.requestedAmount}
-        onChange={(e) => setFormData({ ...formData, requestedAmount: e.target.value })}
-        placeholder={`Max: ${packageData.maxAmount?.toLocaleString()}`}
+        onChange={(e) => { setFormData({ ...formData, requestedAmount: e.target.value }); }}
+        placeholder={packageData.maxAmount === null ? "Enter amount" : `Max: ${packageData.maxAmount.toLocaleString()}`}
         className="w-full px-4 py-3 border border-gray-300 rounded-full focus:outline-none focus:border-teal-500"
         required
-        max={packageData.maxAmount}
+        max={packageData.maxAmount ?? undefined}
       />
     </div>
     {/* ⭐ NEW: Duration Field */}
@@ -82,20 +98,20 @@ const LoanForm = ({ packageData, formData, setFormData }) => (
       <input
         type="number"
         value={formData.duration}
-        onChange={(e) => setFormData({ ...formData, duration: e.target.value })}
-        placeholder={`Max: ${packageData.maxDuration} months`}
+        onChange={(e) => { setFormData({ ...formData, duration: e.target.value }); }}
+        placeholder={packageData.maxDuration === null ? "Enter duration" : `Max: ${packageData.maxDuration.toString()} months`}
         className="w-full px-4 py-3 border border-gray-300 rounded-full focus:outline-none focus:border-teal-500"
         required
-        max={packageData.maxDuration}
+        max={packageData.maxDuration ?? undefined}
       />
     </div>
     <div>
       <label className="block font-semibold mb-2">Purpose of Loan *</label>
       <textarea
         value={formData.purpose}
-        onChange={(e) => setFormData({ ...formData, purpose: e.target.value })}
+        onChange={(e) => { setFormData({ ...formData, purpose: e.target.value }); }}
         placeholder="e.g., For purchasing a vehicle, home renovation..."
-        rows="3"
+        rows={3}
         className="w-full px-4 py-3 border border-gray-300 rounded-2xl focus:outline-none focus:border-teal-500 resize-none"
         required
       />
@@ -107,15 +123,21 @@ const LoanForm = ({ packageData, formData, setFormData }) => (
 );
 
 // Main Component
+interface ApplyPackageFormProps {
+  packageData: FinancePackage;
+  packageType: PackageType;
+  onClose: () => void;
+}
+
 export default function ApplyPackageForm({
   packageData,
   packageType,
   onClose,
-}) {
+}: ApplyPackageFormProps) {
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [error, setError] = useState(null);
-  const [formData, setFormData] = useState({
+  const [error, setError] = useState<string | null>(null);
+  const [formData, setFormData] = useState<ApplicationFields>({
     // Fixed Deposit
     depositAmount: '',
     depositTerm: '',
@@ -129,26 +151,16 @@ export default function ApplyPackageForm({
 
   const [bannerError, setBannerError] = useState(false);
 
-  // Get banner URL based on package type
-  const getBannerUrl = () => {
-    if (!packageData.id) return null;
-    
-    switch (packageType) {
-      case 'fixed-deposit':
-        return `${apiBase}/finance/fixed-deposits/${packageData.id}/banner`;
-      case 'saving-account':
-        return `${apiBase}/finance/saving-accounts/${packageData.id}/banner`;
-      case 'loan-package':
-        return `${apiBase}/finance/loan-packages/${packageData.id}/banner`;
-      default:
-        return null;
-    }
-  };
-
-  const bannerUrl = getBannerUrl();
+  const bannerUrl = packageBannerUrl(apiBase, packageData, packageType);
 
   // Configuration for different form types
-  const formConfig = {
+  const formConfig: Record<PackageType, {
+    title: string;
+    icon: React.ReactNode;
+    component: React.ReactNode;
+    endpoint: string;
+    payload: () => Record<string, string | number>;
+  }> = {
     'fixed-deposit': {
       title: 'Fixed Deposit Application',
       icon: <DocumentTextIcon className="w-16 h-16 text-teal-500" />,
@@ -156,8 +168,8 @@ export default function ApplyPackageForm({
       endpoint: '/applications/fixed-deposit',
       payload: () => ({
         packageId: packageData.id,
-        depositAmount: parseFloat(formData.depositAmount),
-        depositTerm: parseInt(formData.depositTerm),
+        depositAmount: Number(formData.depositAmount),
+        depositTerm: Number(formData.depositTerm),
       }),
     },
     'saving-account': {
@@ -167,7 +179,7 @@ export default function ApplyPackageForm({
       endpoint: '/applications/saving-account',
       payload: () => ({
         packageId: packageData.id,
-        initialDeposit: parseFloat(formData.initialDeposit),
+        initialDeposit: Number(formData.initialDeposit),
       }),
     },
     'loan-package': {
@@ -177,46 +189,37 @@ export default function ApplyPackageForm({
       endpoint: '/applications/loan',
       payload: () => ({
         packageId: packageData.id,
-        requestedAmount: parseFloat(formData.requestedAmount),
+        requestedAmount: Number(formData.requestedAmount),
         // ⭐ NEW: Sending requested duration (needs backend support if you haven't added it yet, but good to have)
-        duration: parseInt(formData.duration), 
-        purpose: formData.purpose,
+        duration: Number(formData.duration),
+        purpose: formData.purpose.trim(),
       }),
     },
   };
 
-  const currentConfig = formConfig[packageType] || {
-    title: 'Application Form',
-    icon: null,
-    component: <p>Invalid package type.</p>,
-    endpoint: '',
-    payload: () => ({}),
-  };
+  const currentConfig = formConfig[packageType];
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setIsSubmitting(true);
     setError(null);
 
     try {
-      const response = await fetch(`${apiBase}${currentConfig.endpoint}`, {
+      const payload = currentConfig.payload();
+      const numericValues = Object.values(payload).filter((value): value is number => typeof value === "number");
+      if (numericValues.some((value) => !Number.isFinite(value) || value <= 0)) {
+        throw new Error("Enter valid positive amounts and durations");
+      }
+      await apiFetch(`${apiBase}${currentConfig.endpoint}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        credentials: 'include',
-        body: JSON.stringify(currentConfig.payload()),
+        body: JSON.stringify(payload),
       });
-
-      if (response.ok) {
-        setIsSubmitted(true);
-      } else {
-        const errorData = await response.json();
-        setError(errorData.error || 'Failed to submit application');
-      }
+      setIsSubmitted(true);
     } catch (err) {
-      console.error('Error submitting application:', err);
-      setError('An error occurred while submitting your application');
+      setError(err instanceof ApiError || err instanceof Error ? err.message : "Application submission failed");
     } finally {
       setIsSubmitting(false);
     }
@@ -248,7 +251,7 @@ export default function ApplyPackageForm({
           </button>
         </div>
       ) : (
-        <form onSubmit={handleSubmit} className="flex flex-col gap-5">
+        <form onSubmit={(event) => { void handleSubmit(event); }} className="flex flex-col gap-5">
           {/* Banner Image */}
           {bannerUrl && !bannerError ? (
             <div className="w-full h-56 rounded-xl overflow-hidden bg-gray-100 shadow-lg">
@@ -256,7 +259,7 @@ export default function ApplyPackageForm({
                 src={bannerUrl}
                 alt={`${packageData.name} banner`}
                 className="w-full h-full object-cover"
-                onError={() => setBannerError(true)}
+                onError={() => { setBannerError(true); }}
               />
             </div>
           ) : (
