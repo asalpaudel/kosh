@@ -161,6 +161,9 @@ public class FinanceController {
             @RequestParam("name") String name,
             @RequestParam("interestRate") BigDecimal interestRate,
             @RequestParam("minBalance") BigDecimal minBalance,
+            @RequestParam(value = "interestBasis", required = false, defaultValue = "DAILY_PRODUCT") String interestBasis,
+            @RequestParam(value = "capitalizationFrequency", required = false, defaultValue = "MONTHLY") String capitalizationFrequency,
+            @RequestParam(value = "dayCountConvention", required = false, defaultValue = "ACTUAL_365") String dayCountConvention,
             @RequestParam(value = "description", required = false) String description,
             @RequestParam(value = "banner", required = false) MultipartFile banner,
             HttpSession session) {
@@ -174,6 +177,7 @@ public class FinanceController {
             sa.setName(name);
             sa.setInterestRate(interestRate);
             sa.setMinBalance(minBalance);
+            applyInterestConfiguration(sa, interestBasis, capitalizationFrequency, dayCountConvention);
             sa.setDescription(description);
             applyBanner(sa::setBannerData, sa::setBannerName, sa::setBannerType, banner);
 
@@ -200,6 +204,9 @@ public class FinanceController {
             @RequestParam("name") String name,
             @RequestParam("interestRate") BigDecimal interestRate,
             @RequestParam("minBalance") BigDecimal minBalance,
+            @RequestParam(value = "interestBasis", required = false) String interestBasis,
+            @RequestParam(value = "capitalizationFrequency", required = false) String capitalizationFrequency,
+            @RequestParam(value = "dayCountConvention", required = false) String dayCountConvention,
             @RequestParam(value = "description", required = false) String description,
             @RequestParam(value = "removeBanner", required = false, defaultValue = "false") Boolean removeBanner,
             @RequestParam(value = "banner", required = false) MultipartFile banner,
@@ -213,6 +220,10 @@ public class FinanceController {
             sa.setName(name);
             sa.setInterestRate(interestRate);
             sa.setMinBalance(minBalance);
+            applyInterestConfiguration(sa,
+                    interestBasis == null ? sa.getInterestBasis() : interestBasis,
+                    capitalizationFrequency == null ? sa.getCapitalizationFrequency() : capitalizationFrequency,
+                    dayCountConvention == null ? sa.getDayCountConvention() : dayCountConvention);
             sa.setDescription(description);
             if (Boolean.TRUE.equals(removeBanner)) {
                 sa.setBannerData(null);
@@ -340,6 +351,21 @@ public class FinanceController {
     // ============================================================================
     // SHARED HELPERS
     // ============================================================================
+
+    private void applyInterestConfiguration(SavingAccount account, String basis, String frequency, String dayCount) {
+        account.setInterestBasis(switch (basis) {
+            case "MINIMUM_MONTHLY_BALANCE", "DAILY_PRODUCT", "AVERAGE_BALANCE" -> basis;
+            default -> throw new IllegalArgumentException("Unsupported savings interest basis");
+        });
+        account.setCapitalizationFrequency(switch (frequency) {
+            case "DAILY", "MONTHLY", "QUARTERLY", "ANNUALLY" -> frequency;
+            default -> throw new IllegalArgumentException("Unsupported capitalization frequency");
+        });
+        account.setDayCountConvention(switch (dayCount) {
+            case "ACTUAL_365", "ACTUAL_366", "THIRTY_360" -> dayCount;
+            default -> throw new IllegalArgumentException("Unsupported day-count convention");
+        });
+    }
 
     private interface BytesSetter { void accept(byte[] value); }
 

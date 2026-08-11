@@ -50,7 +50,7 @@ public final class Accounts {
             new Definition(RETAINED_EARNINGS, "Retained Earnings", AccountType.EQUITY),
             new Definition(INTEREST_INCOME, "Interest Income on Loans", AccountType.INCOME),
             new Definition(FEE_INCOME, "Fees and Charges", AccountType.INCOME),
-            new Definition(INTEREST_EXPENSE, "Interest Paid to Members", AccountType.EXPENSE),
+            new Definition(INTEREST_EXPENSE, "Interest Expense", AccountType.EXPENSE),
             new Definition(OPERATING_EXPENSE, "Operating Expenses", AccountType.EXPENSE));
 
     private Accounts() {

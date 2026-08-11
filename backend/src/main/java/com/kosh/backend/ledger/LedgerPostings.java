@@ -194,4 +194,12 @@ public final class LedgerPostings {
         return List.of(LedgerLine.memberDebit(Accounts.SHARE_CAPITAL, member, amount, memo),
                 LedgerLine.credit(settlementAccount(paymentMethod), amount, memo));
     }
+
+    public static List<LedgerLine> savingsInterest(User member, BigDecimal amount, String memo) {
+        if (member == null || amount == null || amount.signum() <= 0) {
+            throw new IllegalArgumentException("Savings interest needs a member and positive amount");
+        }
+        return List.of(LedgerLine.debit(Accounts.INTEREST_EXPENSE, amount, memo),
+                LedgerLine.memberCredit(Accounts.MEMBER_SAVINGS, member, amount, memo));
+    }
 }

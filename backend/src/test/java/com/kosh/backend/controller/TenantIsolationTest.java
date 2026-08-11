@@ -114,7 +114,8 @@ class TenantIsolationTest {
 
         assertThat(controller.addFixedDeposit(OTHER_NETWORK, "FD", money("8.00"), 6, money("1000.00"), null, null, session)
                 .getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
-        assertThat(controller.addSavingAccount(OTHER_NETWORK, "SA", money("5.00"), money("500.00"), null, null, session)
+        assertThat(controller.addSavingAccount(OTHER_NETWORK, "SA", money("5.00"), money("500.00"),
+                "DAILY_PRODUCT", "MONTHLY", "ACTUAL_365", null, null, session)
                 .getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
         assertThat(controller.addLoanPackage(OTHER_NETWORK, "LP", money("12.00"), money("50000.00"), 24, null, null, session)
                 .getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);

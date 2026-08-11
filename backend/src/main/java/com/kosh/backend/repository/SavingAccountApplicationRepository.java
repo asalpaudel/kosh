@@ -14,6 +14,7 @@ public interface SavingAccountApplicationRepository extends JpaRepository<Saving
     List<SavingAccountApplication> findByNetworkId(Long networkId);
     List<SavingAccountApplication> findByUserId(Long userId);
     List<SavingAccountApplication> findByNetworkIdAndStatus(Long networkId, ApplicationStatus status);
+    List<SavingAccountApplication> findByNetworkIdAndStatusOrderByIdAsc(Long networkId, ApplicationStatus status);
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select application from SavingAccountApplication application where application.id = :id")
     Optional<SavingAccountApplication> findByIdForReview(@Param("id") Long id);

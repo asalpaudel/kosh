@@ -35,6 +35,10 @@ import java.math.BigDecimal;
         private String bannerName;
         private String bannerType;
 
+        private String interestBasis = "DAILY_PRODUCT";
+        private String capitalizationFrequency = "MONTHLY";
+        private String dayCountConvention = "ACTUAL_365";
+
         // Getters & Setters
         public Long getId() { return id; }
         public void setId(Long id) { this.id = id; }
@@ -62,4 +66,10 @@ import java.math.BigDecimal;
 
         public String getBannerType() { return bannerType; }
         public void setBannerType(String bannerType) { this.bannerType = bannerType; }
+        public String getInterestBasis() { return interestBasis; }
+        public void setInterestBasis(String interestBasis) { this.interestBasis = interestBasis; }
+        public String getCapitalizationFrequency() { return capitalizationFrequency; }
+        public void setCapitalizationFrequency(String capitalizationFrequency) { this.capitalizationFrequency = capitalizationFrequency; }
+        public String getDayCountConvention() { return dayCountConvention; }
+        public void setDayCountConvention(String dayCountConvention) { this.dayCountConvention = dayCountConvention; }
     }

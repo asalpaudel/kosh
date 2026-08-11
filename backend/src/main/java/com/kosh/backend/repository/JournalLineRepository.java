@@ -49,4 +49,21 @@ public interface JournalLineRepository extends JpaRepository<JournalLine, Long> 
            GROUP BY l.member.id
            """)
     List<Object[]> memberBalances(@Param("networkId") Long networkId, @Param("code") String code);
+
+    @Query("""
+           SELECT COALESCE(SUM(l.credit - l.debit), 0) FROM JournalLine l JOIN l.entry e
+           WHERE l.account.code = :code AND l.member.id = :memberId AND e.entryDate < :before
+           """)
+    java.math.BigDecimal memberOpeningBalance(@Param("code") String code,
+            @Param("memberId") Long memberId, @Param("before") LocalDate before);
+
+    @Query("""
+           SELECT e.entryDate, COALESCE(SUM(l.credit - l.debit), 0)
+           FROM JournalLine l JOIN l.entry e
+           WHERE l.account.code = :code AND l.member.id = :memberId
+             AND e.entryDate BETWEEN :from AND :to
+           GROUP BY e.entryDate ORDER BY e.entryDate
+           """)
+    List<Object[]> memberDailyMovements(@Param("code") String code, @Param("memberId") Long memberId,
+            @Param("from") LocalDate from, @Param("to") LocalDate to);
 }

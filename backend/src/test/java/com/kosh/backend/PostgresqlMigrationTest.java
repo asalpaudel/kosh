@@ -92,6 +92,15 @@ class PostgresqlMigrationTest {
                 "CREATE TABLE accounting_periods", "reopened_at", "reopen_reason");
     }
 
+    @Test
+    void savingsInterestHasProductRulesAndIdempotentDailyAccrualKey() throws IOException {
+        String migration = resource("/db/migration/V11__savings_interest_accrual.sql");
+        assertThat(migration).contains(
+                "MINIMUM_MONTHLY_BALANCE", "DAILY_PRODUCT", "AVERAGE_BALANCE",
+                "capitalization_frequency", "day_count_convention", "numeric(18,2)",
+                "savings_interest_accrual_uq UNIQUE (saving_account_id, member_id, accrual_date)");
+    }
+
     private String resource(String path) throws IOException {
         try (var stream = getClass().getResourceAsStream(path)) {
             assertThat(stream).as("resource %s", path).isNotNull();

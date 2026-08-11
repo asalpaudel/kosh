@@ -17,15 +17,19 @@ type FieldName =
   | "minDuration"
   | "minAmount"
   | "maxDuration"
-  | "maxAmount";
+  | "maxAmount"
+  | "interestBasis"
+  | "capitalizationFrequency"
+  | "dayCountConvention";
 
 interface FieldDefinition {
   name: FieldName;
   label: string;
   placeholder: string;
-  type?: "text" | "number";
+  type?: "text" | "number" | "select";
   step?: string;
   required?: boolean;
+  options?: Array<{ value: string; label: string }>;
 }
 
 interface PackageConfiguration {
@@ -62,6 +66,22 @@ const CONFIG: Record<PackageKind, PackageConfiguration> = {
         step: "0.01",
         required: true,
       },
+      { name: "interestBasis", label: "Calculation Basis", placeholder: "", type: "select", required: true,
+        options: [
+          { value: "DAILY_PRODUCT", label: "Daily product" },
+          { value: "MINIMUM_MONTHLY_BALANCE", label: "Minimum monthly balance" },
+          { value: "AVERAGE_BALANCE", label: "Average balance" },
+        ] },
+      { name: "capitalizationFrequency", label: "Capitalization Frequency", placeholder: "", type: "select", required: true,
+        options: [
+          { value: "DAILY", label: "Daily" }, { value: "MONTHLY", label: "Monthly" },
+          { value: "QUARTERLY", label: "Quarterly" }, { value: "ANNUALLY", label: "Annually (fiscal year)" },
+        ] },
+      { name: "dayCountConvention", label: "Day-count Convention", placeholder: "", type: "select", required: true,
+        options: [
+          { value: "ACTUAL_365", label: "Actual / 365" }, { value: "ACTUAL_366", label: "Actual / 365 or 366" },
+          { value: "THIRTY_360", label: "30 / 360" },
+        ] },
     ],
   },
   fixed: {
@@ -123,6 +143,9 @@ const EMPTY_VALUES: PackageValues = {
   minAmount: "",
   maxDuration: "",
   maxAmount: "",
+  interestBasis: "DAILY_PRODUCT",
+  capitalizationFrequency: "MONTHLY",
+  dayCountConvention: "ACTUAL_365",
 };
 
 export interface PackageInitialData {
@@ -136,6 +159,9 @@ export interface PackageInitialData {
   minAmount?: string | number | null;
   maxDuration?: string | number | null;
   maxAmount?: string | number | null;
+  interestBasis?: string | null;
+  capitalizationFrequency?: string | null;
+  dayCountConvention?: string | null;
 }
 
 interface CreatePackageFormProps {
@@ -167,6 +193,9 @@ function initialValues(data?: PackageInitialData): PackageValues {
     minAmount: toValue(data.minAmount),
     maxDuration: toValue(data.maxDuration),
     maxAmount: toValue(data.maxAmount),
+    interestBasis: data.interestBasis ?? "DAILY_PRODUCT",
+    capitalizationFrequency: data.capitalizationFrequency ?? "MONTHLY",
+    dayCountConvention: data.dayCountConvention ?? "ACTUAL_365",
   };
 }
 
@@ -205,23 +234,20 @@ function PackageFields({
 }: {
   config: PackageConfiguration;
   values: PackageValues;
-  onChange: (event: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => void;
+  onChange: (event: ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => void;
 }) {
   return (
     <>
       {config.fields.map((field) => (
         <div key={field.name}>
           <label className="mb-2 block font-semibold">{field.label}</label>
-          <input
-            name={field.name}
-            type={field.type ?? "text"}
-            step={field.step}
-            value={values[field.name]}
-            onChange={onChange}
-            placeholder={field.placeholder}
-            required={field.required}
-            className="w-full rounded-full border border-gray-300 px-4 py-3 focus:border-black focus:outline-none"
-          />
+          {field.type === "select" ? (
+            <select name={field.name} value={values[field.name]} onChange={onChange} required={field.required} className="w-full rounded-full border border-gray-300 bg-white px-4 py-3 focus:border-black focus:outline-none">
+              {field.options?.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+            </select>
+          ) : (
+            <input name={field.name} type={field.type ?? "text"} step={field.step} value={values[field.name]} onChange={onChange} placeholder={field.placeholder} required={field.required} className="w-full rounded-full border border-gray-300 px-4 py-3 focus:border-black focus:outline-none" />
+          )}
         </div>
       ))}
       <div>
@@ -285,7 +311,7 @@ export function CreatePackageForm({ kind, networkId, onAdded, onClose }: CreateP
   const [error, setError] = useState("");
   const bannerState = useBanner(null);
 
-  const handleChange = (event: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+  const handleChange = (event: ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const name = event.target.name as FieldName;
     if (!(name in EMPTY_VALUES)) return;
     setValues((previous) => ({ ...previous, [name]: event.target.value }));
@@ -342,7 +368,7 @@ export function EditPackageForm({ kind, initialData, onUpdated, onClose }: EditP
     : null;
   const bannerState = useBanner(initialBannerUrl);
 
-  const handleChange = (event: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+  const handleChange = (event: ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const name = event.target.name as FieldName;
     if (!(name in EMPTY_VALUES)) return;
     setValues((previous) => ({ ...previous, [name]: event.target.value }));

@@ -29,7 +29,8 @@ class LedgerPostingsTest {
                 LedgerPostings.loanDisbursedToSavings(member, amount("1000.00"), "disbursement"),
                 LedgerPostings.sharePurchase(member, amount("1000.00"), "Cash", "purchase"),
                 LedgerPostings.shareRefund(member, amount("1000.00"), "Bank", "refund"),
-                LedgerPostings.shareTransfer(member, anotherMember(), amount("1000.00"), "transfer"));
+                LedgerPostings.shareTransfer(member, anotherMember(), amount("1000.00"), "transfer"),
+                LedgerPostings.savingsInterest(member, amount("10.00"), "daily interest"));
 
         for (List<LedgerLine> posting : postings) {
             BigDecimal debits = posting.stream().map(LedgerLine::debit).reduce(BigDecimal.ZERO, BigDecimal::add);
@@ -91,6 +92,16 @@ class LedgerPostingsTest {
         assertThat(transfer.get(0).member()).isSameAs(member);
         assertThat(transfer.get(1).member()).isSameAs(recipient);
         assertThat(refund.get(1).accountCode()).isEqualTo(Accounts.BANK);
+    }
+
+    @Test
+    void savingsInterestDebitsExpenseAndCreditsMemberSavings() {
+        var lines = LedgerPostings.savingsInterest(member, amount("12.50"), "interest");
+        assertThat(lines.get(0).accountCode()).isEqualTo(Accounts.INTEREST_EXPENSE);
+        assertThat(lines.get(0).debit()).isEqualByComparingTo("12.50");
+        assertThat(lines.get(1).accountCode()).isEqualTo(Accounts.MEMBER_SAVINGS);
+        assertThat(lines.get(1).credit()).isEqualByComparingTo("12.50");
+        assertThat(lines.get(1).member()).isSameAs(member);
     }
 
     @Test

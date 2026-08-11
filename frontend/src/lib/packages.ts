@@ -12,6 +12,9 @@ export interface FinancePackage {
   minBalance: number | null;
   minDuration: number | null;
   maxDuration: number | null;
+  interestBasis: string | null;
+  capitalizationFrequency: string | null;
+  dayCountConvention: string | null;
 }
 
 function finiteNumber(value: unknown): number | null {
@@ -37,6 +40,9 @@ export function parseFinancePackages(value: unknown): FinancePackage[] {
       minBalance: finiteNumber(item.minBalance),
       minDuration: finiteNumber(item.minDuration),
       maxDuration: finiteNumber(item.maxDuration),
+      interestBasis: typeof item.interestBasis === "string" ? item.interestBasis : null,
+      capitalizationFrequency: typeof item.capitalizationFrequency === "string" ? item.capitalizationFrequency : null,
+      dayCountConvention: typeof item.dayCountConvention === "string" ? item.dayCountConvention : null,
     };
   });
 }
