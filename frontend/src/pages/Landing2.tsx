@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type ComponentType, type ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
 import Snowfall from "react-snowfall";
 import { motion, useMotionValue, useSpring } from "framer-motion";
@@ -25,7 +25,9 @@ import {
   Moon,
 } from "lucide-react";
 
-export const Logo = ({ className }) => (
+type ThemeMode = "light" | "dark";
+
+export const Logo = ({ className = "" }: { className?: string }) => (
   <svg
     width="30"
     height="30"
@@ -46,7 +48,7 @@ export const Logo = ({ className }) => (
 );
 
 function useTheme() {
-  const [mode, setMode] = useState(() => {
+  const [mode, setMode] = useState<ThemeMode>(() => {
     const saved = localStorage.getItem("kosh-theme");
     if (saved === "light" || saved === "dark") return saved;
     return "light";
@@ -59,7 +61,7 @@ function useTheme() {
   return { mode, setMode };
 }
 
-function ThemeToggle({ mode, onToggle }) {
+function ThemeToggle({ mode, onToggle }: { mode: ThemeMode; onToggle: () => void }) {
   return (
     <button
       type="button"
@@ -77,7 +79,7 @@ function ThemeToggle({ mode, onToggle }) {
   );
 }
 
-function CursorTrail({ mode }) {
+function CursorTrail({ mode }: { mode: ThemeMode }) {
   const x = useMotionValue(-100);
   const y = useMotionValue(-100);
 
@@ -87,12 +89,12 @@ function CursorTrail({ mode }) {
   const s2y = useSpring(s1y, { stiffness: 260, damping: 40, mass: 0.9 });
 
   useEffect(() => {
-    const onMove = (e) => {
+    const onMove = (e: PointerEvent) => {
       x.set(e.clientX);
       y.set(e.clientY);
     };
     window.addEventListener("pointermove", onMove, { passive: true });
-    return () => window.removeEventListener("pointermove", onMove);
+    return () => { window.removeEventListener("pointermove", onMove); };
   }, [x, y]);
 
   return (
@@ -126,7 +128,13 @@ function CursorTrail({ mode }) {
 
 const PRIMARY = "bg-[#14c596] hover:bg-[#21ab87] text-black";
 
-function PrimaryButton({ children, onClick, className = "" }) {
+interface ButtonProps {
+  children: ReactNode;
+  onClick: () => void;
+  className?: string;
+}
+
+function PrimaryButton({ children, onClick, className = "" }: ButtonProps) {
   return (
     <button
       type="button"
@@ -144,7 +152,7 @@ function PrimaryButton({ children, onClick, className = "" }) {
   );
 }
 
-function GhostButton({ children, onClick, mode, className = "" }) {
+function GhostButton({ children, onClick, mode, className = "" }: ButtonProps & { mode: ThemeMode }) {
   return (
     <button
       type="button"
@@ -163,7 +171,7 @@ function GhostButton({ children, onClick, mode, className = "" }) {
   );
 }
 
-function SignInButton({ onClick, mode, className = "" }) {
+function SignInButton({ onClick, mode, className = "" }: Omit<ButtonProps, "children"> & { mode: ThemeMode }) {
   return (
     <button
       type="button"
@@ -182,7 +190,7 @@ function SignInButton({ onClick, mode, className = "" }) {
   );
 }
 
-function NavItem({ children, onClick, mode }) {
+function NavItem({ children, onClick, mode }: ButtonProps & { mode: ThemeMode }) {
   return (
     <button
       type="button"
@@ -199,7 +207,7 @@ function NavItem({ children, onClick, mode }) {
   );
 }
 
-function Pill({ icon: Icon, children, mode }) {
+function Pill({ icon: Icon, children, mode }: { icon: ComponentType<{ className?: string }>; children: ReactNode; mode: ThemeMode }) {
   return (
     <span
       className={[
@@ -215,7 +223,7 @@ function Pill({ icon: Icon, children, mode }) {
   );
 }
 
-function Card({ children, mode, className = "" }) {
+function Card({ children, mode, className = "" }: { children: ReactNode; mode: ThemeMode; className?: string }) {
   return (
     <div
       className={[
@@ -231,10 +239,18 @@ function Card({ children, mode, className = "" }) {
   );
 }
 
-function HorizontalScroller({ title, subtitle, items, renderItem, mode }) {
-  const scrollerRef = useRef(null);
+interface HorizontalScrollerProps<T> {
+  title: string;
+  subtitle: string;
+  items: T[];
+  renderItem: (item: T) => ReactNode;
+  mode: ThemeMode;
+}
 
-  const scrollBy = (dx) => {
+function HorizontalScroller<T>({ title, subtitle, items, renderItem, mode }: HorizontalScrollerProps<T>) {
+  const scrollerRef = useRef<HTMLDivElement | null>(null);
+
+  const scrollBy = (dx: number) => {
     const el = scrollerRef.current;
     if (!el) return;
     el.scrollBy({ left: dx, behavior: "smooth" });
@@ -264,7 +280,7 @@ function HorizontalScroller({ title, subtitle, items, renderItem, mode }) {
         <div className="hidden items-center gap-2 md:flex">
           <button
             type="button"
-            onClick={() => scrollBy(-520)}
+            onClick={() => { scrollBy(-520); }}
             className={[
               "rounded-lg border p-2 transition",
               mode === "dark"
@@ -277,7 +293,7 @@ function HorizontalScroller({ title, subtitle, items, renderItem, mode }) {
           </button>
           <button
             type="button"
-            onClick={() => scrollBy(520)}
+            onClick={() => { scrollBy(520); }}
             className={[
               "rounded-lg border p-2 transition",
               mode === "dark"
@@ -326,10 +342,10 @@ export default function Landing() {
   const lastYRef = useRef(0);
   const upAccumRef = useRef(0);
 
-  const heroCardRef = useRef(null);
+  const heroCardRef = useRef<HTMLDivElement | null>(null);
   const [tilt, setTilt] = useState({ rx: 0, ry: 0 });
 
-  const scrollToId = (id) => {
+  const scrollToId = (id: string) => {
     const el = document.getElementById(id);
     if (!el) return;
 
@@ -339,7 +355,7 @@ export default function Landing() {
     window.scrollTo({ top, behavior: "smooth" });
   };
 
-  const goSection = (id) => {
+  const goSection = (id: string) => {
     setMenuOpen(false);
     scrollToId(id);
   };
@@ -371,14 +387,14 @@ export default function Landing() {
     };
 
     window.addEventListener("scroll", onScroll, { passive: true });
-    return () => window.removeEventListener("scroll", onScroll);
+    return () => { window.removeEventListener("scroll", onScroll); };
   }, []);
 
   useEffect(() => {
     const el = heroCardRef.current;
     if (!el) return;
 
-    const onMove = (e) => {
+    const onMove = (e: PointerEvent) => {
       const r = el.getBoundingClientRect();
       const px = (e.clientX - r.left) / r.width;
       const py = (e.clientY - r.top) / r.height;
@@ -387,7 +403,7 @@ export default function Landing() {
       setTilt({ rx, ry });
     };
 
-    const onLeave = () => setTilt({ rx: 0, ry: 0 });
+    const onLeave = () => { setTilt({ rx: 0, ry: 0 }); };
 
     el.addEventListener("pointermove", onMove, { passive: true });
     el.addEventListener("pointerleave", onLeave, { passive: true });
@@ -400,9 +416,9 @@ export default function Landing() {
   const snowProps = useMemo(
     () => ({
       snowflakeCount: 120,
-      speed: [0.15, 0.75],
-      wind: [-0.2, 0.25],
-      radius: [0.6, 2.4],
+      speed: [0.15, 0.75] as [number, number],
+      wind: [-0.2, 0.25] as [number, number],
+      radius: [0.6, 2.4] as [number, number],
       color: mode === "dark" ? "rgba(255,255,255,0.85)" : "rgba(15,23,42,0.14)",
     }),
     [mode]
@@ -520,11 +536,11 @@ export default function Landing() {
             </button>
 
             <nav className="hidden items-center gap-6 md:flex">
-              <NavItem mode={mode} onClick={() => goSection("features")}>Features</NavItem>
-              <NavItem mode={mode} onClick={() => goSection("modules")}>Modules</NavItem>
-              <NavItem mode={mode} onClick={() => goSection("security")}>Security</NavItem>
-              <NavItem mode={mode} onClick={() => goSection("pricing")}>Pricing</NavItem>
-              <NavItem mode={mode} onClick={() => goSection("contact")}>Contact</NavItem>
+              <NavItem mode={mode} onClick={() => { goSection("features"); }}>Features</NavItem>
+              <NavItem mode={mode} onClick={() => { goSection("modules"); }}>Modules</NavItem>
+              <NavItem mode={mode} onClick={() => { goSection("security"); }}>Security</NavItem>
+              <NavItem mode={mode} onClick={() => { goSection("pricing"); }}>Pricing</NavItem>
+              <NavItem mode={mode} onClick={() => { goSection("contact"); }}>Contact</NavItem>
             </nav>
 
             <div className="hidden items-center gap-3 md:flex">
@@ -532,15 +548,15 @@ export default function Landing() {
                 mode={mode}
                 onToggle={() => setMode((m) => (m === "dark" ? "light" : "dark"))}
               /> */}
-              <SignInButton mode={mode} onClick={() => nav("/login")} />
-              <PrimaryButton onClick={() => goSection("contact")}>
+              <SignInButton mode={mode} onClick={() => { void nav("/login"); }} />
+              <PrimaryButton onClick={() => { goSection("contact"); }}>
                 Request a demo
               </PrimaryButton>
             </div>
 
             <button
               type="button"
-              onClick={() => setMenuOpen((v) => !v)}
+              onClick={() => { setMenuOpen((v) => !v); }}
               className={[
                 "inline-flex items-center justify-center rounded-lg border p-2 transition md:hidden",
                 mode === "dark"
@@ -563,17 +579,17 @@ export default function Landing() {
               ].join(" ")}
             >
               <div className="flex flex-col gap-2">
-                {[
+                {([
                   ["Features", "features"],
                   ["Modules", "modules"],
                   ["Security", "security"],
                   ["Pricing", "pricing"],
                   ["Contact", "contact"],
-                ].map(([label, id]) => (
+                ] as const).map(([label, id]) => (
                   <button
                     key={id}
                     type="button"
-                    onClick={() => goSection(id)}
+                    onClick={() => { goSection(id); }}
                     className={[
                       "rounded-lg border px-4 py-3 text-left text-sm transition",
                       mode === "dark"
@@ -588,13 +604,13 @@ export default function Landing() {
                 <div className="mt-2 grid grid-cols-2 gap-2">
                   <ThemeToggle
                     mode={mode}
-                    onToggle={() => setMode((m) => (m === "dark" ? "light" : "dark"))}
+                    onToggle={() => { setMode((m) => (m === "dark" ? "light" : "dark")); }}
                   />
                   <SignInButton
                     mode={mode}
                     onClick={() => {
                       setMenuOpen(false);
-                      nav("/login");
+                      void nav("/login");
                     }}
                     className="w-full"
                   />
@@ -602,7 +618,7 @@ export default function Landing() {
 
                 <button
                   type="button"
-                  onClick={() => goSection("contact")}
+                  onClick={() => { goSection("contact"); }}
                   className="mt-2 w-full rounded-lg bg-[#14c596] py-3 text-sm font-semibold text-black transition hover:bg-[#21ab87]"
                 >
                   Request a demo
@@ -642,10 +658,10 @@ export default function Landing() {
               </p>
 
               <div className="mt-7 flex flex-wrap items-center gap-3">
-                <PrimaryButton onClick={() => goSection("contact")}>
+                <PrimaryButton onClick={() => { goSection("contact"); }}>
                   Book a live demo
                 </PrimaryButton>
-                <GhostButton mode={mode} onClick={() => goSection("features")}>
+                <GhostButton mode={mode} onClick={() => { goSection("features"); }}>
                   Explore features
                 </GhostButton>
               </div>
@@ -675,7 +691,7 @@ export default function Landing() {
                   : "border-slate-200 bg-white/70",
               ].join(" ")}
               style={{
-                transform: `perspective(900px) rotateX(${tilt.rx}deg) rotateY(${tilt.ry}deg)`,
+                transform: `perspective(900px) rotateX(${String(tilt.rx)}deg) rotateY(${String(tilt.ry)}deg)`,
                 transformStyle: "preserve-3d",
               }}
             >
@@ -995,7 +1011,7 @@ export default function Landing() {
                 </ul>
 
                 <div className="mt-6">
-                  <PrimaryButton onClick={() => goSection("contact")}>
+                  <PrimaryButton onClick={() => { goSection("contact"); }}>
                     Get started
                   </PrimaryButton>
                 </div>
@@ -1016,10 +1032,10 @@ export default function Landing() {
                 </p>
 
                 <div className="mt-6 flex flex-wrap gap-3">
-                  <PrimaryButton onClick={() => nav("/signup")}>
+                  <PrimaryButton onClick={() => { void nav("/signup"); }}>
                     Start free setup
                   </PrimaryButton>
-                  <SignInButton mode={mode} onClick={() => nav("/login")} />
+                  <SignInButton mode={mode} onClick={() => { void nav("/login"); }} />
                 </div>
 
                 <p className={["mt-4 text-xs", mode === "dark" ? "text-slate-300/70" : "text-slate-600"].join(" ")}>
@@ -1080,16 +1096,16 @@ export default function Landing() {
             <span>© {new Date().getFullYear()} Kosh</span>
           </div>
           <div className="flex flex-wrap gap-5">
-            <button type="button" onClick={() => goSection("features")} className={mode === "dark" ? "hover:text-white" : "hover:text-slate-900"}>
+            <button type="button" onClick={() => { goSection("features"); }} className={mode === "dark" ? "hover:text-white" : "hover:text-slate-900"}>
               Features
             </button>
-            <button type="button" onClick={() => goSection("security")} className={mode === "dark" ? "hover:text-white" : "hover:text-slate-900"}>
+            <button type="button" onClick={() => { goSection("security"); }} className={mode === "dark" ? "hover:text-white" : "hover:text-slate-900"}>
               Security
             </button>
-            <button type="button" onClick={() => goSection("pricing")} className={mode === "dark" ? "hover:text-white" : "hover:text-slate-900"}>
+            <button type="button" onClick={() => { goSection("pricing"); }} className={mode === "dark" ? "hover:text-white" : "hover:text-slate-900"}>
               Pricing
             </button>
-            <button type="button" onClick={() => nav("/privacy")} className={mode === "dark" ? "hover:text-white" : "hover:text-slate-900"}>
+            <button type="button" onClick={() => { void nav("/privacy"); }} className={mode === "dark" ? "hover:text-white" : "hover:text-slate-900"}>
               Privacy
             </button>
           </div>
