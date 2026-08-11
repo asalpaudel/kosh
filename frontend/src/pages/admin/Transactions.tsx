@@ -5,13 +5,11 @@ import { isRecord } from "../../lib/validation";
 import {
   SearchIcon,
   PlusCircleIcon,
-  CheckIcon,
   DocumentIcon,
   Logo,
   CalendarIcon,
 } from "../../component/icons";
 import Modal from "../../component/superadmin/Modal";
-import ConfirmationModal from "../../component/ConfirmationModal";
 import AddTransactionForm from "../../component/admin/AddTransactionForm";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
@@ -44,11 +42,9 @@ interface AdminTransaction {
 interface TransactionVoucherProps {
   transaction: AdminTransaction | null;
   onClose: () => void;
-  onStatusUpdate: (id: string, status: "Success" | "Frozen") => void;
 }
 
 type DateFilter = "all" | "today" | "week" | "month" | "custom";
-interface StatusUpdate { id: string; newStatus: "Success" | "Frozen" }
 
 const textValue = (value: unknown): string => typeof value === "string" ? value : "";
 const numericValue = (value: unknown): number => {
@@ -84,7 +80,7 @@ const parseAdminTransactions = (value: unknown): AdminTransaction[] => {
   });
 };
 
-const TransactionVoucher = ({ transaction, onClose, onStatusUpdate }: TransactionVoucherProps) => {
+const TransactionVoucher = ({ transaction, onClose }: TransactionVoucherProps) => {
   const voucherRef = useRef<HTMLDivElement | null>(null);
 
   const [sahakariInfo, setSahakariInfo] = useState({
@@ -343,25 +339,6 @@ const TransactionVoucher = ({ transaction, onClose, onStatusUpdate }: Transactio
         </div>
 
         <div className="flex justify-between items-center bg-gray-50 p-4 rounded-xl border border-gray-200">
-          <div>
-            {isFrozen ? (
-              <button
-                onClick={() => { onStatusUpdate(transaction.id, "Success"); }}
-                className="flex items-center gap-2 text-green-600 hover:text-green-800 text-sm font-bold"
-              >
-                <CheckIcon className="w-4 h-4" /> Unfreeze / Resolve
-              </button>
-            ) : (
-              <button
-                onClick={() => { onStatusUpdate(transaction.id, "Frozen"); }}
-                className="flex items-center gap-2 text-orange-600 hover:text-orange-800 text-sm font-bold"
-              >
-                <span className="w-2 h-2 rounded-full bg-orange-500"></span>{" "}
-                Freeze Transaction
-              </button>
-            )}
-          </div>
-
           <div className="flex gap-3">
             <button
               onClick={onClose}
@@ -538,40 +515,6 @@ function AdminTransactions() {
   const handleTransactionAdded = () => {
     setIsAddModalOpen(false);
     void loadTransactions();
-  };
-
-  const [statusUpdateInfo, setStatusUpdateInfo] = useState<StatusUpdate | null>(null);
-  const [isStatusUpdateModalOpen, setIsStatusUpdateModalOpen] = useState(false);
-
-  const handleUpdateStatus = (id: string, newStatus: "Success" | "Frozen") => {
-    setStatusUpdateInfo({ id, newStatus });
-    setIsStatusUpdateModalOpen(true);
-  };
-
-  const confirmStatusUpdate = async () => {
-    if (!statusUpdateInfo) return;
-    const { id, newStatus } = statusUpdateInfo;
-    setIsStatusUpdateModalOpen(false);
-
-    const previousTransactions = transactions;
-    setTransactions((prev) =>
-      prev.map((t) => (t.id === id ? { ...t, status: newStatus } : t))
-    );
-
-    try {
-      const response = await apiFetch(`${API_BASE}/transactions/${encodeURIComponent(id)}/status`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status: newStatus }),
-      });
-      if (!response.ok) throw new Error("Status update rejected");
-      setSelectedTransaction((current) => current?.id === id ? { ...current, status: newStatus } : current);
-    } catch {
-      setTransactions(previousTransactions);
-      setError("Unable to update transaction status.");
-    } finally {
-      setStatusUpdateInfo(null);
-    }
   };
 
   return (
@@ -794,22 +737,8 @@ function AdminTransactions() {
         <TransactionVoucher
           transaction={selectedTransaction}
           onClose={() => { setSelectedTransaction(null); }}
-          onStatusUpdate={handleUpdateStatus}
         />
       </Modal>
-
-      <ConfirmationModal
-        isOpen={isStatusUpdateModalOpen}
-        onClose={() => {
-          setIsStatusUpdateModalOpen(false);
-          setStatusUpdateInfo(null);
-        }}
-        onConfirm={() => { void confirmStatusUpdate(); }}
-        title="Confirm Status Update"
-        message={`Are you sure you want to change the status to ${statusUpdateInfo?.newStatus ?? "the selected value"}?`}
-        confirmText="Update Status"
-        type="info"
-      />
     </div>
   );
 }
