@@ -5,6 +5,7 @@ import AnalyticsChart from "../../component/superadmin/AnalyticsChart";
 import { generateSummary, type MonthlyRevenue } from "../../component/superadmin/analyticsRevenue";
 import { API_BASE, apiFetch } from "../../lib/apiClient";
 import { isRecord } from "../../lib/validation";
+import { formatDualDate, todayInNepal } from "../../lib/nepaliDate";
 
 interface RevenueTotals {
   basic: number;
@@ -111,7 +112,7 @@ export default function Analytics() {
     document.setFontSize(18);
     document.text("Kosh Analytics Report", 14, 18);
     document.setFontSize(10);
-    document.text(`Generated ${new Date().toLocaleDateString("en-GB")}`, 14, 25);
+    document.text(`Generated ${formatDualDate(todayInNepal())}`, 14, 25);
     autoTable(document, {
       startY: 31,
       head: [["Plan", "Revenue"]],

@@ -1,6 +1,7 @@
 import { useState, type ChangeEvent, type FormEvent } from "react";
 import { API_BASE, ApiError, apiFetch } from "../../lib/apiClient";
 import { parseNetwork, type NetworkSummary } from "../../lib/networks";
+import BsDatePicker from "../BsDatePicker";
 
 interface EditNetworkFormProps {
   initialData: NetworkSummary;
@@ -110,13 +111,7 @@ export default function EditNetworkForm({
           placeholder="Address" 
           className="w-full bg-gray-100 rounded-lg px-4 py-2 outline-none" 
         />
-        <input 
-          name="createdAt" 
-          onChange={onChange} 
-          value={formData.createdAt} 
-          placeholder="Created At (e.g., 13-Apr-2025)" 
-          className="w-full bg-gray-100 rounded-lg px-4 py-2 outline-none" 
-        />
+        <BsDatePicker value={formData.createdAt} onChange={(createdAt) => { setFormData((current) => ({ ...current, createdAt })); }} ariaLabel="Cooperative establishment date in Bikram Sambat" />
         <input 
           name="phone" 
           onChange={onChange} 

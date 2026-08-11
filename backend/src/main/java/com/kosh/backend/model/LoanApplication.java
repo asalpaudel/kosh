@@ -3,7 +3,7 @@ package com.kosh.backend.model;
 import java.math.BigDecimal;
 
 import java.time.LocalDate;
-import java.time.LocalDateTime;
+import java.time.Instant;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -57,8 +57,8 @@ public class LoanApplication {
     @Column(nullable = false)
     private TransactionType transactionType = TransactionType.WITHDRAW;
 
-    private LocalDateTime applicationDate;
-    private LocalDateTime reviewDate;
+    private Instant applicationDate;
+    private Instant reviewDate;
     
     @ManyToOne
     @JoinColumn(name = "reviewed_by")
@@ -107,11 +107,11 @@ public class LoanApplication {
     public TransactionType getTransactionType() { return transactionType; }
     public void setTransactionType(TransactionType transactionType) { this.transactionType = transactionType; }
 
-    public LocalDateTime getApplicationDate() { return applicationDate; }
-    public void setApplicationDate(LocalDateTime applicationDate) { this.applicationDate = applicationDate; }
+    public Instant getApplicationDate() { return applicationDate; }
+    public void setApplicationDate(Instant applicationDate) { this.applicationDate = applicationDate; }
 
-    public LocalDateTime getReviewDate() { return reviewDate; }
-    public void setReviewDate(LocalDateTime reviewDate) { this.reviewDate = reviewDate; }
+    public Instant getReviewDate() { return reviewDate; }
+    public void setReviewDate(Instant reviewDate) { this.reviewDate = reviewDate; }
 
     public User getReviewedBy() { return reviewedBy; }
     public void setReviewedBy(User reviewedBy) { this.reviewedBy = reviewedBy; }

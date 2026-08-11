@@ -2,6 +2,7 @@ package com.kosh.backend.controller;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -149,7 +150,8 @@ public class AnalyticsController {
         // Count New Users for Today
         // Checks if user.createdAt matches today
         long todayNewUsers = users.stream()
-            .filter(u -> u.getCreatedAt() != null && u.getCreatedAt().toLocalDate().equals(today))
+            .filter(u -> u.getCreatedAt() != null && u.getCreatedAt()
+                    .atZone(ZoneId.of("Asia/Kathmandu")).toLocalDate().equals(today))
             .count();
 
         Map<String, Object> todaysSummary = new HashMap<>();

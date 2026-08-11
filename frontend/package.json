@@ -13,6 +13,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@remotemerge/nepali-date-converter": "^1.2.1",
     "apexcharts": "^5.3.5",
     "framer-motion": "^12.23.26",
     "html2canvas-pro": "^1.5.13",

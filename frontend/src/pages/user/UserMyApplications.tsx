@@ -11,6 +11,7 @@ import {
   CheckCircleIcon,
   XCircleIcon,
 } from "../../component/icons";
+import { formatDualDate } from "../../lib/nepaliDate";
 
 
 const StatusIcon = ({ status }: { status: string }) => {
@@ -79,7 +80,7 @@ const ApplicationCard = ({ application }: { application: UserApplication }) => {
             {application.maturityDate && (
               <div className="flex justify-between border-t border-dashed pt-2 mt-2">
                 <span className="text-teal-700 font-medium">Maturity Date:</span>
-                <span className="font-bold text-teal-700">{new Date(application.maturityDate).toLocaleDateString()}</span>
+                <span className="font-bold text-teal-700">{formatDualDate(application.maturityDate)}</span>
               </div>
             )}
             {application.maturityAmount && (
@@ -127,7 +128,7 @@ const ApplicationCard = ({ application }: { application: UserApplication }) => {
             {application.nextPaymentDate && (
               <div className="flex justify-between border-t border-dashed pt-2 mt-2">
                 <span className="text-orange-700 font-medium">Next Due:</span>
-                <span className="font-bold text-orange-700">{new Date(application.nextPaymentDate).toLocaleDateString()}</span>
+                <span className="font-bold text-orange-700">{formatDualDate(application.nextPaymentDate)}</span>
               </div>
             )}
             <div className="mt-2">
@@ -149,7 +150,7 @@ const ApplicationCard = ({ application }: { application: UserApplication }) => {
           <div>
             <h4 className="font-semibold text-gray-900 text-lg">{application.packageName}</h4>
             <p className="text-sm text-gray-500">
-              Applied on {new Date(application.applicationDate).toLocaleDateString()}
+              Applied on {formatDualDate(application.applicationDate)}
             </p>
           </div>
         </div>
@@ -172,7 +173,7 @@ const ApplicationCard = ({ application }: { application: UserApplication }) => {
 
       {application.reviewDate && (
         <div className="mt-3 text-xs text-gray-500">
-          Reviewed on {new Date(application.reviewDate).toLocaleDateString()}
+          Reviewed on {formatDualDate(application.reviewDate)}
         </div>
       )}
     </div>

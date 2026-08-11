@@ -12,6 +12,8 @@ import Modal from '../../component/superadmin/Modal';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import html2canvas from 'html2canvas-pro';
+import BsDatePicker from '../../component/BsDatePicker';
+import { formatDualDate, todayInNepal } from '../../lib/nepaliDate';
 
 
 const formatBalance = (num: number) => {
@@ -145,7 +147,7 @@ const UserTransactionVoucher = ({ transaction, onClose }: VoucherProps) => {
             <div>
               <p className="text-gray-500 text-xs uppercase font-bold">Transaction Date</p>
               <p className="font-medium text-lg">
-                {transaction.date ? new Date(transaction.date).toLocaleDateString() : '-'}
+                {transaction.date ? formatDualDate(transaction.date) : '-'}
               </p>
             </div>
             <div className="text-right">
@@ -324,7 +326,7 @@ function Statement() {
 
   const filteredTransactions = useMemo(() => {
     let data = [...transactions];
-    const today = new Date().toISOString().split('T')[0] ?? "";
+    const today = todayInNepal();
 
     if (dateFilter === 'today') {
       data = data.filter((t) => t.date.startsWith(today));
@@ -356,13 +358,13 @@ function Statement() {
     const doc = new jsPDF();
     doc.text('Account Statement', 14, 20);
     doc.setFontSize(10);
-    doc.text(`Generated: ${new Date().toLocaleDateString()}`, 14, 26);
+    doc.text(`Generated: ${formatDualDate(todayInNepal())}`, 14, 26);
 
     const tableColumn = ['Date', 'Voucher', 'Description', 'Amount', 'Balance'];
 
     // ⭐ FIX: Add (Cr)/(Dr) signs to PDF
     const tableRows = filteredTransactions.map((item) => [
-      item.date ? new Date(item.date).toLocaleDateString() : '-',
+      item.date ? formatDualDate(item.date) : '-',
       item.voucherId || '-',
       item.type,
       `${item.isCredit ? '(Cr) +' : '(Dr) -'} ${item.displayAmount}`,
@@ -426,21 +428,11 @@ function Statement() {
           >
             <div className="flex items-center px-2 md:px-3 gap-2 sm:border-r border-gray-300 relative">
               <span className="text-[10px] md:text-xs font-bold text-gray-500 uppercase">From</span>
-              <input
-                type="date"
-                value={fromDate}
-                onChange={(e) => { handleDateChange('from', e.target.value); }}
-                className="bg-transparent text-xs md:text-sm font-semibold text-gray-700 outline-none w-28 md:w-32 cursor-pointer"
-              />
+              <BsDatePicker value={fromDate} onChange={(value) => { handleDateChange('from', value); }} className="w-36" ariaLabel="Statement start date in Bikram Sambat" />
             </div>
             <div className="flex items-center px-2 md:px-3 gap-2 relative">
               <span className="text-[10px] md:text-xs font-bold text-gray-500 uppercase">To</span>
-              <input
-                type="date"
-                value={toDate}
-                onChange={(e) => { handleDateChange('to', e.target.value); }}
-                className="bg-transparent text-xs md:text-sm font-semibold text-gray-700 outline-none w-28 md:w-32 cursor-pointer"
-              />
+              <BsDatePicker value={toDate} onChange={(value) => { handleDateChange('to', value); }} className="w-36" ariaLabel="Statement end date in Bikram Sambat" />
             </div>
           </div>
 

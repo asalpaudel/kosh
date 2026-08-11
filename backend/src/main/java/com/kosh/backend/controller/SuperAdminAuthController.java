@@ -1,6 +1,6 @@
 package com.kosh.backend.controller;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 
 import com.kosh.backend.service.OneTimeCode;
 import java.util.Map;
@@ -48,9 +48,9 @@ public class SuperAdminAuthController {
     // OTP Storage: email -> SuperAdminOtp
     private static class SuperAdminOtp {
         String otpVerifier;
-        LocalDateTime expiry;
+        Instant expiry;
 
-        SuperAdminOtp(String otpVerifier, LocalDateTime expiry) {
+        SuperAdminOtp(String otpVerifier, Instant expiry) {
             this.otpVerifier = otpVerifier;
             this.expiry = expiry;
         }
@@ -128,7 +128,7 @@ public class SuperAdminAuthController {
         
         
         String otp = OneTimeCode.generate();
-        LocalDateTime expiry = LocalDateTime.now().plusMinutes(5);
+        Instant expiry = Instant.now().plus(java.time.Duration.ofMinutes(5));
         
         // Store OTP
         otpStorage.put(email, new SuperAdminOtp(passwordEncoder.encode(otp), expiry));
@@ -195,7 +195,7 @@ public class SuperAdminAuthController {
             ));
         }
         
-        if (storedOtp.expiry.isBefore(LocalDateTime.now())) {
+        if (storedOtp.expiry.isBefore(Instant.now())) {
             otpStorage.remove(email);
             return ResponseEntity.badRequest().body(Map.of(
                 "success", false,

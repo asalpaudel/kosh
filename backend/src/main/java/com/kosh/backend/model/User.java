@@ -1,7 +1,7 @@
 package com.kosh.backend.model;
 
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
+import java.time.Instant;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 
@@ -47,18 +47,18 @@ public class User {
     private Long version;
 
     @Column(updatable = false)
-    private LocalDateTime createdAt;
+    private Instant createdAt;
 
     
     @JsonIgnore
     private String twoFactorCode; // Stores the 6-digit OTP
     @JsonIgnore
-    private LocalDateTime twoFactorExpiry; 
+    private Instant twoFactorExpiry;
     
     @JsonIgnore
     private String trustedDeviceToken; 
     @JsonIgnore
-    private LocalDateTime trustedDeviceExpiry; 
+    private Instant trustedDeviceExpiry;
 
     // ⭐ Photo as BLOB
     @Basic(fetch = FetchType.LAZY)
@@ -89,7 +89,7 @@ public class User {
 
     @PrePersist
     protected void onCreate() {
-        this.createdAt = LocalDateTime.now();
+        this.createdAt = Instant.now();
     }
 
 
@@ -129,8 +129,8 @@ public class User {
     public BigDecimal getBalance() { return balance != null ? balance : BigDecimal.ZERO; }
     public void setBalance(BigDecimal balance) { this.balance = balance != null ? balance : BigDecimal.ZERO; }
 
-    public LocalDateTime getCreatedAt() { return createdAt; }
-    public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
+    public Instant getCreatedAt() { return createdAt; }
+    public void setCreatedAt(Instant createdAt) { this.createdAt = createdAt; }
 
     // BLOB Getters
     public byte[] getPhotoData() { return photoData; }
@@ -157,10 +157,10 @@ public class User {
     // 2FA 
     public String getTwoFactorCode() { return twoFactorCode; }
     public void setTwoFactorCode(String twoFactorCode) { this.twoFactorCode = twoFactorCode; }
-    public LocalDateTime getTwoFactorExpiry() { return twoFactorExpiry; }
-    public void setTwoFactorExpiry(LocalDateTime twoFactorExpiry) { this.twoFactorExpiry = twoFactorExpiry; }
+    public Instant getTwoFactorExpiry() { return twoFactorExpiry; }
+    public void setTwoFactorExpiry(Instant twoFactorExpiry) { this.twoFactorExpiry = twoFactorExpiry; }
     public String getTrustedDeviceToken() { return trustedDeviceToken; }
     public void setTrustedDeviceToken(String trustedDeviceToken) { this.trustedDeviceToken = trustedDeviceToken; }
-    public LocalDateTime getTrustedDeviceExpiry() { return trustedDeviceExpiry; }
-    public void setTrustedDeviceExpiry(LocalDateTime trustedDeviceExpiry) { this.trustedDeviceExpiry = trustedDeviceExpiry; }
+    public Instant getTrustedDeviceExpiry() { return trustedDeviceExpiry; }
+    public void setTrustedDeviceExpiry(Instant trustedDeviceExpiry) { this.trustedDeviceExpiry = trustedDeviceExpiry; }
 }

@@ -3,7 +3,7 @@ package com.kosh.backend.model;
 import java.math.BigDecimal;
 
 import jakarta.persistence.*;
-import java.time.LocalDateTime;
+import java.time.Instant;
 
 @Entity
 @Table(name = "saving_account_applications")
@@ -35,8 +35,8 @@ public class SavingAccountApplication {
     @Column(nullable = false)
     private TransactionType transactionType = TransactionType.DEPOSIT;
 
-    private LocalDateTime applicationDate;
-    private LocalDateTime reviewDate;
+    private Instant applicationDate;
+    private Instant reviewDate;
     
     @ManyToOne
     @JoinColumn(name = "reviewed_by")
@@ -67,11 +67,11 @@ public class SavingAccountApplication {
     public TransactionType getTransactionType() { return transactionType; }
     public void setTransactionType(TransactionType transactionType) { this.transactionType = transactionType; }
 
-    public LocalDateTime getApplicationDate() { return applicationDate; }
-    public void setApplicationDate(LocalDateTime applicationDate) { this.applicationDate = applicationDate; }
+    public Instant getApplicationDate() { return applicationDate; }
+    public void setApplicationDate(Instant applicationDate) { this.applicationDate = applicationDate; }
 
-    public LocalDateTime getReviewDate() { return reviewDate; }
-    public void setReviewDate(LocalDateTime reviewDate) { this.reviewDate = reviewDate; }
+    public Instant getReviewDate() { return reviewDate; }
+    public void setReviewDate(Instant reviewDate) { this.reviewDate = reviewDate; }
 
     public User getReviewedBy() { return reviewedBy; }
     public void setReviewedBy(User reviewedBy) { this.reviewedBy = reviewedBy; }

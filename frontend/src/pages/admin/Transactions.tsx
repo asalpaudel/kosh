@@ -7,13 +7,14 @@ import {
   PlusCircleIcon,
   DocumentIcon,
   Logo,
-  CalendarIcon,
 } from "../../component/icons";
 import Modal from "../../component/superadmin/Modal";
 import AddTransactionForm from "../../component/admin/AddTransactionForm";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import html2canvas from "html2canvas-pro";
+import BsDatePicker from "../../component/BsDatePicker";
+import { formatDualDate, todayInNepal } from "../../lib/nepaliDate";
 
 
 interface TransactionDetails {
@@ -228,9 +229,7 @@ const TransactionVoucher = ({ transaction, onClose }: TransactionVoucherProps) =
                 Transaction Date
               </p>
               <p className="font-medium text-lg">
-                {transaction.date
-                  ? new Date(transaction.date).toLocaleDateString()
-                  : "-"}
+                {transaction.date ? formatDualDate(transaction.date) : "-"}
               </p>
             </div>
             <div className="text-right">
@@ -430,8 +429,8 @@ function AdminTransactions() {
 
   const filteredTransactions = useMemo(() => {
     let data = transactions;
-    const today = new Date();
-    const todayStr = today.toISOString().split("T")[0] ?? "";
+    const today = new Date(`${todayInNepal()}T00:00:00`);
+    const todayStr = todayInNepal();
 
     if (dateFilter === "today") {
       data = data.filter((t) => t.date && t.date.startsWith(todayStr));
@@ -474,7 +473,7 @@ function AdminTransactions() {
     doc.setFontSize(11);
     doc.setTextColor(100);
     let filterText = `Filter: ${dateFilter.toUpperCase()}`;
-    if (dateFilter === "custom") filterText += ` (${fromDate} to ${toDate})`;
+    if (dateFilter === "custom") filterText += ` (${formatDualDate(fromDate)} to ${formatDualDate(toDate)})`;
     if (searchQuery) filterText += ` | Search: "${searchQuery}"`;
     doc.text(filterText, 14, 30);
 
@@ -489,7 +488,7 @@ function AdminTransactions() {
     ];
 
     const tableRows = filteredTransactions.map((t) => [
-      t.date ? new Date(t.date).toLocaleDateString() : "-",
+      t.date ? formatDualDate(t.date) : "-",
       t.voucherId || "-",
       t.userName || t.user || "-",
       t.type || "-",
@@ -508,7 +507,7 @@ function AdminTransactions() {
     });
 
     doc.save(
-      `Transactions_Report_${new Date().toISOString().split("T")[0] ?? "export"}.pdf`
+      `Transactions_Report_${todayInNepal()}.pdf`
     );
   };
 
@@ -562,29 +561,13 @@ function AdminTransactions() {
               <span className="text-[10px] md:text-xs font-bold text-gray-500 uppercase">
                 From
               </span>
-              <div className="relative">
-                <input
-                  type="date"
-                  value={fromDate}
-                  onChange={(e) => { handleDateChange("from", e.target.value); }}
-                  className="bg-transparent text-xs md:text-sm font-semibold text-gray-700 outline-none w-28 md:w-32 z-10 relative cursor-pointer"
-                />
-                <CalendarIcon className="w-4 h-4 text-teal-600 absolute right-0 top-1/2 -translate-y-1/2 pointer-events-none" />
-              </div>
+              <BsDatePicker value={fromDate} onChange={(value) => { handleDateChange("from", value); }} className="w-36" ariaLabel="Transaction report start date in Bikram Sambat" />
             </div>
             <div className="flex items-center px-2 md:px-3 gap-2 relative">
               <span className="text-[10px] md:text-xs font-bold text-gray-500 uppercase">
                 To
               </span>
-              <div className="relative">
-                <input
-                  type="date"
-                  value={toDate}
-                  onChange={(e) => { handleDateChange("to", e.target.value); }}
-                  className="bg-transparent text-xs md:text-sm font-semibold text-gray-700 outline-none w-28 md:w-32 z-10 relative cursor-pointer"
-                />
-                <CalendarIcon className="w-4 h-4 text-teal-600 absolute right-0 top-1/2 -translate-y-1/2 pointer-events-none" />
-              </div>
+              <BsDatePicker value={toDate} onChange={(value) => { handleDateChange("to", value); }} className="w-36" ariaLabel="Transaction report end date in Bikram Sambat" />
             </div>
           </div>
 
@@ -665,9 +648,7 @@ function AdminTransactions() {
                         )}
                       </td>
                       <td className="py-3 md:py-4 px-2 md:px-4 text-gray-600 text-xs md:text-sm">
-                        {log.date
-                          ? new Date(log.date).toLocaleDateString()
-                          : "-"}
+                        {log.date ? formatDualDate(log.date) : "-"}
                       </td>
                       <td className="py-3 md:py-4 px-2 md:px-4 text-gray-900 font-semibold text-xs md:text-sm">
                         {log.userName || log.user}

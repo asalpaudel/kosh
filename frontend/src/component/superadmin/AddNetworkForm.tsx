@@ -1,6 +1,7 @@
 import { useState, type ChangeEvent } from "react";
 import { API_BASE, ApiError, apiFetch } from "../../lib/apiClient";
 import { parseNetwork, type NetworkSummary } from "../../lib/networks";
+import BsDatePicker from "../BsDatePicker";
 
 type PackageType = "basic" | "premium" | "custom";
 
@@ -429,14 +430,7 @@ export default function AddNetworkForm({
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Created At <span className="text-red-500">*</span>
                   </label>
-                  <input
-                    name="createdAt"
-                    onChange={onChange}
-                    value={formData.createdAt}
-                    placeholder="e.g., yyyy-mm-dd"
-                    className="w-full bg-gray-100 rounded-lg px-4 py-2 outline-none focus:ring-2 focus:ring-teal-500"
-                    required
-                  />
+                  <BsDatePicker value={formData.createdAt} onChange={(createdAt) => { setFormData((current) => ({ ...current, createdAt })); }} ariaLabel="Cooperative establishment date in Bikram Sambat" />
                 </div>
               </div>
             </div>

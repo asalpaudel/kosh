@@ -1,6 +1,6 @@
 package com.kosh.backend.controller;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 
 import com.kosh.backend.service.OneTimeCode;
 import java.util.Map;
@@ -149,7 +149,7 @@ public class AuthController {
                 if ("trusted_device".equals(c.getName())
                         && SecureToken.matches(c.getValue(), user.getTrustedDeviceToken())) {
                     // Check if token is still valid (not expired)
-                    if (user.getTrustedDeviceExpiry() != null && user.getTrustedDeviceExpiry().isAfter(LocalDateTime.now())) {
+                    if (user.getTrustedDeviceExpiry() != null && user.getTrustedDeviceExpiry().isAfter(Instant.now())) {
                         isDeviceTrusted = true;
                     }
                 }
@@ -165,7 +165,7 @@ public class AuthController {
         else {
             String otp = OneTimeCode.generate();
             user.setTwoFactorCode(passwordEncoder.encode(otp));
-            user.setTwoFactorExpiry(LocalDateTime.now().plusMinutes(10));
+            user.setTwoFactorExpiry(Instant.now().plus(java.time.Duration.ofMinutes(10)));
             repo.save(user);
             session.setAttribute(PENDING_2FA_USER_ID, user.getId());
 
@@ -217,7 +217,7 @@ public class AuthController {
         // six-digit space can be walked in a few thousand requests before it expires.
         boolean valid = user.getTwoFactorCode() != null
                 && user.getTwoFactorExpiry() != null
-                && user.getTwoFactorExpiry().isAfter(LocalDateTime.now())
+                && user.getTwoFactorExpiry().isAfter(Instant.now())
                 && otp != null
                 && passwordEncoder.matches(otp, user.getTwoFactorCode());
 
@@ -241,7 +241,7 @@ public class AuthController {
         if (trustDevice) {
             String token = SecureToken.generate();
             user.setTrustedDeviceToken(SecureToken.verifier(token));
-            user.setTrustedDeviceExpiry(LocalDateTime.now().plusDays(30)); // 30 Days Validity
+            user.setTrustedDeviceExpiry(Instant.now().plus(java.time.Duration.ofDays(30))); // 30 Days Validity
             
             // Set Cookie
             ResponseCookie cookie = ResponseCookie.from("trusted_device", token)

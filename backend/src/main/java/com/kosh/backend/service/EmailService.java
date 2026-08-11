@@ -2,7 +2,7 @@ package com.kosh.backend.service;
 
 import java.math.BigDecimal;
 import java.time.Duration;
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -124,7 +124,7 @@ public class EmailService {
 
     public String generateOtp(String email) {
         String otp = OneTimeCode.generate();
-        otpStorage.put(email, new PendingOtp(passwordEncoder.encode(otp), LocalDateTime.now().plus(OTP_TTL)));
+        otpStorage.put(email, new PendingOtp(passwordEncoder.encode(otp), Instant.now().plus(OTP_TTL)));
         return otp;
     }
 
@@ -135,7 +135,7 @@ public class EmailService {
     public boolean validateOtp(String email, String otp) {
         PendingOtp pending = otpStorage.remove(email);
         if (pending == null || otp == null) return false;
-        if (LocalDateTime.now().isAfter(pending.expiresAt())) return false;
+        if (Instant.now().isAfter(pending.expiresAt())) return false;
         return passwordEncoder.matches(otp, pending.verifier());
     }
 
@@ -143,7 +143,7 @@ public class EmailService {
         otpStorage.remove(email);
     }
 
-    private record PendingOtp(String verifier, LocalDateTime expiresAt) {
+    private record PendingOtp(String verifier, Instant expiresAt) {
     }
 
     /**

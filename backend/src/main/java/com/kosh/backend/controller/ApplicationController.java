@@ -2,7 +2,7 @@ package com.kosh.backend.controller;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -192,7 +192,7 @@ public class ApplicationController {
             application.setNetwork(network);
             application.setDepositAmount(depositAmount);
             application.setDepositTerm(depositTerm);
-            application.setApplicationDate(LocalDateTime.now());
+            application.setApplicationDate(Instant.now());
             application.setStatus(ApplicationStatus.PENDING);
 
             FixedDepositApplication saved = fdAppRepo.save(application);
@@ -345,7 +345,7 @@ public class ApplicationController {
             }
             
             app.setStatus(status);
-            app.setReviewDate(LocalDateTime.now());
+            app.setReviewDate(Instant.now());
             app.setReviewedBy(admin);
             app.setReviewNotes(notes);
 
@@ -416,7 +416,7 @@ public class ApplicationController {
             application.setSavingAccount(savingAccount);
             application.setNetwork(network);
             application.setInitialDeposit(initialDeposit);
-            application.setApplicationDate(LocalDateTime.now());
+            application.setApplicationDate(Instant.now());
             application.setStatus(ApplicationStatus.PENDING);
 
             SavingAccountApplication saved = saAppRepo.save(application);
@@ -519,7 +519,7 @@ public class ApplicationController {
             }
 
             app.setStatus(status);
-            app.setReviewDate(LocalDateTime.now());
+            app.setReviewDate(Instant.now());
             app.setReviewedBy(admin);
             app.setReviewNotes(notes);
 
@@ -574,7 +574,7 @@ public class ApplicationController {
             application.setNetwork(network);
             application.setRequestedAmount(requestedAmount);
             application.setPurpose(purpose);
-            application.setApplicationDate(LocalDateTime.now());
+            application.setApplicationDate(Instant.now());
             application.setStatus(ApplicationStatus.PENDING);
 
             LoanApplication saved = loanAppRepo.save(application);
@@ -744,7 +744,7 @@ public class ApplicationController {
             }
 
             application.setStatus(status);
-            application.setReviewDate(LocalDateTime.now());
+            application.setReviewDate(Instant.now());
             application.setReviewedBy(admin);
             application.setReviewNotes(notes);
 

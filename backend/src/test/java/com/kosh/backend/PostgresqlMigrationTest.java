@@ -67,6 +67,14 @@ class PostgresqlMigrationTest {
                 "activity logs are append-only");
     }
 
+    @Test
+    void persistentEventTimesAreMigratedToUtcInstants() throws IOException {
+        String migration = resource("/db/migration/V8__utc_timestamps.sql");
+        assertThat(migration)
+                .contains("timestamp with time zone", "AT TIME ZONE 'Asia/Kathmandu'")
+                .contains("ALTER TABLE users", "ALTER TABLE journal_entries", "ALTER TABLE activity_logs");
+    }
+
     private String resource(String path) throws IOException {
         try (var stream = getClass().getResourceAsStream(path)) {
             assertThat(stream).as("resource %s", path).isNotNull();

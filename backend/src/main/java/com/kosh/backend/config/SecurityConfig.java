@@ -97,7 +97,7 @@ public class SecurityConfig {
                 .requestMatchers("/api/superadmin-auth/session", "/api/superadmin-auth/logout")
                     .hasRole("SUPERADMIN")
                 .requestMatchers("/api/auth/logout", "/api/session", "/api/users/me",
-                    "/api/users/me/**", "/api/users/change-password").authenticated()
+                    "/api/users/me/**", "/api/users/change-password", "/api/calendar/**").authenticated()
 
                 .requestMatchers("/api/users/all", "/api/users/count").hasRole("SUPERADMIN")
                 .requestMatchers(HttpMethod.GET, "/api/users").hasAnyRole("ADMIN", "SUPERADMIN")

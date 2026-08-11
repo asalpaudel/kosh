@@ -13,6 +13,7 @@ import {
   ClockIcon
 } from "../../component/icons";
 import ConfirmationModal from "../../component/ConfirmationModal";
+import { formatDualDate } from "../../lib/nepaliDate";
 
 
 type ReviewStatus = "PENDING" | "APPROVED" | "REJECTED" | "WITHDRAWN";
@@ -248,7 +249,7 @@ const ApplicationCard = ({ application, type, onReview }: { application: UserApp
 
         <div className="flex items-center gap-2 text-xs text-gray-400 border-t border-gray-50 pt-3">
           <ClockIcon className="w-3.5 h-3.5" />
-          <span>{new Date(application.applicationDate).toLocaleDateString("en-GB", { day: 'numeric', month: 'short', year: 'numeric' })}</span>
+          <span>{formatDualDate(application.applicationDate)}</span>
         </div>
       </div>
 

@@ -20,6 +20,7 @@ import EditNetworkForm from "../../component/superadmin/EditNetworkForm";
 import AddUserForm from "../../component/superadmin/AddUserForm";
 import EditUserForm from "../../component/superadmin/EditUserForm";
 import ConfirmationModal from "../../component/ConfirmationModal";
+import { formatDualDate } from "../../lib/nepaliDate";
 
 // --- API BASE ---
 
@@ -82,7 +83,7 @@ const NetworkDetails = ({ item }: { item: NetworkSummary }) => (
         <DetailItem label="Registered ID" value={item.registeredId} />
         <DetailItem label="Phone Number" value={item.phone} />
         <DetailItem label="Address" value={item.address} />
-        <DetailItem label="Created At" value={item.createdAt} />
+        <DetailItem label="Created At" value={formatDualDate(item.createdAt)} />
         <DetailItem label="Staff Count" value={item.staffCount} />
         <DetailItem
           label="User Count"
@@ -407,7 +408,7 @@ function Networks() {
                               {network.address}
                             </td>
                             <td className="px-6 py-4 text-sm text-gray-600">
-                              {network.createdAt}
+                              {formatDualDate(network.createdAt)}
                             </td>
                             <td className="px-6 py-4">
                               <div className="flex items-center justify-end gap-2">

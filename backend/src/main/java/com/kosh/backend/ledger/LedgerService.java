@@ -5,7 +5,7 @@ import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.time.LocalDate;
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -117,7 +117,7 @@ public class LedgerService {
         entry.setVoucherRef(voucherRef);
         entry.setSourceType(sourceType);
         entry.setSourceId(sourceId);
-        entry.setPostedAt(LocalDateTime.now());
+        entry.setPostedAt(Instant.now());
         entry.setPostedBy(postedBy);
         entry.setReversesEntry(reverses);
         entry.setPreviousHash(previousHash);

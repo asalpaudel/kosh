@@ -17,6 +17,8 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.kosh.backend.model.JournalEntry;
+import com.kosh.backend.calendar.BikramSambatCalendar;
+import com.kosh.backend.calendar.BsDate;
 import com.kosh.backend.repository.JournalEntryRepository;
 import com.kosh.backend.repository.NetworkRepository;
 import com.kosh.backend.service.NetworkAccessService;
@@ -40,19 +42,22 @@ public class LedgerController {
     private final NetworkRepository networkRepo;
     private final com.kosh.backend.repository.AccountRepository accountRepo;
     private final NetworkAccessService access;
+    private final BikramSambatCalendar calendar;
 
     public LedgerController(LedgerReports reports,
                             LedgerService ledger,
                             JournalEntryRepository entryRepo,
                             NetworkRepository networkRepo,
                             com.kosh.backend.repository.AccountRepository accountRepo,
-                            NetworkAccessService access) {
+                            NetworkAccessService access,
+                            BikramSambatCalendar calendar) {
         this.reports = reports;
         this.ledger = ledger;
         this.entryRepo = entryRepo;
         this.networkRepo = networkRepo;
         this.accountRepo = accountRepo;
         this.access = access;
+        this.calendar = calendar;
     }
 
     @GetMapping("/accounts")
@@ -82,7 +87,10 @@ public class LedgerController {
             HttpSession session) {
         Long networkId = networkId(session);
         if (networkId == null) return unauthorised();
-        return ResponseEntity.ok(reports.trialBalance(networkId, asOf != null ? asOf : LocalDate.now()));
+        LocalDate effective = asOf != null ? asOf : LocalDate.now();
+        Map<String, Object> report = reports.trialBalance(networkId, effective);
+        addCalendarContext(report, effective);
+        return ResponseEntity.ok(report);
     }
 
     @GetMapping("/income-statement")
@@ -94,8 +102,12 @@ public class LedgerController {
         if (networkId == null) return unauthorised();
 
         LocalDate end = to != null ? to : LocalDate.now();
-        LocalDate start = from != null ? from : end.withDayOfYear(1);
-        return ResponseEntity.ok(reports.incomeStatement(networkId, start, end));
+        LocalDate start = from != null ? from : calendar.fiscalYearFor(end).startAd();
+        Map<String, Object> report = reports.incomeStatement(networkId, start, end);
+        report.put("fromBs", calendar.toBs(start).toString());
+        report.put("toBs", calendar.toBs(end).toString());
+        report.put("fiscalYear", calendar.fiscalYearFor(end).label());
+        return ResponseEntity.ok(report);
     }
 
     @GetMapping("/balance-sheet")
@@ -104,7 +116,10 @@ public class LedgerController {
             HttpSession session) {
         Long networkId = networkId(session);
         if (networkId == null) return unauthorised();
-        return ResponseEntity.ok(reports.balanceSheet(networkId, asOf != null ? asOf : LocalDate.now()));
+        LocalDate effective = asOf != null ? asOf : LocalDate.now();
+        Map<String, Object> report = reports.balanceSheet(networkId, effective);
+        addCalendarContext(report, effective);
+        return ResponseEntity.ok(report);
     }
 
     /** Walks the hash chain and reports the first break, or the current checkpoint hash. */
@@ -137,7 +152,10 @@ public class LedgerController {
         if (networkId == null || sahakari == null) return unauthorised();
 
         String asOfText = body != null ? body.get("asOf") : null;
-        LocalDate asOf = asOfText != null && !asOfText.isBlank() ? LocalDate.parse(asOfText) : LocalDate.now();
+        String asOfBs = body != null ? body.get("asOfBs") : null;
+        LocalDate asOf = asOfBs != null && !asOfBs.isBlank()
+                ? calendar.toAd(parseBs(asOfBs))
+                : asOfText != null && !asOfText.isBlank() ? LocalDate.parse(asOfText) : LocalDate.now();
 
         return networkRepo.findById(networkId)
                 .map(network -> ResponseEntity.ok(reports.postOpeningBalances(
@@ -200,6 +218,17 @@ public class LedgerController {
 
     private Long networkId(HttpSession session) {
         return (Long) session.getAttribute("sahakariId");
+    }
+
+    private void addCalendarContext(Map<String, Object> report, LocalDate date) {
+        report.put("asOfBs", calendar.toBs(date).toString());
+        report.put("fiscalYear", calendar.fiscalYearFor(date).label());
+    }
+
+    private BsDate parseBs(String value) {
+        String[] parts = value.trim().split("-");
+        if (parts.length != 3) throw new IllegalArgumentException("BS date must be YYYY-MM-DD");
+        return new BsDate(Integer.parseInt(parts[0]), Integer.parseInt(parts[1]), Integer.parseInt(parts[2]));
     }
 
     private ResponseEntity<?> unauthorised() {

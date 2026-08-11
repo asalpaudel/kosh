@@ -1,6 +1,6 @@
 package com.kosh.backend.model;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
@@ -23,10 +23,10 @@ public class ActivityLog {
     private String action;    
     private String details;  
     
-    private LocalDateTime timestamp;
+    private Instant timestamp;
 
     public ActivityLog() {
-        this.timestamp = LocalDateTime.now();
+        this.timestamp = Instant.now();
     }
 
     public ActivityLog(String actorName, String role, Long sahakariId, String action, String details) {
@@ -35,7 +35,7 @@ public class ActivityLog {
         this.sahakariId = sahakariId;
         this.action = action;
         this.details = details;
-        this.timestamp = LocalDateTime.now();
+        this.timestamp = Instant.now();
     }
 
     public Long getId() { return id; }
@@ -56,6 +56,6 @@ public class ActivityLog {
     public String getDetails() { return details; }
     public void setDetails(String details) { this.details = details; }
 
-    public LocalDateTime getTimestamp() { return timestamp; }
-    public void setTimestamp(LocalDateTime timestamp) { this.timestamp = timestamp; }
+    public Instant getTimestamp() { return timestamp; }
+    public void setTimestamp(Instant timestamp) { this.timestamp = timestamp; }
 }

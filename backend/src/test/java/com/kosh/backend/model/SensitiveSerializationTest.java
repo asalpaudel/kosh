@@ -17,8 +17,8 @@ class SensitiveSerializationTest {
         user.setPassword("password-hash");
         user.setTwoFactorCode("otp-value");
         user.setTrustedDeviceToken("trusted-token");
-        user.setTwoFactorExpiry(java.time.LocalDateTime.now());
-        user.setTrustedDeviceExpiry(java.time.LocalDateTime.now());
+        user.setTwoFactorExpiry(java.time.Instant.now());
+        user.setTrustedDeviceExpiry(java.time.Instant.now());
         user.setPhotoData(new byte[] {1});
         user.setCitizenshipData(new byte[] {2});
         user.setSignatureData(new byte[] {3});

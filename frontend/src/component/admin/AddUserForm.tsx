@@ -4,6 +4,7 @@ import { parseNetwork, type NetworkSummary } from "../../lib/networks";
 import { parseManagedUser, parseManagedUsers, type ManagedUser } from "../../lib/users";
 import { isRecord } from "../../lib/validation";
 import { UserCircleIcon } from "../icons";
+import BsDatePicker from "../BsDatePicker";
 
 const Stepper = ({ currentStep }: { currentStep: number }) => (
   <div className="flex items-center justify-center w-full mb-4">
@@ -403,14 +404,7 @@ function AddUserForm({
             <label className="block font-semibold mb-2">
               Date of Birth <span className="text-red-500">*</span>
             </label>
-            <input
-              type="date"
-              name="dob"
-              value={formData.dob}
-              onChange={handleChange}
-              className="w-full px-4 py-3 border border-gray-300 rounded-full focus:outline-none focus:border-black"
-              disabled={capacityReached}
-            />
+            <BsDatePicker value={formData.dob} onChange={(dob) => { setFormData((current) => ({ ...current, dob })); }} disabled={capacityReached} ariaLabel="Member date of birth in Bikram Sambat" />
           </div>
 
           <div>

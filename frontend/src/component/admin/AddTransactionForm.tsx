@@ -6,17 +6,10 @@ import {
   DocumentTextIcon,
   UsersIcon,
   BuildingIcon,
-  CalendarIcon,
 } from "../icons";
 import ConfirmationModal from "../ConfirmationModal";
-
-
-// --- 📅 Helper: Custom Calendar Component ---
-interface CalendarProps {
-  selectedDate: string;
-  onChange: (date: string) => void;
-  onClose: () => void;
-}
+import BsDatePicker from "../BsDatePicker";
+import { todayInNepal } from "../../lib/nepaliDate";
 
 interface PrefilledTransaction {
   voucherId?: string;
@@ -39,160 +32,8 @@ interface AddTransactionFormProps {
 interface PackageOption { id: string; name: string; interestRate: number | null }
 interface UserOption { id: string; name: string }
 
-const CustomCalendar = ({ selectedDate, onChange, onClose }: CalendarProps) => {
-  const [currentMonth, setCurrentMonth] = useState(
-    new Date(selectedDate || new Date()),
-  );
-
-  const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-  const months = [
-    "January",
-    "February",
-    "March",
-    "April",
-    "May",
-    "June",
-    "July",
-    "August",
-    "September",
-    "October",
-    "November",
-    "December",
-  ];
-
-  const currentYear = new Date().getFullYear();
-  const years = Array.from({ length: 80 }, (_, i) => currentYear - 50 + i);
-
-  const getDaysInMonth = (year: number, month: number) =>
-    new Date(year, month + 1, 0).getDate();
-  const getFirstDayOfMonth = (year: number, month: number) => new Date(year, month, 1).getDay();
-
-  const year = currentMonth.getFullYear();
-  const month = currentMonth.getMonth();
-  const totalDays = getDaysInMonth(year, month);
-  const firstDay = getFirstDayOfMonth(year, month);
-
-  const handleMonthChange = (e: ChangeEvent<HTMLSelectElement>) => {
-    setCurrentMonth(new Date(year, parseInt(e.target.value), 1));
-  };
-
-  const handleYearChange = (e: ChangeEvent<HTMLSelectElement>) => {
-    setCurrentMonth(new Date(parseInt(e.target.value), month, 1));
-  };
-
-  const handleDayClick = (day: number) => {
-    const newDate = new Date(year, month, day);
-    const offset = newDate.getTimezoneOffset();
-    const localDate = new Date(newDate.getTime() - offset * 60 * 1000);
-    onChange(localDate.toISOString().split("T")[0] ?? "");
-    onClose();
-  };
-
-  return (
-    <div className="absolute top-full left-0 z-50 mt-2 w-80 bg-white rounded-xl shadow-2xl border border-gray-200 p-4 select-none">
-      <div className="flex justify-between items-center mb-4 gap-2">
-        <button
-          type="button"
-          onClick={() => { setCurrentMonth(new Date(year, month - 1, 1)); }}
-          className="p-1 hover:bg-gray-100 rounded text-gray-600"
-        >
-          ←
-        </button>
-
-        <div className="flex gap-2">
-          <select
-            value={month}
-            onChange={handleMonthChange}
-            className="bg-gray-100 rounded px-2 py-1 text-sm font-bold outline-none cursor-pointer hover:bg-gray-200 text-gray-700"
-          >
-            {months.map((m, i) => (
-              <option key={m} value={i}>
-                {m}
-              </option>
-            ))}
-          </select>
-
-          <select
-            value={year}
-            onChange={handleYearChange}
-            className="bg-gray-100 rounded px-2 py-1 text-sm font-bold outline-none cursor-pointer hover:bg-gray-200 text-gray-700"
-          >
-            {years.map((y) => (
-              <option key={y} value={y}>
-                {y}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        <button
-          type="button"
-          onClick={() => { setCurrentMonth(new Date(year, month + 1, 1)); }}
-          className="p-1 hover:bg-gray-100 rounded text-gray-600"
-        >
-          →
-        </button>
-      </div>
-
-      <div className="grid grid-cols-7 mb-2 text-center">
-        {days.map((d, i) => (
-          <span
-            key={d}
-            className={`text-xs font-bold ${
-              i === 6 ? "text-red-500" : "text-gray-500"
-            }`}
-          >
-            {d}
-          </span>
-        ))}
-      </div>
-
-      <div className="grid grid-cols-7 gap-1">
-        {Array.from({ length: firstDay }).map((_, i) => (
-          <div key={`empty-${String(i)}`} />
-        ))}
-
-        {Array.from({ length: totalDays }).map((_, i) => {
-          const day = i + 1;
-          const dateStr = new Date(year, month, day)
-            .toISOString()
-            .split("T")[0];
-          const isSelected = selectedDate === dateStr;
-          const isSat = new Date(year, month, day).getDay() === 6;
-
-          return (
-            <button
-              key={day}
-              type="button"
-              onClick={() => { handleDayClick(day); }}
-              className={`
-                h-9 w-9 rounded-full text-sm flex items-center justify-center transition-colors
-                ${
-                  isSelected
-                    ? "bg-teal-600 text-white font-bold shadow-md"
-                    : "hover:bg-teal-50"
-                }
-                ${
-                  isSat && !isSelected
-                    ? "text-red-600 font-medium"
-                    : "text-gray-700"
-                }
-              `}
-            >
-              {day}
-            </button>
-          );
-        })}
-      </div>
-    </div>
-  );
-};
-
 function AddTransactionForm({ onAdded, prefilledData }: AddTransactionFormProps) {
   const [mode, setMode] = useState(prefilledData ? "member" : "member");
-  const [showCalendar, setShowCalendar] = useState(false);
-  const calendarRef = useRef<HTMLDivElement | null>(null);
-
   // --- NEW STATE: Packages & Session ---
   const [packages, setPackages] = useState<PackageOption[]>([]);
   const [sahakariId, setSahakariId] = useState<string | number | null>(null);
@@ -202,7 +43,7 @@ function AddTransactionForm({ onAdded, prefilledData }: AddTransactionFormProps)
   const [formData, setFormData] = useState({
     voucherId:
       prefilledData?.voucherId || `V-${crypto.randomUUID().slice(0, 8).toUpperCase()}`,
-    date: prefilledData?.date || new Date().toISOString().split("T")[0] || "",
+    date: prefilledData?.date || todayInNepal(),
     fyType: "Current FY",
 
     userId: prefilledData?.userId || null,
@@ -331,9 +172,6 @@ function AddTransactionForm({ onAdded, prefilledData }: AddTransactionFormProps)
   // Close popups
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (calendarRef.current && event.target instanceof Node && !calendarRef.current.contains(event.target)) {
-        setShowCalendar(false);
-      }
       if (
         searchBoxRef.current &&
         event.target instanceof Node && !searchBoxRef.current.contains(event.target)
@@ -428,10 +266,6 @@ function AddTransactionForm({ onAdded, prefilledData }: AddTransactionFormProps)
   const handleChange = (e: ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
-  };
-
-  const handleDateInput = (e: ChangeEvent<HTMLInputElement>) => {
-    setFormData((prev) => ({ ...prev, date: e.target.value }));
   };
 
   const handleUserSearchChange = (e: ChangeEvent<HTMLInputElement>) => {
@@ -660,34 +494,11 @@ function AddTransactionForm({ onAdded, prefilledData }: AddTransactionFormProps)
           />
         </div>
 
-        <div className="relative" ref={calendarRef}>
+        <div className="relative">
           <label className="block text-xs font-bold text-gray-500 uppercase mb-1">
-            Date
+            Date (BS / AD)
           </label>
-          <div className="relative w-full">
-            <input
-              type="text"
-              value={formData.date}
-              onChange={handleDateInput}
-              placeholder="YYYY-MM-DD"
-              onFocus={() => { setShowCalendar(true); }}
-              className="w-full bg-white border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none focus:border-black font-mono z-10 relative"
-            />
-            <span
-              className="absolute right-3 top-1/2 -translate-y-1/2 cursor-pointer z-20"
-              onClick={() => { setShowCalendar(!showCalendar); }}
-            >
-              <CalendarIcon className="w-4 h-4 text-teal-600" />
-            </span>
-          </div>
-
-          {showCalendar && (
-            <CustomCalendar
-              selectedDate={formData.date}
-              onChange={(date) => { setFormData((prev) => ({ ...prev, date })); }}
-              onClose={() => { setShowCalendar(false); }}
-            />
-          )}
+          <BsDatePicker value={formData.date} onChange={(date) => { setFormData((prev) => ({ ...prev, date })); }} />
         </div>
 
         <div>

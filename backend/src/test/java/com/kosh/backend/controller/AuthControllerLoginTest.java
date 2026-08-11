@@ -7,7 +7,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.mockito.Mockito.never;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.Map;
 import java.util.Optional;
 
@@ -67,7 +67,7 @@ class AuthControllerLoginTest {
     void aWrongTwoFactorCodeBurnsTheStoredCode() {
         User user = activeMember();
         user.setTwoFactorCode("otp-hash");
-        user.setTwoFactorExpiry(LocalDateTime.now().plusMinutes(10));
+        user.setTwoFactorExpiry(Instant.now().plus(java.time.Duration.ofMinutes(10)));
         when(userRepository.findById(7L)).thenReturn(Optional.of(user));
         when(passwordEncoder.matches("000000", "otp-hash")).thenReturn(false);
 

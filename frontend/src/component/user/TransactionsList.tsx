@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { API_BASE, apiFetch } from "../../lib/apiClient";
 import { parseTransactions } from "../../lib/transactions";
+import { formatDualDate } from "../../lib/nepaliDate";
 
 const formatAmount = (num: number): string => {
   return `Rs. ${Math.abs(num).toLocaleString("en-IN", {
@@ -32,13 +33,7 @@ function TransactionsList() {
           return {
             id: transaction.id,
             description: transaction.type,
-            date: transaction.date
-              ? new Date(transaction.date).toLocaleDateString("en-GB", {
-                  day: 'numeric',
-                  month: 'short',
-                  year: 'numeric'
-                }).replace(/ /g, '-')
-              : "-",
+            date: transaction.date ? formatDualDate(transaction.date) : "-",
             isDebit,
             amount: formatAmount(transaction.amount),
           };

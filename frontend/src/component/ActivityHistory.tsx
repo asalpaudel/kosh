@@ -2,6 +2,7 @@ import { type ReactNode, useCallback, useEffect, useMemo, useState } from "react
 import { API_BASE, apiFetch } from "../lib/apiClient";
 import { parseActivityLogs, type ActivityLog } from "../lib/activityLogs";
 import { SearchIcon } from "./icons";
+import { formatDualDate } from "../lib/nepaliDate";
 
 interface ActivityHistoryProps {
   scope: "admin" | "superadmin";
@@ -25,13 +26,12 @@ function formatDate(timestamp: string): string {
   if (!timestamp) return "-";
   const date = new Date(timestamp);
   if (Number.isNaN(date.getTime())) return "-";
-  return date.toLocaleString("en-GB", {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
+  const time = date.toLocaleString("en-GB", {
+    timeZone: "Asia/Kathmandu",
     hour: "2-digit",
     minute: "2-digit",
   });
+  return `${formatDualDate(timestamp)} · ${time} NPT`;
 }
 
 function logDetails(log: ActivityLog): ReactNode {

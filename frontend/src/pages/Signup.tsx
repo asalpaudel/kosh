@@ -2,6 +2,7 @@ import { API_BASE, ApiError, apiFetch } from "../lib/apiClient";
 import { NavLink, useNavigate } from "react-router-dom";
 import { useEffect, useState, type ChangeEvent } from "react";
 import { parseNetworks, type NetworkSummary } from "../lib/networks";
+import BsDatePicker from "../component/BsDatePicker";
 
 
 /* -------------------- STEPPER -------------------- */
@@ -201,13 +202,7 @@ export default function Signup() {
                   <label className="text-sm font-medium text-gray-700">
                     Date of birth
                   </label>
-                  <input
-                    type="date"
-                    name="dob"
-                    value={formData.dob}
-                    onChange={handleChange}
-                    className="mt-2 w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-[#14c596]"
-                  />
+                  <BsDatePicker value={formData.dob} onChange={(dob) => { setFormData((current) => ({ ...current, dob })); }} className="mt-2" ariaLabel="Date of birth in Bikram Sambat" />
                 </div>
               </>
             )}

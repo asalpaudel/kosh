@@ -14,6 +14,7 @@ import {
 import { API_BASE, apiFetch } from "../../lib/apiClient";
 import { parseNetworks } from "../../lib/networks";
 import { isRecord } from "../../lib/validation";
+import { formatBsDate, formatDualDate, nepalDateIso } from "../../lib/nepaliDate";
 
 const COLORS = ["#3B82F6", "#10B981", "#F59E0B"];
 const chartColor = (index: number): string => COLORS[index % COLORS.length] ?? "#3B82F6";
@@ -303,7 +304,7 @@ export default function SuperadminDashboard() {
             name: net.name,
             type: net.packageType,
             value: `Rs. ${net.packagePrice.toLocaleString()}`,
-            date: new Date(net.createdAt).toLocaleDateString("en-GB"),
+            date: formatDualDate(net.createdAt),
           }))
         );
         const users: unknown = await usersResponse.json();
@@ -312,14 +313,14 @@ export default function SuperadminDashboard() {
         users.filter(isRecord).forEach((user) => {
           if (user.status === "Active") {
             const date = typeof user.createdAt === "string" && user.createdAt
-              ? new Date(user.createdAt).toLocaleDateString("en-GB")
+              ? nepalDateIso(user.createdAt)
               : "Unknown";
             map[date] = (map[date] || 0) + 1;
           }
         });
         const chartData = Object.entries(map)
-          .map(([date, users]) => ({ date, users }))
-          .sort((a, b) => Date.parse(a.date) - Date.parse(b.date));
+          .sort(([left], [right]) => left.localeCompare(right))
+          .map(([date, users]) => ({ date: date === "Unknown" ? date : formatBsDate(date), users }));
         setActiveUsersData(chartData);
       } catch (caught) {
         setError(caught instanceof Error ? caught.message : "Dashboard data failed to load");

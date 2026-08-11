@@ -2,7 +2,7 @@ package com.kosh.backend.controller;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -294,8 +294,8 @@ public class TransactionController {
                         loanApp.setNextPaymentDate(LocalDate.now().plusMonths(1));
                         loanApp.setPurpose(tx.getNarration() != null ? tx.getNarration() : "Loan disbursement");
                         
-                        loanApp.setApplicationDate(LocalDateTime.now());
-                        loanApp.setReviewDate(LocalDateTime.now());
+                        loanApp.setApplicationDate(Instant.now());
+                        loanApp.setReviewDate(Instant.now());
                         loanApp.setStatus(ApplicationStatus.APPROVED);
                         loanApp.setReviewNotes("Created via Transaction by " + adminName);
 
@@ -327,8 +327,8 @@ public class TransactionController {
                         }
                         fdApp.setDepositTerm(term);
                         
-                        fdApp.setApplicationDate(LocalDateTime.now());
-                        fdApp.setReviewDate(LocalDateTime.now());
+                        fdApp.setApplicationDate(Instant.now());
+                        fdApp.setReviewDate(Instant.now());
                         fdApp.setStatus(ApplicationStatus.APPROVED);
                         fdApp.setReviewNotes("Created via Transaction by " + adminName);
                         
@@ -354,8 +354,8 @@ public class TransactionController {
                         saApp.setInitialDeposit(tx.getAmount());
                         saApp.setTransactionType(txType);
                         
-                        saApp.setApplicationDate(LocalDateTime.now());
-                        saApp.setReviewDate(LocalDateTime.now());
+                        saApp.setApplicationDate(Instant.now());
+                        saApp.setReviewDate(Instant.now());
                         saApp.setStatus(ApplicationStatus.APPROVED);
                         saApp.setReviewNotes("Created via Transaction by " + adminName);
 

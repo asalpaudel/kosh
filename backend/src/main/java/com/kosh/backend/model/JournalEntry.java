@@ -1,7 +1,7 @@
 package com.kosh.backend.model;
 
 import java.time.LocalDate;
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -60,7 +60,7 @@ public class JournalEntry {
     private Long sourceId;
 
     @Column(name = "posted_at", nullable = false)
-    private LocalDateTime postedAt;
+    private Instant postedAt;
 
     @Column(name = "posted_by")
     private String postedBy;
@@ -108,8 +108,8 @@ public class JournalEntry {
     public Long getSourceId() { return sourceId; }
     public void setSourceId(Long sourceId) { this.sourceId = sourceId; }
 
-    public LocalDateTime getPostedAt() { return postedAt; }
-    public void setPostedAt(LocalDateTime postedAt) { this.postedAt = postedAt; }
+    public Instant getPostedAt() { return postedAt; }
+    public void setPostedAt(Instant postedAt) { this.postedAt = postedAt; }
 
     public String getPostedBy() { return postedBy; }
     public void setPostedBy(String postedBy) { this.postedBy = postedBy; }
