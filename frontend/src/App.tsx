@@ -27,6 +27,8 @@ import AdminPackages from "./pages/admin/Packages";
 import AdminApplications from "./pages/admin/AdminApplications";
 import AdminSettings from "./pages/admin/Settings";
 import Landing from "./pages/Landing2";
+import AdminShares from "./pages/admin/Shares";
+import UserShares from "./pages/user/Shares";
 
 export default function App() {
   return (
@@ -44,6 +46,7 @@ export default function App() {
           <Route path="settings" element={<Settings />} />
           <Route path="packages" element={<UserPackages />} />
           <Route path="applications" element={<UserMyApplications />} />
+          <Route path="shares" element={<UserShares />} />
         </Route>
         <Route path="/admin" element={<AdminLayout />}>
           <Route index element={<AdminDashboard />} />
@@ -54,6 +57,7 @@ export default function App() {
           <Route path="history" element={<AdminHistory />} />
           <Route path="transactions" element={<AdminTransactions />} />
           <Route path="settings" element={<AdminSettings />} />
+          <Route path="shares" element={<AdminShares />} />
         </Route>
         <Route path="/super-login" element={<SuperLogin />} />
         <Route path="/superadmin" element={<SuperadminProtectedRoute><SuperadminLayout /></SuperadminProtectedRoute>}>

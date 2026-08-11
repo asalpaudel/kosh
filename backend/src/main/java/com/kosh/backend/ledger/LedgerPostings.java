@@ -167,4 +167,31 @@ public final class LedgerPostings {
         return List.of(LedgerLine.memberDebit(Accounts.LOANS_RECEIVABLE, member, amount, memo),
                        LedgerLine.memberCredit(Accounts.MEMBER_SAVINGS, member, amount, memo));
     }
+
+    public static List<LedgerLine> sharePurchase(User member, BigDecimal amount,
+                                                  String paymentMethod, String memo) {
+        if (member == null || amount == null || amount.signum() <= 0) {
+            throw new IllegalArgumentException("A share purchase needs a member and positive amount");
+        }
+        return List.of(LedgerLine.debit(settlementAccount(paymentMethod), amount, memo),
+                LedgerLine.memberCredit(Accounts.SHARE_CAPITAL, member, amount, memo));
+    }
+
+    public static List<LedgerLine> shareTransfer(User from, User to, BigDecimal amount, String memo) {
+        if (from == null || to == null || from.getId().equals(to.getId())
+                || amount == null || amount.signum() <= 0) {
+            throw new IllegalArgumentException("A share transfer needs two different members and positive amount");
+        }
+        return List.of(LedgerLine.memberDebit(Accounts.SHARE_CAPITAL, from, amount, memo),
+                LedgerLine.memberCredit(Accounts.SHARE_CAPITAL, to, amount, memo));
+    }
+
+    public static List<LedgerLine> shareRefund(User member, BigDecimal amount,
+                                                String paymentMethod, String memo) {
+        if (member == null || amount == null || amount.signum() <= 0) {
+            throw new IllegalArgumentException("A share refund needs a member and positive amount");
+        }
+        return List.of(LedgerLine.memberDebit(Accounts.SHARE_CAPITAL, member, amount, memo),
+                LedgerLine.credit(settlementAccount(paymentMethod), amount, memo));
+    }
 }

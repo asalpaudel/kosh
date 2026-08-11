@@ -21,6 +21,7 @@ import com.kosh.backend.model.User;
 import com.kosh.backend.repository.ActivityLogRepository;
 import com.kosh.backend.repository.NetworkRepository;
 import com.kosh.backend.repository.UserRepository;
+import com.kosh.backend.service.ShareCapitalService;
 
 @ExtendWith(MockitoExtension.class)
 class UserControllerRegistrationTest {
@@ -33,6 +34,8 @@ class UserControllerRegistrationTest {
     private ActivityLogRepository activityLogRepository;
     @Mock
     private PasswordEncoder passwordEncoder;
+    @Mock
+    private ShareCapitalService shareCapitalService;
 
     @Test
     void anonymousRegistrationCannotSelectRoleOrStatus() {
@@ -51,7 +54,8 @@ class UserControllerRegistrationTest {
                 userRepository,
                 networkRepository,
                 activityLogRepository,
-                passwordEncoder);
+                passwordEncoder,
+                shareCapitalService);
 
         var response = controller.createUser(
                 "Person",

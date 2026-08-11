@@ -26,7 +26,10 @@ class LedgerPostingsTest {
                 networkPosting("Income: Membership fee", "Credit", "Cash"),
                 networkPosting("Expense: Office Rent", "Debit", "Bank"),
                 LedgerPostings.savingsToFixedDeposit(member, amount("1000.00"), "transfer"),
-                LedgerPostings.loanDisbursedToSavings(member, amount("1000.00"), "disbursement"));
+                LedgerPostings.loanDisbursedToSavings(member, amount("1000.00"), "disbursement"),
+                LedgerPostings.sharePurchase(member, amount("1000.00"), "Cash", "purchase"),
+                LedgerPostings.shareRefund(member, amount("1000.00"), "Bank", "refund"),
+                LedgerPostings.shareTransfer(member, anotherMember(), amount("1000.00"), "transfer"));
 
         for (List<LedgerLine> posting : postings) {
             BigDecimal debits = posting.stream().map(LedgerLine::debit).reduce(BigDecimal.ZERO, BigDecimal::add);
@@ -75,6 +78,22 @@ class LedgerPostingsTest {
     }
 
     @Test
+    void shareMovementsUseMemberSubledgerOnShareCapital() {
+        User recipient = anotherMember();
+        var purchase = LedgerPostings.sharePurchase(member, amount("1000.00"), "Cash", "purchase");
+        var transfer = LedgerPostings.shareTransfer(member, recipient, amount("400.00"), "transfer");
+        var refund = LedgerPostings.shareRefund(member, amount("600.00"), "Bank", "refund");
+
+        assertThat(purchase.get(0).accountCode()).isEqualTo(Accounts.CASH);
+        assertThat(purchase.get(1).accountCode()).isEqualTo(Accounts.SHARE_CAPITAL);
+        assertThat(purchase.get(1).member()).isSameAs(member);
+        assertThat(transfer.get(0).debit()).isEqualByComparingTo("400.00");
+        assertThat(transfer.get(0).member()).isSameAs(member);
+        assertThat(transfer.get(1).member()).isSameAs(recipient);
+        assertThat(refund.get(1).accountCode()).isEqualTo(Accounts.BANK);
+    }
+
+    @Test
     void unrecognisedInputIsRefusedRatherThanMisPosted() {
         assertThatThrownBy(() -> memberPosting("Office Rent", "Credit", "Cash"))
                 .isInstanceOf(IllegalArgumentException.class)
@@ -113,6 +132,13 @@ class LedgerPostingsTest {
         User user = new User();
         user.setId(9L);
         user.setName("Member");
+        return user;
+    }
+
+    private static User anotherMember() {
+        User user = new User();
+        user.setId(10L);
+        user.setName("Another member");
         return user;
     }
 

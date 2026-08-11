@@ -18,10 +18,14 @@ import org.springframework.mock.web.MockHttpSession;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
 import com.kosh.backend.controller.UserController.AdminMemberUpdateRequest;
+import com.kosh.backend.controller.UserController.ApprovalRequest;
+import com.kosh.backend.model.Network;
 import com.kosh.backend.model.User;
 import com.kosh.backend.repository.ActivityLogRepository;
 import com.kosh.backend.repository.NetworkRepository;
 import com.kosh.backend.repository.UserRepository;
+import com.kosh.backend.service.ShareCapitalService;
+import java.time.LocalDate;
 
 @ExtendWith(MockitoExtension.class)
 class UserControllerAuthorizationTest {
@@ -30,12 +34,14 @@ class UserControllerAuthorizationTest {
     @Mock NetworkRepository networkRepository;
     @Mock ActivityLogRepository activityLogRepository;
     @Mock PasswordEncoder passwordEncoder;
+    @Mock ShareCapitalService shareCapitalService;
 
     private UserController controller;
 
     @BeforeEach
     void setUp() {
-        controller = new UserController(userRepository, networkRepository, activityLogRepository, passwordEncoder);
+        controller = new UserController(userRepository, networkRepository, activityLogRepository, passwordEncoder,
+                shareCapitalService);
     }
 
     @Test
@@ -93,10 +99,30 @@ class UserControllerAuthorizationTest {
         User target = member(20, 200L);
         when(userRepository.findById(20L)).thenReturn(Optional.of(target));
 
-        var response = controller.approveUser(20L, adminSession(100L));
+        var response = controller.approveUser(20L, null, adminSession(100L));
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
         verify(userRepository, never()).save(any());
+    }
+
+    @Test
+    void memberApprovalIssuesMinimumSharesBeforeActivation() {
+        User target = member(21, 100L);
+        target.setStatus("Pending");
+        Network network = new Network();
+        network.setId(100L);
+        network.setName("Cooperative A");
+        when(userRepository.findById(21L)).thenReturn(Optional.of(target));
+        when(networkRepository.findById(100L)).thenReturn(Optional.of(network));
+        when(userRepository.save(target)).thenReturn(target);
+
+        var request = new ApprovalRequest(10, "Cash", LocalDate.of(2026, 8, 11), "approval-21");
+        var response = controller.approveUser(21L, request, adminSession(100L));
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        verify(shareCapitalService).issueInitialShares(network, target, 10, "Cash",
+                LocalDate.of(2026, 8, 11), "approval-21", "Admin");
+        assertThat(target.getStatus()).isEqualTo("Active");
     }
 
     private User member(int id, Long networkId) {

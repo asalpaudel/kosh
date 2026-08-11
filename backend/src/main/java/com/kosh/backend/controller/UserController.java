@@ -16,6 +16,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -25,6 +26,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.transaction.annotation.Transactional;
 
 import com.kosh.backend.model.ActivityLog;
 import com.kosh.backend.model.Network;
@@ -34,6 +36,7 @@ import com.kosh.backend.repository.NetworkRepository;
 import com.kosh.backend.repository.UserRepository;
 import com.kosh.backend.service.FileSecurity;
 import com.kosh.backend.service.FileSecurity.StoredFile;
+import com.kosh.backend.service.ShareCapitalService;
 
 import jakarta.servlet.http.HttpSession;
 
@@ -47,12 +50,15 @@ public class UserController {
     private final NetworkRepository networkRepo;
     private final ActivityLogRepository logRepo;
     private final PasswordEncoder passwordEncoder;
+    private final ShareCapitalService shareCapital;
 
-    public UserController(UserRepository repo, NetworkRepository networkRepo, ActivityLogRepository logRepo, PasswordEncoder passwordEncoder) {
+    public UserController(UserRepository repo, NetworkRepository networkRepo, ActivityLogRepository logRepo,
+            PasswordEncoder passwordEncoder, ShareCapitalService shareCapital) {
         this.repo = repo;
         this.networkRepo = networkRepo;
         this.logRepo = logRepo;
         this.passwordEncoder = passwordEncoder;
+        this.shareCapital = shareCapital;
     }
 
     @PostMapping
@@ -177,7 +183,7 @@ public class UserController {
             // Link sahakari ID immediately if available
             user.setSahakariId(network.getId());
             user.setPassword(passwordEncoder.encode(password));
-            user.setStatus(requestedStatus);
+            user.setStatus("member".equalsIgnoreCase(targetRole) ? "Pending" : requestedStatus);
 
             // ⭐ Handle photo upload
             if (photo != null && !photo.isEmpty()) {
@@ -440,6 +446,11 @@ public class UserController {
                 && !"Rejected".equals(request.status())) {
             return ResponseEntity.badRequest().body(Map.of("error", "Unsupported account status"));
         }
+        if ("member".equalsIgnoreCase(request.role()) && "Active".equals(request.status())
+                && !"Active".equals(existingUser.getStatus())) {
+            return ResponseEntity.badRequest().body(Map.of(
+                    "error", "Approve membership through the share-capital approval flow"));
+        }
 
         Network network = networkRepo.findByName(request.sahakari());
         if (network == null) {
@@ -492,15 +503,14 @@ public class UserController {
     }
 
     @PatchMapping("/{id}/approve")
-    public ResponseEntity<?> approveUser(@PathVariable Long id, HttpSession session) { // Added HttpSession for logging
+    @Transactional
+    public ResponseEntity<?> approveUser(@PathVariable Long id,
+            @RequestBody(required = false) ApprovalRequest request, HttpSession session) {
         User user = repo.findById(id).orElse(null);
         if (user == null) return ResponseEntity.notFound().build();
         if (!canManageUser(user, session)) return forbidden();
 
-        Network network = networkRepo.findAll().stream()
-                .filter(n -> user.getSahakari().equals(n.getName()))
-                .findFirst()
-                .orElse(null);
+        Network network = user.getSahakariId() == null ? null : networkRepo.findById(user.getSahakariId()).orElse(null);
 
         if (network == null) {
             return ResponseEntity.badRequest()
@@ -537,6 +547,13 @@ public class UserController {
                             .body(Map.of("error", "Member limit reached"));
                 }
             }
+
+            if (request == null || request.initialShares() == null || request.requestRef() == null) {
+                return ResponseEntity.badRequest().body(Map.of(
+                        "error", "Initial share count and request reference are required for membership approval"));
+            }
+            shareCapital.issueInitialShares(network, user, request.initialShares(), request.paymentMethod(),
+                    request.date(), request.requestRef(), (String) session.getAttribute("userName"));
         }
 
         user.setStatus("Active");
@@ -567,6 +584,14 @@ public class UserController {
         }
 
         return ResponseEntity.ok(saved);
+    }
+
+    public record ApprovalRequest(Integer initialShares, String paymentMethod,
+            java.time.LocalDate date, String requestRef) {}
+
+    @ExceptionHandler({ IllegalArgumentException.class, IllegalStateException.class })
+    public ResponseEntity<Map<String, String>> businessRuleError(RuntimeException exception) {
+        return ResponseEntity.badRequest().body(Map.of("error", exception.getMessage()));
     }
 
     @PatchMapping("/{id}/reject")

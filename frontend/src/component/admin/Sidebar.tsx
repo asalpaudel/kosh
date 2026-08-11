@@ -70,6 +70,10 @@ function Sidebar() {
             <PiggyBankIcon className="h-6 w-6 transition-transform group-hover:scale-110" />
           </NavLink>
 
+          <NavLink to="/admin/shares" className={navLinkClass} title="Share capital">
+            <PiggyBankIcon className="h-6 w-6 transition-transform group-hover:scale-110" />
+          </NavLink>
+
           <NavLink to="/admin/applications" className={navLinkClass} title="Applications">
             <ClipboardListIcon className="h-6 w-6 transition-transform group-hover:scale-110" />
           </NavLink>
@@ -152,6 +156,15 @@ function Sidebar() {
         {isMobileMenuOpen && (
           <div className="absolute bottom-full left-0 right-0 bg-black">
             <div className="p-4 space-y-2">
+              <NavLink
+                to="/admin/shares"
+                className={mobileNavLinkClass}
+                onClick={() => { setIsMobileMenuOpen(false); }}
+              >
+                <PiggyBankIcon className="h-5 w-5" />
+                <span>Share capital</span>
+              </NavLink>
+
               <NavLink
                 to="/admin/applications"
                 className={mobileNavLinkClass}

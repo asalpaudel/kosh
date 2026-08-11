@@ -178,7 +178,7 @@ function AddUserForm({
       form.append("role", formData.role);
       form.append("sahakari", adminSahakari);
       form.append("password", formData.password);
-      form.append("status", "Active");
+      form.append("status", "Pending");
 
       // Append documents with correct field names
       form.append("citizenship", citizenship);

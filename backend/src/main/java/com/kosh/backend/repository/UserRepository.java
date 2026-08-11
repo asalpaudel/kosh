@@ -19,6 +19,8 @@ public interface UserRepository extends JpaRepository<User, Long> {
 
     List<User> findBySahakari(String sahakari);
 
+    List<User> findBySahakariIdAndRoleIgnoreCaseOrderByNameAsc(Long sahakariId, String role);
+
     long countByRole(String role);
 
     long countByRoleIgnoreCase(String role);

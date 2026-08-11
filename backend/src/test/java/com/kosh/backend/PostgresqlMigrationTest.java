@@ -75,6 +75,15 @@ class PostgresqlMigrationTest {
                 .contains("ALTER TABLE users", "ALTER TABLE journal_entries", "ALTER TABLE activity_logs");
     }
 
+    @Test
+    void shareRegisterIsAppendOnlyAndMoneyUsesNumericColumns() throws IOException {
+        String migration = resource("/db/migration/V9__share_capital.sql");
+        assertThat(migration)
+                .contains("CREATE TABLE share_settings", "CREATE TABLE share_certificates",
+                        "CREATE TABLE share_transactions", "numeric(18,2)",
+                        "share_transactions_append_only", "ON CONFLICT (network_id, code) DO NOTHING");
+    }
+
     private String resource(String path) throws IOException {
         try (var stream = getClass().getResourceAsStream(path)) {
             assertThat(stream).as("resource %s", path).isNotNull();
