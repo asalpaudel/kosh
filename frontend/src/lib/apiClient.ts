@@ -1,5 +1,10 @@
 /** Root URL of the backend API. Vite variables are public build-time configuration. */
-export const API_BASE = `${import.meta.env.VITE_API_URL ?? "http://localhost:8080"}/api`;
+const configuredOrigin = import.meta.env.VITE_API_URL?.replace(/\/+$/, "");
+if (import.meta.env.PROD && configuredOrigin?.startsWith("http://")) {
+  throw new Error("VITE_API_URL must use HTTPS in production");
+}
+const apiOrigin = configuredOrigin ?? (import.meta.env.PROD ? "" : "http://localhost:8080");
+export const API_BASE = apiOrigin ? `${apiOrigin}/api` : "/api";
 
 export class ApiError extends Error {
   readonly status: number;

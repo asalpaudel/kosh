@@ -1,32 +1,32 @@
 import "./App.css";
 import { BrowserRouter, Route, Routes } from "react-router-dom";
 
-import Forgot from "./pages/Forgot.jsx";
-import Layout from "./component/user/Layout.jsx";
-import Dashboard from "./pages/user/Dashboard.jsx";
-import Report from "./pages/user/Report.jsx";
-import Statement from "./pages/user/Statement.jsx";
-import Settings from "./pages/user/Settings.jsx";
-import Login from "./pages/Login.jsx";
-import Signup from "./pages/Signup.jsx";
-import UserPackages from "./pages/user/Packages.jsx";
-import UserMyApplications from "./pages/user/UserMyApplications.jsx";
-import SuperadminLayout from "./component/superadmin/Layout.jsx";
-import SuperadminDashboard from "./pages/superadmin/Dashboard.jsx";
-import Analytics from "./pages/superadmin/Analytics.jsx";
-import History from "./pages/superadmin/History.jsx";
-import Networks from "./pages/superadmin/Networks.jsx";
-import SuperLogin from "./pages/SuperLogin.jsx";
-import SuperadminProtectedRoute from "./component/superadmin/ProtectedRoute.jsx";
-import AdminLayout from "./component/admin/Layout.jsx";
-import AdminDashboard from "./pages/admin/Dashboard.jsx";
-import AdminUsers from "./pages/admin/Users.jsx";
-import AdminHistory from "./pages/admin/History.jsx";
-import AdminTransactions from "./pages/admin/Transactions.jsx";
-import AdminPackages from "./pages/admin/Packages.jsx";
-import AdminApplications from "./pages/admin/AdminApplications.jsx";
-import AdminSettings from "./pages/admin/Settings.jsx";
-import Landing from "./pages/Landing2.jsx";
+import Forgot from "./pages/Forgot";
+import Layout from "./component/user/Layout";
+import Dashboard from "./pages/user/Dashboard";
+import Report from "./pages/user/Report";
+import Statement from "./pages/user/Statement";
+import Settings from "./pages/user/Settings";
+import Login from "./pages/Login";
+import Signup from "./pages/Signup";
+import UserPackages from "./pages/user/Packages";
+import UserMyApplications from "./pages/user/UserMyApplications";
+import SuperadminLayout from "./component/superadmin/Layout";
+import SuperadminDashboard from "./pages/superadmin/Dashboard";
+import Analytics from "./pages/superadmin/Analytics";
+import History from "./pages/superadmin/History";
+import Networks from "./pages/superadmin/Networks";
+import SuperLogin from "./pages/SuperLogin";
+import SuperadminProtectedRoute from "./component/superadmin/ProtectedRoute";
+import AdminLayout from "./component/admin/Layout";
+import AdminDashboard from "./pages/admin/Dashboard";
+import AdminUsers from "./pages/admin/Users";
+import AdminHistory from "./pages/admin/History";
+import AdminTransactions from "./pages/admin/Transactions";
+import AdminPackages from "./pages/admin/Packages";
+import AdminApplications from "./pages/admin/AdminApplications";
+import AdminSettings from "./pages/admin/Settings";
+import Landing from "./pages/Landing2";
 
 export default function App() {
   return (
