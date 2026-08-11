@@ -1,17 +1,19 @@
-import { API_BASE as apiBase } from "../../lib/apiClient";
-import React, { useState, useEffect, useMemo } from "react";
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
+import { API_BASE as apiBase, apiFetch } from "../../lib/apiClient";
+import { parseTransactions, type TransactionRecord } from "../../lib/transactions";
+import { isRecord } from "../../lib/validation";
 import {
   UsersIcon,
   FileTextIcon,
   BanknotesIcon,
   ActivityIcon,
-} from "../../component/icons.jsx";
+} from "../../component/icons";
 import AdminChart from "../../component/admin/AdminChart";
 
 
 function AdminDashboard() {
-  const [transactions, setTransactions] = useState([]);
+  const [transactions, setTransactions] = useState<TransactionRecord[]>([]);
   const [stats, setStats] = useState({
     users: 0,
     transactions: 0,
@@ -28,69 +30,54 @@ function AdminDashboard() {
   });
 
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const formatCurrency = (amount) => {
-    const n = Number(amount || 0);
-    return "Rs. " + n.toLocaleString("en-IN");
+  const formatCurrency = (amount: number) => {
+    return "Rs. " + amount.toLocaleString("en-IN");
   };
 
-  const formatCompactNumber = (number) => {
+  const formatCompactNumber = (number: number) => {
     return new Intl.NumberFormat("en-IN", {
       notation: "compact",
       maximumFractionDigits: 1,
-    }).format(Number(number || 0));
+    }).format(number);
   };
 
   // Helper to check transaction direction for list display
-  const getTxDirection = (tx) => {
-    const raw = tx?.direction ?? tx?.details?.direction ?? "";
-    const type = tx?.type || "";
+  const getTxDirection = (tx: TransactionRecord) => {
+    const raw = tx.direction;
+    const type = tx.type;
     if (raw === "Credit" || type.includes("Credit") || type.includes("Deposit"))
       return "credit";
     return "debit";
   };
 
-  const isCreditTx = (tx) => getTxDirection(tx) === "credit";
-
-  const getTxAmount = (tx) => {
-    const val = tx?.amount ?? tx?.amountValue ?? 0;
-    return Number(val || 0);
-  };
-
-  const getTxDateString = (tx) => {
-    return String(tx?.date ?? "").slice(0, 10);
-  };
+  const isCreditTx = (tx: TransactionRecord) => getTxDirection(tx) === "credit";
 
   const loadData = async () => {
     setLoading(true);
     try {
       // 1. Fetch User Stats & Today's Summary (Keep Backend logic for user counts)
-      const statsRes = await fetch(`${apiBase}/analytics/admin/stats`, {
-        method: "GET",
-        credentials: "include",
-      });
-
-      let backendStats = {};
-      if (statsRes.ok) {
-        backendStats = await statsRes.json();
-        if (backendStats?.todaysSummary) {
+      const statsRes = await apiFetch(`${apiBase}/analytics/admin/stats`);
+      const backendStats: unknown = await statsRes.json();
+      let userCount = 0;
+      let transactionCount = 0;
+      if (isRecord(backendStats)) {
+        userCount = typeof backendStats.users === "number" ? backendStats.users : 0;
+        transactionCount = typeof backendStats.transactions === "number" ? backendStats.transactions : 0;
+        if (isRecord(backendStats.todaysSummary)) {
+          const summary = backendStats.todaysSummary;
           setTodaysSummary({
-            newUsers: backendStats.todaysSummary.newUsers || 0,
-            txCount: backendStats.todaysSummary.txCount || 0,
-            totalAmount: backendStats.todaysSummary.totalAmount || 0,
+            newUsers: typeof summary.newUsers === "number" ? summary.newUsers : 0,
+            txCount: typeof summary.txCount === "number" ? summary.txCount : 0,
+            totalAmount: typeof summary.totalAmount === "number" ? summary.totalAmount : 0,
           });
         }
       }
 
       // 2. Fetch Transactions to Recalculate Financials (Frontend Override)
-      const txRes = await fetch(`${apiBase}/transactions`, {
-        method: "GET",
-        credentials: "include",
-      });
-
-      if (txRes.ok) {
-        const txData = await txRes.json();
-        const txArray = Array.isArray(txData) ? txData : [];
+      const txRes = await apiFetch(`${apiBase}/transactions`);
+        const txArray = parseTransactions(await txRes.json());
         setTransactions(txArray);
 
         // ⭐ RECALCULATE FINANCIALS FROM TRANSACTIONS ⭐
@@ -100,12 +87,10 @@ function AdminDashboard() {
         let calcNetwork = 0; // Equity/Capital
 
         txArray.forEach((tx) => {
-          const amt = parseFloat(tx.amount || tx.amountValue || 0);
-          const head =
-            tx.details?.internalHead || tx.accountHead || tx.type || "";
-          const direction = tx.details?.direction || "";
-          const type = tx.type || "";
-          const mode = tx.details?.mode || "";
+          const amt = tx.amount;
+          const head = tx.accountHead;
+          const direction = tx.direction;
+          const type = tx.type;
 
           // Savings (Liability to Bank)
           if (head.includes("Savings") || type.includes("Savings")) {
@@ -139,7 +124,7 @@ function AdminDashboard() {
           }
 
           // Network Capital (Equity)
-          if (mode === "network") {
+          if (tx.userId === null) {
             // Credit to Network = Income/Equity Increase
             // Debit to Network = Expense/Equity Decrease
             if (direction === "Credit") calcNetwork += amt;
@@ -154,29 +139,29 @@ function AdminDashboard() {
 
         setStats((prev) => ({
           ...prev,
-          users: backendStats.users || 0,
-          transactions: backendStats.transactions || 0,
+          users: userCount,
+          transactions: transactionCount,
           savings: Math.max(0, calcSavings),
           fixedDeposit: Math.max(0, calcFD),
           credit: Math.max(0, calcLoans),
           reserve: calcReserve,
         }));
-      }
-    } catch (err) {
-      console.error("Error loading dashboard data:", err);
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Dashboard failed to load");
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    loadData();
+    void loadData();
   }, []);
 
-  const netTotalPool = (stats.savings || 0) + (stats.fixedDeposit || 0);
+  const netTotalPool = stats.savings + stats.fixedDeposit;
 
   return (
     <div className="space-y-6">
+      {error && <p className="text-red-600" role="alert">{error}</p>}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         {/* Total Pool */}
         <div className="bg-white p-5 rounded-xl border border-gray-100 shadow-sm hover:shadow-md transition-shadow">
@@ -270,7 +255,6 @@ function AdminDashboard() {
                       savings: stats.savings,
                       fd: stats.fixedDeposit,
                       credit: stats.credit,
-                      reserve: stats.reserve,
                     }}
                   />
                 </div>
@@ -353,8 +337,8 @@ function AdminDashboard() {
                 <div className="divide-y divide-gray-100">
                   {transactions.slice(0, 5).map((tx) => {
                     const credit = isCreditTx(tx);
-                    const amt = getTxAmount(tx);
-                    const dateStr = getTxDateString(tx);
+                    const amt = tx.amount;
+                    const dateStr = tx.date.slice(0, 10);
 
                     return (
                       <div
@@ -486,15 +470,6 @@ function AdminDashboard() {
                 </span>
               </div>
 
-              <div className="pt-2 border-t border-gray-100">
-                <div className="flex items-center justify-between mt-2">
-                  <span className="text-xs text-gray-500">System Status</span>
-                  <span className="text-xs font-medium text-emerald-600 flex items-center gap-1">
-                    <div className="w-2 h-2 rounded-full bg-emerald-500"></div>
-                    Operational
-                  </span>
-                </div>
-              </div>
             </div>
           </div>
         </div>
